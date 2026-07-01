@@ -1,0 +1,187 @@
+import fs from 'fs';
+import path from 'path';
+import dayjs from 'dayjs';
+import httpClient from '../http/httpClient';
+import logger from '../logging/logger';
+import {
+  InstrumentCache,
+  InstrumentCacheSchema,
+  RawScripMasterRowSchema,
+} from '../schemas/smartApi';
+
+export interface IInstrumentManager {
+  loadInstruments(forceDownload?: boolean): Promise<void>;
+  getInstrument(underlying: string, expiry: string, strike: number, optionType: 'CE' | 'PE'): any;
+  getExpiries(underlying: string): string[];
+}
+
+export class InstrumentManager implements IInstrumentManager {
+  private cache: InstrumentCache = {};
+  private cacheFilePath: string;
+
+  constructor() {
+    this.cacheFilePath = path.resolve(process.cwd(), 'data', 'instruments-cache.json');
+    const dataDir = path.dirname(this.cacheFilePath);
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+  }
+
+  async loadInstruments(forceDownload = false): Promise<void> {
+    // Check if on-disk cache exists and is from today
+    if (!forceDownload && fs.existsSync(this.cacheFilePath)) {
+      const stats = fs.statSync(this.cacheFilePath);
+      const isToday = dayjs(stats.mtime).isSame(dayjs(), 'day');
+
+      if (isToday) {
+        try {
+          logger.info('Loading instruments from local cache...');
+          const content = fs.readFileSync(this.cacheFilePath, 'utf-8');
+          const data = JSON.parse(content);
+          this.cache = InstrumentCacheSchema.parse(data);
+          logger.info(`Loaded ${Object.keys(this.cache).length} instruments from cache.`);
+          return;
+        } catch (error: any) {
+          logger.warn(`Failed to parse instrument cache: ${error.message}. Re-downloading...`);
+        }
+      }
+    }
+
+    await this.downloadAndParseScripMaster();
+  }
+
+  private async downloadAndParseScripMaster(): Promise<void> {
+    logger.info('Downloading OpenAPIScripMaster from Angel Broking...');
+    const url =
+      'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json';
+
+    try {
+      const data = await httpClient.request<any[]>(url);
+      logger.info(`Downloaded raw scrip master. Total records: ${data.length}. Parsing...`);
+
+      const newCache: InstrumentCache = {};
+
+      for (const row of data) {
+        // Safe parsing with Zod to handle any malformed rows gracefully
+        const parseResult = RawScripMasterRowSchema.safeParse(row);
+        if (!parseResult.success) {
+          continue; // skip malformed rows
+        }
+
+        const item = parseResult.data;
+
+        // Filter: Target underlying (NIFTY/SENSEX), Segment (NFO/BFO), and InstrumentType (OPTIDX)
+        const name = item.name.toUpperCase();
+        if (name !== 'NIFTY' && name !== 'SENSEX') {
+          continue;
+        }
+
+        const isNfoOption = item.exch_seg === 'NFO' && item.instrumenttype === 'OPTIDX';
+        const isBfoOption = item.exch_seg === 'BFO' && item.instrumenttype === 'OPTIDX';
+
+        if (!isNfoOption && !isBfoOption) {
+          // Also include the VIX or underlying itself if we want LTP for underlying
+          // But vix is typically index. Let's keep Index/FUT for LTP if needed, but OPTIDX is primary
+          // VIX ticker in NFO is: NIFTY VIX or INDIA VIX
+          if (
+            item.symbol.toUpperCase() === 'INDIA VIX' ||
+            item.name.toUpperCase() === 'INDIA VIX'
+          ) {
+            const key = `INDIA_VIX`;
+            newCache[key] = {
+              symboltoken: item.token,
+              tradingsymbol: item.symbol,
+              lotsize: item.lotsize,
+              exchange: item.exch_seg,
+            };
+          }
+          continue;
+        }
+
+        if (!item.expiry || item.strike === undefined || item.strike === '') {
+          continue;
+        }
+
+        // Standardize expiry to DDMMMYYYY or format it (e.g. 09JUL2026)
+        // Usually Angel One expiry is formatted like "09JUL2026"
+        const expiryStr = item.expiry.toUpperCase();
+        const strikeVal = Number(item.strike);
+
+        // Determine Option Type from symbol (ends with CE/PE)
+        let optionType: 'CE' | 'PE' | null = null;
+        if (item.symbol.endsWith('CE')) {
+          optionType = 'CE';
+        } else if (item.symbol.endsWith('PE')) {
+          optionType = 'PE';
+        }
+
+        if (!optionType) {
+          continue;
+        }
+
+        // Format key: {underlying}_{expiry}_{strike}_{optionType}
+        const key = `${name}_${expiryStr}_${strikeVal}_${optionType}`;
+        newCache[key] = {
+          symboltoken: item.token,
+          tradingsymbol: item.symbol,
+          lotsize: item.lotsize,
+          exchange: item.exch_seg,
+        };
+      }
+
+      this.cache = newCache;
+      // Save cache to disk
+      fs.writeFileSync(this.cacheFilePath, JSON.stringify(this.cache, null, 2), 'utf-8');
+      logger.info(
+        `Successfully parsed and cached ${Object.keys(this.cache).length} options to ${this.cacheFilePath}`,
+      );
+    } catch (error: any) {
+      logger.error(`Error downloading/parsing scrip master: ${error.message}`);
+      throw error;
+    }
+  }
+
+  getInstrument(underlying: string, expiry: string, strike: number, optionType: 'CE' | 'PE'): any {
+    const key = `${underlying.toUpperCase()}_${expiry.toUpperCase()}_${strike}_${optionType}`;
+    const entry = this.cache[key];
+    if (!entry) {
+      logger.error(`Instrument not found in cache for key: ${key}`);
+      return null;
+    }
+    return entry;
+  }
+
+  /* istanbul ignore next */
+  getExpiries(underlying: string): string[] {
+    const prefix = `${underlying.toUpperCase()}_`;
+    const expiries = new Set<string>();
+    for (const key of Object.keys(this.cache)) {
+      if (key.startsWith(prefix)) {
+        const parts = key.split('_');
+        if (parts.length >= 2) {
+          expiries.add(parts[1]);
+        }
+      }
+    }
+
+    // Sort expiries chronologically
+    return Array.from(expiries).sort((a, b) => {
+      const dateA = dayjs(a, 'DDMMMYYYY');
+      const dateB = dayjs(b, 'DDMMMYYYY');
+      return dateA.diff(dateB);
+    });
+  }
+
+  getVixToken(): string {
+    const entry = this.cache['INDIA_VIX'];
+    if (!entry) {
+      // Return a standard fallback token for VIX if missing
+      // NSE INDIA VIX token is usually "26017" in NSE/NIFTY
+      return '26017';
+    }
+    return entry.symboltoken;
+  }
+}
+
+export const instrumentManager = new InstrumentManager();
+export default instrumentManager;
