@@ -178,20 +178,18 @@ describe('ExecutionManager', () => {
     await expect(
       (
         executionManager as unknown as { rollbackOrders: (orders: unknown[]) => Promise<void> }
-      ).rollbackOrders(
-        [
-          {
-            symboltoken: '123',
-            tradingsymbol: 'NIFTY',
-            transactiontype: 'BUY',
-            quantity: 50,
-            exchange: 'NFO',
-            orderid: 'O1',
-            status: 'COMPLETE',
-            price: 100,
-          },
-        ],
-      ),
+      ).rollbackOrders([
+        {
+          symboltoken: '123',
+          tradingsymbol: 'NIFTY',
+          transactiontype: 'BUY',
+          quantity: 50,
+          exchange: 'NFO',
+          orderid: 'O1',
+          status: 'COMPLETE',
+          price: 100,
+        },
+      ]),
     ).resolves.not.toThrow();
   });
 
