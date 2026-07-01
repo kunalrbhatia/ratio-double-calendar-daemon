@@ -7,11 +7,17 @@ import {
   InstrumentCache,
   InstrumentCacheSchema,
   RawScripMasterRowSchema,
+  InstrumentCacheEntry,
 } from '../schemas/smartApi';
 
 export interface IInstrumentManager {
   loadInstruments(forceDownload?: boolean): Promise<void>;
-  getInstrument(underlying: string, expiry: string, strike: number, optionType: 'CE' | 'PE'): any;
+  getInstrument(
+    underlying: string,
+    expiry: string,
+    strike: number,
+    optionType: 'CE' | 'PE',
+  ): InstrumentCacheEntry | null;
   getExpiries(underlying: string): string[];
 }
 
@@ -41,8 +47,9 @@ export class InstrumentManager implements IInstrumentManager {
           this.cache = InstrumentCacheSchema.parse(data);
           logger.info(`Loaded ${Object.keys(this.cache).length} instruments from cache.`);
           return;
-        } catch (error: any) {
-          logger.warn(`Failed to parse instrument cache: ${error.message}. Re-downloading...`);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          logger.warn(`Failed to parse instrument cache: ${msg}. Re-downloading...`);
         }
       }
     }
@@ -56,7 +63,7 @@ export class InstrumentManager implements IInstrumentManager {
       'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json';
 
     try {
-      const data = await httpClient.request<any[]>(url);
+      const data = await httpClient.request<unknown[]>(url);
       logger.info(`Downloaded raw scrip master. Total records: ${data.length}. Parsing...`);
 
       const newCache: InstrumentCache = {};
@@ -135,13 +142,19 @@ export class InstrumentManager implements IInstrumentManager {
       logger.info(
         `Successfully parsed and cached ${Object.keys(this.cache).length} options to ${this.cacheFilePath}`,
       );
-    } catch (error: any) {
-      logger.error(`Error downloading/parsing scrip master: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error downloading/parsing scrip master: ${msg}`);
       throw error;
     }
   }
 
-  getInstrument(underlying: string, expiry: string, strike: number, optionType: 'CE' | 'PE'): any {
+  getInstrument(
+    underlying: string,
+    expiry: string,
+    strike: number,
+    optionType: 'CE' | 'PE',
+  ): InstrumentCacheEntry | null {
     const key = `${underlying.toUpperCase()}_${expiry.toUpperCase()}_${strike}_${optionType}`;
     const entry = this.cache[key];
     if (!entry) {

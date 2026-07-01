@@ -1,6 +1,7 @@
 import fs from 'fs';
 import dayjs from 'dayjs';
 import { PositionsStore } from '../src/positions/positionsStore';
+import { WeeklyPosition } from '../src/schemas/smartApi';
 
 jest.mock('fs');
 
@@ -81,7 +82,9 @@ describe('PositionsStore', () => {
       week: '2026-W27',
     };
 
-    expect(() => store.writePosition('2026-W27', true, invalidPosition as any)).toThrow();
+    expect(() =>
+      store.writePosition('2026-W27', true, invalidPosition as unknown as WeeklyPosition),
+    ).toThrow();
   });
 
   test('getWeeklySkipState and setWeeklySkipState', () => {

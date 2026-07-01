@@ -140,8 +140,9 @@ export class ExecutionManager implements IExecutionManager {
         status: 'COMPLETE',
         price: filledPrice,
       };
-    } catch (err: any) {
-      logger.error(`Error executing order: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error(`Error executing order: ${msg}`);
       return null;
     }
   }
@@ -191,8 +192,9 @@ export class ExecutionManager implements IExecutionManager {
         };
         await brokerClient.placeOrder(orderParams);
         logger.info(`Rollback order placed for ${order.tradingsymbol}`);
-      } catch (err: any) {
-        logger.error(`Rollback order failed for ${order.tradingsymbol}: ${err.message}`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`Rollback order failed for ${order.tradingsymbol}: ${msg}`);
       }
     }
   }
@@ -326,8 +328,9 @@ export class ExecutionManager implements IExecutionManager {
         status: 'COMPLETE',
         price: filledPrice,
       };
-    } catch (err: any) {
-      logger.error(`Error executing exit order: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error(`Error executing exit order: ${msg}`);
       return null;
     }
   }
@@ -355,10 +358,9 @@ export class ExecutionManager implements IExecutionManager {
         } else {
           currentPnl += (leg.price - ltp) * leg.quantity;
         }
-      } catch (err: any) {
-        logger.error(
-          `Failed to get LTP for ${leg.tradingsymbol} during P&L monitor: ${err.message}`,
-        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`Failed to get LTP for ${leg.tradingsymbol} during P&L monitor: ${msg}`);
       }
     }
 

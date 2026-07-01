@@ -28,7 +28,7 @@ describe('Logger', () => {
     customLogger.info('Log day 1');
 
     // Override current day to force rotation
-    (customLogger as any).currentDay = '2000-01-01';
+    (customLogger as unknown as { currentDay: string }).currentDay = '2000-01-01';
     customLogger.info('Log day 2');
 
     expect(fs.createWriteStream).toHaveBeenCalled();

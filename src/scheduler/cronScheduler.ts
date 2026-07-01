@@ -31,8 +31,9 @@ export class CronScheduler {
       /* istanbul ignore next */
       try {
         await this.handleTradingTick();
-      } catch (error: any) {
-        logger.error(`Error in trading tick: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Error in trading tick: ${msg}`);
       }
     });
     this.cronTasks.push(tradingTickJob);
@@ -44,8 +45,9 @@ export class CronScheduler {
         logger.info('Scheduled job: Downloading instrument master...');
         await sessionManager.login();
         await instrumentManager.loadInstruments(true);
-      } catch (error: any) {
-        logger.error(`Failed to refresh instrument master: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Failed to refresh instrument master: ${msg}`);
       }
     });
     this.cronTasks.push(scripMasterJob);
@@ -55,8 +57,9 @@ export class CronScheduler {
       /* istanbul ignore next */
       try {
         this.runDailyCleanup();
-      } catch (error: any) {
-        logger.error(`Error in daily cleanup: ${error.message}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Error in daily cleanup: ${msg}`);
       }
     });
     this.cronTasks.push(cleanupJob);

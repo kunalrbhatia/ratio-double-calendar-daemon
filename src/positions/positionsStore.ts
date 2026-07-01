@@ -48,8 +48,10 @@ export class PositionsStore implements IPositionsStore {
       const content = fs.readFileSync(filePath, 'utf-8');
       const data = JSON.parse(content);
       return WeeklyPositionSchema.parse(data);
-    } catch (error: any) {
-      logger.error(`Error reading positions from ${filePath}: ${error.message}`);
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error reading positions from ${filePath}: ${msg}`);
       return null;
     }
   }
@@ -60,9 +62,11 @@ export class PositionsStore implements IPositionsStore {
       // Validate schema before writing to guarantee integrity
       WeeklyPositionSchema.parse(position);
       fs.writeFileSync(filePath, JSON.stringify(position, null, 2), 'utf-8');
-    } catch (error: any) {
+    } catch (error: unknown) {
       /* istanbul ignore next */
-      logger.error(`Error writing positions to ${filePath}: ${error.message}`);
+      const msg = error instanceof Error ? error.message : String(error);
+      /* istanbul ignore next */
+      logger.error(`Error writing positions to ${filePath}: ${msg}`);
       throw error;
     }
   }

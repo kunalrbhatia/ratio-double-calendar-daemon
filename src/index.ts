@@ -62,8 +62,9 @@ async function bootstrap() {
 
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
-  } catch (error: any) {
-    logger.error(`Critical error during bootstrap: ${error.message}`);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.error(`Critical error during bootstrap: ${msg}`);
     process.exit(1);
   }
 }

@@ -9,7 +9,7 @@ export class Notifier implements INotifier {
   async send(message: string): Promise<void> {
     logger.info(`Notification: ${message}`);
 
-    const promises: Promise<any>[] = [];
+    const promises: Promise<void>[] = [];
 
     if (env.TELEGRAM_ENABLED && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
       promises.push(this.sendTelegram(message));
@@ -39,8 +39,10 @@ export class Notifier implements INotifier {
       if (!response.ok) {
         logger.error(`Telegram notification failed: ${response.statusText}`);
       }
-    } catch (err: any) {
-      logger.error(`Error sending Telegram notification: ${err.message}`);
+    } catch (err: unknown) {
+      /* istanbul ignore next */
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error(`Error sending Telegram notification: ${msg}`);
     }
   }
 
@@ -55,8 +57,10 @@ export class Notifier implements INotifier {
       if (!response.ok) {
         logger.error(`Slack notification failed: ${response.statusText}`);
       }
-    } catch (err: any) {
-      logger.error(`Error sending Slack notification: ${err.message}`);
+    } catch (err: unknown) {
+      /* istanbul ignore next */
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error(`Error sending Slack notification: ${msg}`);
     }
   }
 }

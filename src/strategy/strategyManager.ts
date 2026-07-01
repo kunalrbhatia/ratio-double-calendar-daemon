@@ -3,6 +3,7 @@ import logger from '../logging/logger';
 import instrumentManager from '../instruments/instrumentManager';
 import brokerClient from '../execution/brokerClient';
 import { calculateDelta } from './blackScholes';
+import { InstrumentCacheEntry } from '../schemas/smartApi';
 
 export interface StrategyLeg {
   action: 'BUY' | 'SELL';
@@ -33,8 +34,10 @@ export class StrategyManager implements IStrategyManager {
       logger.info(`Current India VIX: ${vix}`);
       const passed = vix >= 10 && vix <= 13.5;
       return { passed, vix };
-    } catch (error: any) {
-      logger.error(`Failed to check VIX: ${error.message}. Proceeding assuming VIX check fails.`);
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Failed to check VIX: ${msg}. Proceeding assuming VIX check fails.`);
       return { passed: false, vix: 0 };
     }
   }
@@ -146,7 +149,7 @@ export class StrategyManager implements IStrategyManager {
 
       let bestStrike = 0;
       let minDiff = Infinity;
-      let bestInstrument: any = null;
+      let bestInstrument: InstrumentCacheEntry | null = null;
       let bestDelta = 0;
 
       for (const strike of candidateStrikes) {

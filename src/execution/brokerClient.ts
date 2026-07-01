@@ -23,11 +23,18 @@ export interface PlaceOrderParams {
   price?: number;
 }
 
+export interface MarginLeg {
+  exchange: string;
+  symboltoken: string;
+  quantity: number;
+  action: 'BUY' | 'SELL';
+}
+
 export interface IBrokerClient {
   getLtp(exchange: string, tradingsymbol: string, symboltoken: string): Promise<number>;
   placeOrder(params: PlaceOrderParams): Promise<string>;
   getOrderBook(): Promise<OrderBookItem[]>;
-  getMarginUtilized(basket: any[]): Promise<number>;
+  getMarginUtilized(basket: MarginLeg[]): Promise<number>;
 }
 
 export class BrokerClient implements IBrokerClient {
@@ -54,7 +61,7 @@ export class BrokerClient implements IBrokerClient {
     };
 
     try {
-      const response = await httpClient.request<any>(url, {
+      const response = await httpClient.request<unknown>(url, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify(payload),
@@ -65,8 +72,10 @@ export class BrokerClient implements IBrokerClient {
         throw new Error(`LTP check failed: ${parsed.message}`);
       }
       return parsed.data.ltp;
-    } catch (error: any) {
-      logger.error(`Error getting LTP for ${tradingsymbol}: ${error.message}`);
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error getting LTP for ${tradingsymbol}: ${msg}`);
       throw error;
     }
   }
@@ -87,7 +96,7 @@ export class BrokerClient implements IBrokerClient {
     };
 
     try {
-      const response = await httpClient.request<any>(url, {
+      const response = await httpClient.request<unknown>(url, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify(payload),
@@ -98,8 +107,10 @@ export class BrokerClient implements IBrokerClient {
         throw new Error(`Order placement failed: ${parsed.message}`);
       }
       return parsed.data.orderid;
-    } catch (error: any) {
-      logger.error(`Error placing order for ${params.tradingsymbol}: ${error.message}`);
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error placing order for ${params.tradingsymbol}: ${msg}`);
       throw error;
     }
   }
@@ -108,7 +119,7 @@ export class BrokerClient implements IBrokerClient {
     const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/getOrderBook';
 
     try {
-      const response = await httpClient.request<any>(url, {
+      const response = await httpClient.request<unknown>(url, {
         method: 'GET',
         headers: this.getHeaders(),
       });
@@ -118,13 +129,15 @@ export class BrokerClient implements IBrokerClient {
         throw new Error(`Failed to fetch OrderBook: ${parsed.message}`);
       }
       return parsed.data;
-    } catch (error: any) {
-      logger.error(`Error getting OrderBook: ${error.message}`);
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error getting OrderBook: ${msg}`);
       throw error;
     }
   }
 
-  async getMarginUtilized(basket: any[]): Promise<number> {
+  async getMarginUtilized(basket: MarginLeg[]): Promise<number> {
     // Exact path: /rest/secure/angelbroking/margin/v1/batch
     const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/margin/v1/batch';
 
@@ -134,7 +147,7 @@ export class BrokerClient implements IBrokerClient {
       exchange: leg.exchange,
       symboltoken: leg.symboltoken,
       quantity: leg.quantity,
-      transactiontype: leg.transactiontype,
+      transactiontype: leg.action,
       price: 0, // LTP or 0
       producttype: 'CARRYOVER',
     }));
@@ -142,7 +155,7 @@ export class BrokerClient implements IBrokerClient {
     const payload = { positions };
 
     try {
-      const response = await httpClient.request<any>(url, {
+      const response = await httpClient.request<unknown>(url, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify(payload),
@@ -155,8 +168,10 @@ export class BrokerClient implements IBrokerClient {
 
       // Return marginUtilized if present, or totalMargin as fallback
       return parsed.data.marginUtilized ?? parsed.data.totalMargin;
-    } catch (error: any) {
-      logger.error(`Error calculating batch margin: ${error.message}. Returning fallback margin.`);
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error calculating batch margin: ${msg}. Returning fallback margin.`);
       // Return a reasonable fallback margin if API fails (e.g. 1.5 Lakhs per calendar pair * 3)
       return 450000;
     }
