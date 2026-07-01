@@ -49,7 +49,7 @@ export class SessionManager implements ISessionManager {
     };
 
     try {
-      const response = await httpClient.request<any>(url, {
+      const response = await httpClient.request<unknown>(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,8 +76,10 @@ export class SessionManager implements ISessionManager {
       this.loginTime = Date.now();
 
       logger.info('SmartAPI login successful.');
-    } catch (error: any) {
-      logger.error(`SmartAPI login failed: ${error.message}`);
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`SmartAPI login failed: ${msg}`);
       throw error;
     }
   }
@@ -95,7 +97,7 @@ export class SessionManager implements ISessionManager {
     };
 
     try {
-      const response = await httpClient.request<any>(url, {
+      const response = await httpClient.request<unknown>(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,8 +126,10 @@ export class SessionManager implements ISessionManager {
       this.loginTime = Date.now();
 
       logger.info('SmartAPI token refreshed successfully.');
-    } catch (error: any) {
-      logger.error(`SmartAPI token refresh failed: ${error.message}`);
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`SmartAPI token refresh failed: ${msg}`);
       throw error;
     }
   }

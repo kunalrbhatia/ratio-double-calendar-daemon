@@ -19,8 +19,12 @@ describe('ExecutionManager', () => {
     executionManager = new ExecutionManager();
 
     // Set polling settings to execute instantly in tests
-    (executionManager as any).pollIntervalMs = 1;
-    (executionManager as any).maxPollAttempts = 2;
+    (
+      executionManager as unknown as { pollIntervalMs: number; maxPollAttempts: number }
+    ).pollIntervalMs = 1;
+    (
+      executionManager as unknown as { pollIntervalMs: number; maxPollAttempts: number }
+    ).maxPollAttempts = 2;
 
     mockBasket = [
       {
@@ -172,7 +176,9 @@ describe('ExecutionManager', () => {
     (brokerClient.placeOrder as jest.Mock).mockRejectedValue(new Error('Rollback failed'));
 
     await expect(
-      (executionManager as any).rollbackOrders(
+      (
+        executionManager as unknown as { rollbackOrders: (orders: unknown[]) => Promise<void> }
+      ).rollbackOrders(
         [
           {
             symboltoken: '123',
@@ -185,7 +191,6 @@ describe('ExecutionManager', () => {
             price: 100,
           },
         ],
-        false,
       ),
     ).resolves.not.toThrow();
   });

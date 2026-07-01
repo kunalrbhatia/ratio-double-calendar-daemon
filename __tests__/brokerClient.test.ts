@@ -143,7 +143,7 @@ describe('BrokerClient', () => {
     (httpClient.request as jest.Mock).mockResolvedValueOnce(mockMarginRes);
 
     const margin = await client.getMarginUtilized([
-      { exchange: 'NFO', symboltoken: '123', quantity: 50, transactiontype: 'BUY' },
+      { exchange: 'NFO', symboltoken: '123', quantity: 50, action: 'BUY' },
     ]);
     expect(margin).toBe(380000);
   });
@@ -160,7 +160,7 @@ describe('BrokerClient', () => {
     (httpClient.request as jest.Mock).mockResolvedValueOnce(mockMarginRes);
 
     const margin = await client.getMarginUtilized([
-      { exchange: 'NFO', symboltoken: '123', quantity: 50, transactiontype: 'BUY' },
+      { exchange: 'NFO', symboltoken: '123', quantity: 50, action: 'BUY' },
     ]);
     expect(margin).toBe(400000);
   });

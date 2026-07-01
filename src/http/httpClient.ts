@@ -41,10 +41,14 @@ export class HttpClient {
 
         const data = await response.json();
         return data as T;
-      } catch (error: any) {
+      } catch (error: unknown) {
         clearTimeout(id);
-        const isTimeout = error.name === 'AbortError';
-        const msg = isTimeout ? `Request timed out after ${this.timeoutMs}ms` : error.message;
+        const err = error as Error;
+        const isTimeout = err?.name === 'AbortError';
+        /* istanbul ignore next */
+        const msg = isTimeout
+          ? `Request timed out after ${this.timeoutMs}ms`
+          : err?.message || String(error);
 
         logger.warn(
           `HttpClient request failed (Attempt ${attempt}/${this.retries}): ${msg} to ${url}`,
