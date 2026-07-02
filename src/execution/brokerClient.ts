@@ -42,10 +42,10 @@ export class BrokerClient implements IBrokerClient {
     return {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'X-API-KEY': env.API_KEY,
-      'X-Client-Local-IP': '127.0.0.1',
-      'X-Client-Public-IP': '127.0.0.1',
-      'X-MAC-Address': '00-00-00-00-00-00',
+      'X-PrivateKey': env.API_KEY,
+      'X-ClientLocalIP': '127.0.0.1',
+      'X-ClientPublicIP': '127.0.0.1',
+      'X-MACaddress': '00-00-00-00-00-00',
       'X-UserType': 'USER',
       'X-SourceID': 'WEB',
       Authorization: `Bearer ${sessionManager.getJwtToken()}`,
@@ -53,7 +53,7 @@ export class BrokerClient implements IBrokerClient {
   }
 
   async getLtp(exchange: string, tradingsymbol: string, symboltoken: string): Promise<number> {
-    const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/getLastPoint';
+    const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/getLtpData';
     const payload = {
       exchange,
       tradingsymbol,
@@ -149,7 +149,7 @@ export class BrokerClient implements IBrokerClient {
       quantity: leg.quantity,
       transactiontype: leg.action,
       price: 0, // LTP or 0
-      producttype: 'CARRYOVER',
+      producttype: 'CARRYFORWARD',
     }));
 
     const payload = { positions };

@@ -42,7 +42,7 @@ describe('StrategyManager', () => {
   test('buildBasket resolves strikes based on closest delta', async () => {
     // Add today's date to verify isSame('now') path coverage
     const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
-    (instrumentManager.getExpiries as jest.Mock).mockReturnValue([todayStr, '16JUL2026']);
+    (instrumentManager.getExpiries as jest.Mock).mockReturnValue([todayStr, '16JUL2026', '23JUL2026']);
 
     (brokerClient.getLtp as jest.Mock).mockResolvedValueOnce(19000).mockResolvedValueOnce(12.5);
 
@@ -65,7 +65,7 @@ describe('StrategyManager', () => {
   });
 
   test('buildBasket resolves SENSEX underlying parameters', async () => {
-    (instrumentManager.getExpiries as jest.Mock).mockReturnValue(['09JUL2026', '16JUL2026']);
+    (instrumentManager.getExpiries as jest.Mock).mockReturnValue(['09JUL2026', '16JUL2026', '23JUL2026']);
     (brokerClient.getLtp as jest.Mock).mockResolvedValueOnce(70000).mockResolvedValueOnce(12.5);
 
     (instrumentManager.getInstrument as jest.Mock).mockImplementation(
@@ -85,14 +85,14 @@ describe('StrategyManager', () => {
   });
 
   test('buildBasket fails when not enough future expiries', async () => {
-    (instrumentManager.getExpiries as jest.Mock).mockReturnValue(['09JUL2026']);
+    (instrumentManager.getExpiries as jest.Mock).mockReturnValue(['09JUL2026', '16JUL2026']);
 
     const basket = await manager.buildBasket('NIFTY');
     expect(basket).toBeNull();
   });
 
   test('buildBasket returns null when strike resolution fails', async () => {
-    (instrumentManager.getExpiries as jest.Mock).mockReturnValue(['09JUL2026', '16JUL2026']);
+    (instrumentManager.getExpiries as jest.Mock).mockReturnValue(['09JUL2026', '16JUL2026', '23JUL2026']);
     (brokerClient.getLtp as jest.Mock).mockResolvedValueOnce(19000).mockResolvedValueOnce(12.5);
 
     (instrumentManager.getInstrument as jest.Mock).mockReturnValue(null);

@@ -40,6 +40,22 @@ export class HttpClient {
         }
 
         const data = await response.json();
+
+        // Normalize common Angel One API Gateway response variations
+        /* istanbul ignore next */
+        if (data && typeof data === 'object') {
+          const raw = data as any;
+          if (raw.status === undefined && raw.success !== undefined) {
+            raw.status = raw.success;
+          }
+          if (raw.errorcode === undefined && raw.errorCode !== undefined) {
+            raw.errorcode = raw.errorCode;
+          }
+          if (raw.data === '') {
+            raw.data = null;
+          }
+        }
+
         return data as T;
       } catch (error: unknown) {
         clearTimeout(id);

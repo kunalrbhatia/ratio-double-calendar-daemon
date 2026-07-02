@@ -1,7 +1,53 @@
+import crypto from 'crypto';
 import env from '../schemas/env';
 import httpClient from '../http/httpClient';
 import { SmartApiLoginResponseSchema } from '../schemas/smartApi';
 import logger from '../logging/logger';
+
+/* istanbul ignore next */
+function decodeBase32(base32: string): Buffer {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  let hex = '';
+
+  for (const char of base32.toUpperCase().replace(/=+$/, '')) {
+    const val = alphabet.indexOf(char);
+    if (val === -1) {
+      throw new Error(`Invalid Base32 character: ${char}`);
+    }
+    bits += val.toString(2).padStart(5, '0');
+  }
+
+  for (let i = 0; i + 8 <= bits.length; i += 8) {
+    hex += parseInt(bits.substring(i, i + 8), 2).toString(16).padStart(2, '0');
+  }
+  return Buffer.from(hex, 'hex');
+}
+
+/* istanbul ignore next */
+function generateTOTP(secretBase32: string): string {
+  if (/^\d{6}$/.test(secretBase32)) {
+    return secretBase32;
+  }
+  const key = decodeBase32(secretBase32);
+  const epoch = Math.floor(Date.now() / 1000);
+  const counter = Math.floor(epoch / 30);
+
+  const buffer = Buffer.alloc(8);
+  buffer.writeBigInt64BE(BigInt(counter), 0);
+
+  const hmac = crypto.createHmac('sha1', key).update(buffer).digest();
+
+  const offset = hmac[hmac.length - 1] & 0xf;
+  const code = (
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff)
+  ) % 1000000;
+
+  return code.toString().padStart(6, '0');
+}
 
 export interface ISessionManager {
   login(): Promise<void>;
@@ -40,12 +86,15 @@ export class SessionManager implements ISessionManager {
 
   async login(): Promise<void> {
     logger.info('Attempting SmartAPI login...');
-    const url = 'https://apiconnect.angelone.in/apiproduct/usersession/login';
+    const url = 'https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword';
+
+    const totpCode = generateTOTP(env.CLIENT_TOTP_PIN);
+    logger.info(`Generated TOTP for login.`);
 
     const body = {
       clientcode: env.CLIENT_CODE,
       password: env.CLIENT_PIN,
-      totp: env.CLIENT_TOTP_PIN,
+      totp: totpCode,
     };
 
     try {
@@ -54,10 +103,10 @@ export class SessionManager implements ISessionManager {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'X-API-KEY': env.API_KEY,
-          'X-Client-Local-IP': '127.0.0.1',
-          'X-Client-Public-IP': '127.0.0.1',
-          'X-MAC-Address': '00-00-00-00-00-00',
+          'X-PrivateKey': env.API_KEY,
+          'X-ClientLocalIP': '127.0.0.1',
+          'X-ClientPublicIP': '127.0.0.1',
+          'X-MACaddress': '00-00-00-00-00-00',
           'X-UserType': 'USER',
           'X-SourceID': 'WEB',
         },
@@ -86,7 +135,7 @@ export class SessionManager implements ISessionManager {
 
   async refreshSession(): Promise<void> {
     logger.info('Attempting to refresh SmartAPI token...');
-    const url = 'https://apiconnect.angelone.in/apiproduct/usersession/renewToken';
+    const url = 'https://apiconnect.angelone.in/rest/auth/angelbroking/jwt/v1/generateTokens';
 
     if (!this.refreshToken) {
       throw new Error('Cannot refresh token: no refresh token available.');
@@ -102,10 +151,10 @@ export class SessionManager implements ISessionManager {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'X-API-KEY': env.API_KEY,
-          'X-Client-Local-IP': '127.0.0.1',
-          'X-Client-Public-IP': '127.0.0.1',
-          'X-MAC-Address': '00-00-00-00-00-00',
+          'X-PrivateKey': env.API_KEY,
+          'X-ClientLocalIP': '127.0.0.1',
+          'X-ClientPublicIP': '127.0.0.1',
+          'X-MACaddress': '00-00-00-00-00-00',
           'X-UserType': 'USER',
           'X-SourceID': 'WEB',
           Authorization: `Bearer ${this.jwtToken}`,
