@@ -79,6 +79,19 @@ export class InstrumentManager implements IInstrumentManager {
 
         // Filter: Target underlying (NIFTY/SENSEX), Segment (NFO/BFO), and InstrumentType (OPTIDX)
         const name = item.name.toUpperCase();
+        const symbol = item.symbol.toUpperCase();
+
+        if (symbol === 'INDIA VIX' || name === 'INDIA VIX') {
+          const key = `INDIA_VIX`;
+          newCache[key] = {
+            symboltoken: item.token,
+            tradingsymbol: item.symbol,
+            lotsize: item.lotsize,
+            exchange: item.exch_seg,
+          };
+          continue;
+        }
+
         if (name !== 'NIFTY' && name !== 'SENSEX') {
           continue;
         }
@@ -87,21 +100,6 @@ export class InstrumentManager implements IInstrumentManager {
         const isBfoOption = item.exch_seg === 'BFO' && item.instrumenttype === 'OPTIDX';
 
         if (!isNfoOption && !isBfoOption) {
-          // Also include the VIX or underlying itself if we want LTP for underlying
-          // But vix is typically index. Let's keep Index/FUT for LTP if needed, but OPTIDX is primary
-          // VIX ticker in NFO is: NIFTY VIX or INDIA VIX
-          if (
-            item.symbol.toUpperCase() === 'INDIA VIX' ||
-            item.name.toUpperCase() === 'INDIA VIX'
-          ) {
-            const key = `INDIA_VIX`;
-            newCache[key] = {
-              symboltoken: item.token,
-              tradingsymbol: item.symbol,
-              lotsize: item.lotsize,
-              exchange: item.exch_seg,
-            };
-          }
           continue;
         }
 
@@ -112,7 +110,7 @@ export class InstrumentManager implements IInstrumentManager {
         // Standardize expiry to DDMMMYYYY or format it (e.g. 09JUL2026)
         // Usually Angel One expiry is formatted like "09JUL2026"
         const expiryStr = item.expiry.toUpperCase();
-        const strikeVal = Number(item.strike);
+        const strikeVal = Number(item.strike) / 100;
 
         // Determine Option Type from symbol (ends with CE/PE)
         let optionType: 'CE' | 'PE' | null = null;
