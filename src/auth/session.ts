@@ -19,7 +19,9 @@ function decodeBase32(base32: string): Buffer {
   }
 
   for (let i = 0; i + 8 <= bits.length; i += 8) {
-    hex += parseInt(bits.substring(i, i + 8), 2).toString(16).padStart(2, '0');
+    hex += parseInt(bits.substring(i, i + 8), 2)
+      .toString(16)
+      .padStart(2, '0');
   }
   return Buffer.from(hex, 'hex');
 }
@@ -39,12 +41,12 @@ function generateTOTP(secretBase32: string): string {
   const hmac = crypto.createHmac('sha1', key).update(buffer).digest();
 
   const offset = hmac[hmac.length - 1] & 0xf;
-  const code = (
-    ((hmac[offset] & 0x7f) << 24) |
-    ((hmac[offset + 1] & 0xff) << 16) |
-    ((hmac[offset + 2] & 0xff) << 8) |
-    (hmac[offset + 3] & 0xff)
-  ) % 1000000;
+  const code =
+    (((hmac[offset] & 0x7f) << 24) |
+      ((hmac[offset + 1] & 0xff) << 16) |
+      ((hmac[offset + 2] & 0xff) << 8) |
+      (hmac[offset + 3] & 0xff)) %
+    1000000;
 
   return code.toString().padStart(6, '0');
 }
