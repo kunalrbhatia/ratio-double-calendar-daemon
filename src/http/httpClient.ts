@@ -62,9 +62,16 @@ export class HttpClient {
         const err = error as Error;
         const isTimeout = err?.name === 'AbortError';
         /* istanbul ignore next */
-        const msg = isTimeout
+        let msg = isTimeout
           ? `Request timed out after ${this.timeoutMs}ms`
           : err?.message || String(error);
+
+        /* istanbul ignore next */
+        if (err && typeof err === 'object' && 'cause' in err && err.cause) {
+          const cause = (err as any).cause;
+          const causeMsg = cause instanceof Error ? cause.message : String(cause);
+          msg += ` (Cause: ${causeMsg})`;
+        }
 
         logger.warn(
           `HttpClient request failed (Attempt ${attempt}/${this.retries}): ${msg} to ${url}`,
