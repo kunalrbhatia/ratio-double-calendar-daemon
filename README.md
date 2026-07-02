@@ -21,10 +21,10 @@ The strategy consists of a 6-leg options basket matching specific delta targets:
 | :--- | :---: | :---: | :---: | :---: |
 | **SELL** | 3 | $T_0$ (Current) | Call | $\sim 0.20$ |
 | **SELL** | 3 | $T_0$ (Current) | Put | $\sim 0.20$ |
-| **BUY** | 1 | $T_1$ (Next Weekly) | Call | $\sim 0.35 - 0.40$ |
-| **BUY** | 1 | $T_1$ (Next Weekly) | Put | $\sim 0.35 - 0.40$ |
-| **BUY** | 2 | $T_1$ (Next Weekly) | Call | $\sim 0.17 - 0.20$ |
-| **BUY** | 2 | $T_1$ (Next Weekly) | Put | $\sim 0.17 - 0.20$ |
+| **BUY** | 1 | $T_2$ (Week After Next) | Call | $\sim 0.30$ |
+| **BUY** | 1 | $T_2$ (Week After Next) | Put | $\sim 0.30$ |
+| **BUY** | 2 | $T_2$ (Week After Next) | Call | $\sim 0.20$ |
+| **BUY** | 2 | $T_2$ (Week After Next) | Put | $\sim 0.20$ |
 
 ---
 

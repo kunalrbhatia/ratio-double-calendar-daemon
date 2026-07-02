@@ -45,7 +45,7 @@ export class StrategyManager implements IStrategyManager {
   async buildBasket(underlying: string): Promise<StrategyLeg[] | null> {
     logger.info(`Building strategy basket for ${underlying}...`);
 
-    // 1. Resolve Expiry_T0 and Expiry_T1
+    // 1. Resolve Expiry_T0, Expiry_T1 and Expiry_T2
     const expiries = instrumentManager.getExpiries(underlying);
     const now = dayjs();
 
@@ -56,14 +56,15 @@ export class StrategyManager implements IStrategyManager {
       return expDate.isAfter(now) || expDate.isSame(now, 'day');
     });
 
-    if (futureExpiries.length < 2) {
+    if (futureExpiries.length < 3) {
       logger.error(`Not enough future expiries found for ${underlying}. Found: ${futureExpiries}`);
       return null;
     }
 
     const expiryT0 = futureExpiries[0];
     const expiryT1 = futureExpiries[1];
-    logger.info(`Resolved Expiry_T0: ${expiryT0}, Expiry_T1: ${expiryT1}`);
+    const expiryT2 = futureExpiries[2];
+    logger.info(`Resolved Expiry_T0: ${expiryT0}, Expiry_T1: ${expiryT1}, Expiry_T2: ${expiryT2}`);
 
     // 2. Fetch underlying price (LTP)
     // NIFTY index token: "99926000" on NSE. SENSEX index token: "99926037" on BSE.
@@ -90,7 +91,7 @@ export class StrategyManager implements IStrategyManager {
     const minStrike = Math.round((underlyingLtp * 0.8) / 100) * 100;
     const maxStrike = Math.round((underlyingLtp * 1.2) / 100) * 100;
 
-    for (let strike = minStrike; strike <= maxStrike; strike += 50) {
+    for (let strike = minStrike; strike <= maxStrike; strike += 100) {
       candidateStrikes.push(strike);
     }
 
@@ -113,31 +114,31 @@ export class StrategyManager implements IStrategyManager {
       {
         action: 'BUY' as const,
         qtyMult: 1,
-        expiry: expiryT1,
+        expiry: expiryT2,
         type: 'CE' as const,
-        targetDelta: 0.375,
-      }, // midpoint of 0.35-0.40
+        targetDelta: 0.3,
+      },
       {
         action: 'BUY' as const,
         qtyMult: 1,
-        expiry: expiryT1,
+        expiry: expiryT2,
         type: 'PE' as const,
-        targetDelta: 0.375,
-      }, // midpoint of 0.35-0.40
+        targetDelta: 0.3,
+      },
       {
         action: 'BUY' as const,
         qtyMult: 2,
-        expiry: expiryT1,
+        expiry: expiryT2,
         type: 'CE' as const,
-        targetDelta: 0.185,
-      }, // midpoint of 0.17-0.20
+        targetDelta: 0.2,
+      },
       {
         action: 'BUY' as const,
         qtyMult: 2,
-        expiry: expiryT1,
+        expiry: expiryT2,
         type: 'PE' as const,
-        targetDelta: 0.185,
-      }, // midpoint of 0.17-0.20
+        targetDelta: 0.2,
+      },
     ];
 
     const basket: StrategyLeg[] = [];

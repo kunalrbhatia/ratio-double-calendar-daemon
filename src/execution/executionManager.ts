@@ -111,7 +111,7 @@ export class ExecutionManager implements IExecutionManager {
       transactiontype: leg.action,
       exchange: leg.exchange,
       ordertype: 'MARKET',
-      producttype: 'CARRYOVER',
+      producttype: 'CARRYFORWARD',
       duration: 'DAY',
       quantity: leg.quantity,
     };
@@ -186,7 +186,7 @@ export class ExecutionManager implements IExecutionManager {
           transactiontype: 'SELL',
           exchange: order.exchange,
           ordertype: 'MARKET',
-          producttype: 'CARRYOVER',
+          producttype: 'CARRYFORWARD',
           duration: 'DAY',
           quantity: order.quantity,
         };
@@ -304,7 +304,7 @@ export class ExecutionManager implements IExecutionManager {
       transactiontype: exitAction,
       exchange: entryOrder.exchange,
       ordertype: 'MARKET',
-      producttype: 'CARRYOVER',
+      producttype: 'CARRYFORWARD',
       duration: 'DAY',
       quantity: entryOrder.quantity,
     };

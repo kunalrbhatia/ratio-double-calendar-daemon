@@ -33,7 +33,7 @@ SLACK_SIGNING_SECRET=your_slack_signing_secret_here
 
 ## 2. Instrument & Token Resolution (runs first, cached)
 - Download/parse the Angel One instrument master (`OpenAPIScripMaster`) daily.
-- Filter for the target underlying (NIFTY/SENSEX), `NFO`/`BFO` segment, and both `Expiry_T0`/`Expiry_T1`.
+- Filter for the target underlying (NIFTY/SENSEX), `NFO`/`BFO` segment, and expiries `Expiry_T0`/`Expiry_T1`/`Expiry_T2`.
 - Build an in-memory + on-disk cache map: `{underlying}_{expiry}_{strike}_{optionType}` → `{ symboltoken, tradingsymbol, lotsize, exchange }`. Validate each row against a **Zod schema** on parse (both from the raw scrip master and on every read of the on-disk cache) — a malformed cache entry is the one failure mode that could silently produce a wrong `symboltoken` and place the wrong order.
 - Split into separate **Calls** and **Puts** collections per expiry for delta matching.
 
@@ -49,7 +49,7 @@ SLACK_SIGNING_SECRET=your_slack_signing_secret_here
 
 ## 5. Algorithmic Entry Logic
 For the given underlying, on Wednesday, if the VIX condition passes:
-- Identify `Expiry_T0` (current expiry) and `Expiry_T1` (next weekly expiry) from the resolved instrument map.
+- Identify `Expiry_T0` (current expiry), `Expiry_T1` (next weekly expiry) and `Expiry_T2` (week after next weekly expiry) from the resolved instrument map.
 - Fetch/compute option chain deltas (SmartAPI option greeks endpoint, or Black-Scholes from LTP + IV as fallback).
 - Match strikes to target deltas and resolve each to its `symboltoken`:
 
@@ -57,10 +57,10 @@ For the given underlying, on Wednesday, if the VIX condition passes:
 |---|---|---|---|---|
 | SELL | 3 | T0 | Call | ~0.20 |
 | SELL | 3 | T0 | Put | ~0.20 |
-| BUY | 1 | T1 | Call | ~0.35–0.40 |
-| BUY | 1 | T1 | Put | ~0.35–0.40 |
-| BUY | 2 | T1 | Call | ~0.17–0.20 |
-| BUY | 2 | T1 | Put | ~0.17–0.20 |
+| BUY | 1 | T2 | Call | ~0.30 |
+| BUY | 1 | T2 | Put | ~0.30 |
+| BUY | 2 | T2 | Call | ~0.20 |
+| BUY | 2 | T2 | Put | ~0.20 |
 
 - Build a single in-memory **order basket** (all 6 legs, resolved `symboltoken`, `tradingsymbol`, `transactiontype`, `quantity`, `exchange`) before placing any order.
 
