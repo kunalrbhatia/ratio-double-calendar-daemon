@@ -139,4 +139,35 @@ On pull request or push to any branch:
 5.  **Build:** Compiles TypeScript into JavaScript.
 
 ### Deploy Workflow
-Runs automatically upon successful completion of the CI workflow on the `master` branch. It SSHs into the Oracle Cloud VM, pulls the latest changes, runs `pnpm install`, builds the project, and restarts the PM2 process.
+
+Runs automatically upon successful completion of the CI workflow on the `master` branch. It SSHs into the Oracle Cloud VM and performs the deployment steps.
+
+#### Repository Secrets Setup
+To enable the CD pipeline, ensure the following GitHub repository secrets are set:
+*   `ORACLE_HOST`: The VM's IP address or hostname.
+*   `ORACLE_USER`: The SSH connection user (e.g., `ubuntu`).
+*   `ORACLE_SSH_KEY`: The private SSH key used to log in.
+
+#### Automated Deployment Steps on the VM
+Once connected via SSH, the deploy workflow executes the following commands:
+1.  **Configure Environment**: Appends the NVM Node binary path to `PATH`:
+    ```bash
+    export PATH=$PATH:/home/ubuntu/.nvm/versions/node/v24.16.0/bin
+    ```
+2.  **Navigate and Pull**: Changes directory to the target project folder and pulls the latest updates:
+    ```bash
+    cd ~/nifty-supertrend
+    git pull origin master
+    ```
+3.  **Install Dependencies**: Resolves and installs packages matching lockfile:
+    ```bash
+    pnpm install --frozen-lockfile
+    ```
+4.  **Build TypeScript**: Compiles the source files to JavaScript:
+    ```bash
+    pnpm build
+    ```
+5.  **Restart Daemon**: Restarts the PM2 process under production mode:
+    ```bash
+    pm2 restart ecosystem.config.cjs --env production
+    ```
