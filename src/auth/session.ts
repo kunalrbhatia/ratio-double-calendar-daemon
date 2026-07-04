@@ -1,4 +1,7 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import dayjs from 'dayjs';
 import env from '../schemas/env';
 import httpClient from '../http/httpClient';
 import { SmartApiLoginResponseSchema } from '../schemas/smartApi';
@@ -64,8 +67,68 @@ export class SessionManager implements ISessionManager {
   private feedToken: string = '';
   private refreshToken: string = '';
   private loginTime: number = 0;
+  private cacheFilePath: string;
+
+  constructor() {
+    this.cacheFilePath = path.resolve(process.cwd(), 'data', 'session-cache.json');
+    const dataDir = path.dirname(this.cacheFilePath);
+    /* istanbul ignore next */
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+  }
+
+  private loadSessionFromDisk(): boolean {
+    if (fs.existsSync(this.cacheFilePath)) {
+      try {
+        const content = fs.readFileSync(this.cacheFilePath, 'utf-8');
+        const data = JSON.parse(content);
+        if (data.jwtToken && data.refreshToken && data.feedToken && data.loginTime) {
+          // Check if it's from today (using dayjs)
+          const isToday = dayjs(data.loginTime).isSame(dayjs(), 'day');
+          if (isToday) {
+            this.jwtToken = data.jwtToken;
+            this.refreshToken = data.refreshToken;
+            this.feedToken = data.feedToken;
+            this.loginTime = data.loginTime;
+            logger.info('Loaded active session from disk cache.');
+            return true;
+          }
+        }
+      } catch (error) {
+        /* istanbul ignore next */
+        logger.warn('Failed to load session from disk cache');
+      }
+    }
+    return false;
+  }
+
+  private saveSessionToDisk(): void {
+    try {
+      fs.writeFileSync(
+        this.cacheFilePath,
+        JSON.stringify(
+          {
+            jwtToken: this.jwtToken,
+            refreshToken: this.refreshToken,
+            feedToken: this.feedToken,
+            loginTime: this.loginTime,
+          },
+          null,
+          2,
+        ),
+        'utf-8',
+      );
+    } catch (error) {
+      /* istanbul ignore next */
+      logger.warn('Failed to save session to disk cache');
+    }
+  }
 
   getJwtToken(): string {
+    if (!this.jwtToken) {
+      this.loadSessionFromDisk();
+    }
     if (!this.jwtToken) {
       throw new Error('No active session. Call login() first.');
     }
@@ -74,12 +137,18 @@ export class SessionManager implements ISessionManager {
 
   getFeedToken(): string {
     if (!this.feedToken) {
+      this.loadSessionFromDisk();
+    }
+    if (!this.feedToken) {
       throw new Error('No active session. Call login() first.');
     }
     return this.feedToken;
   }
 
   getRefreshToken(): string {
+    if (!this.refreshToken) {
+      this.loadSessionFromDisk();
+    }
     if (!this.refreshToken) {
       throw new Error('No active session. Call login() first.');
     }
@@ -126,6 +195,7 @@ export class SessionManager implements ISessionManager {
       this.feedToken = parsed.data.feedToken;
       this.loginTime = Date.now();
 
+      this.saveSessionToDisk();
       logger.info('SmartAPI login successful.');
     } catch (error: unknown) {
       /* istanbul ignore next */
@@ -138,6 +208,11 @@ export class SessionManager implements ISessionManager {
   async refreshSession(): Promise<void> {
     logger.info('Attempting to refresh SmartAPI token...');
     const url = 'https://apiconnect.angelone.in/rest/auth/angelbroking/jwt/v1/generateTokens';
+
+    if (!this.refreshToken) {
+      // Try to load from disk
+      this.loadSessionFromDisk();
+    }
 
     if (!this.refreshToken) {
       throw new Error('Cannot refresh token: no refresh token available.');
@@ -176,6 +251,7 @@ export class SessionManager implements ISessionManager {
       this.feedToken = parsed.data.feedToken;
       this.loginTime = Date.now();
 
+      this.saveSessionToDisk();
       logger.info('SmartAPI token refreshed successfully.');
     } catch (error: unknown) {
       /* istanbul ignore next */
