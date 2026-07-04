@@ -1,6 +1,8 @@
 import { SessionManager } from '../src/auth/session';
 import httpClient from '../src/http/httpClient';
+import fs from 'fs';
 
+jest.mock('fs');
 jest.mock('../src/http/httpClient');
 
 describe('SessionManager', () => {
@@ -8,6 +10,7 @@ describe('SessionManager', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (fs.existsSync as jest.Mock).mockReturnValue(false);
     sessionManager = new SessionManager();
   });
 
@@ -35,6 +38,7 @@ describe('SessionManager', () => {
     expect(sessionManager.getJwtToken()).toBe('mock_jwt');
     expect(sessionManager.getRefreshToken()).toBe('mock_refresh');
     expect(sessionManager.getFeedToken()).toBe('mock_feed');
+    expect(fs.writeFileSync).toHaveBeenCalled();
   });
 
   test('login fails when status is false', async () => {
@@ -135,5 +139,71 @@ describe('SessionManager', () => {
 
     (httpClient.request as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
     await expect(sessionManager.refreshSession()).rejects.toThrow('Network error');
+  });
+
+  test('loads session from disk if valid', () => {
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    const mockData = {
+      jwtToken: 'disk_jwt',
+      refreshToken: 'disk_refresh',
+      feedToken: 'disk_feed',
+      loginTime: Date.now(),
+    };
+    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockData));
+
+    expect(sessionManager.getJwtToken()).toBe('disk_jwt');
+    expect(sessionManager.getRefreshToken()).toBe('disk_refresh');
+    expect(sessionManager.getFeedToken()).toBe('disk_feed');
+  });
+
+  test('does not load session from disk if expired/not from today', () => {
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    const mockData = {
+      jwtToken: 'disk_jwt',
+      refreshToken: 'disk_refresh',
+      feedToken: 'disk_feed',
+      loginTime: Date.now() - 24 * 60 * 60 * 1000 * 2, // 2 days ago
+    };
+    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockData));
+
+    expect(() => sessionManager.getJwtToken()).toThrow();
+  });
+
+  test('handles invalid json or errors when reading from disk', () => {
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.readFileSync as jest.Mock).mockImplementation(() => {
+      throw new Error('Disk read error');
+    });
+
+    expect(() => sessionManager.getJwtToken()).toThrow();
+  });
+
+  test('refreshSession loads from disk if token is not in memory', async () => {
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    const mockData = {
+      jwtToken: 'disk_jwt',
+      refreshToken: 'disk_refresh',
+      feedToken: 'disk_feed',
+      loginTime: Date.now(),
+    };
+    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockData));
+
+    const mockRefreshRes = {
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: {
+        jwtToken: 'new_disk_jwt',
+        refreshToken: 'new_disk_refresh',
+        feedToken: 'new_disk_feed',
+      },
+    };
+    (httpClient.request as jest.Mock).mockResolvedValueOnce(mockRefreshRes);
+
+    await sessionManager.refreshSession();
+
+    expect(sessionManager.getJwtToken()).toBe('new_disk_jwt');
+    expect(sessionManager.getRefreshToken()).toBe('new_disk_refresh');
+    expect(sessionManager.getFeedToken()).toBe('new_disk_feed');
   });
 });
