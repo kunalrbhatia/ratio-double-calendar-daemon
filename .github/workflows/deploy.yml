@@ -21,7 +21,7 @@ jobs:
           key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
             export PATH=$PATH:/home/ubuntu/.nvm/versions/node/v24.16.0/bin
-            cd ~/nifty-supertrend
+            cd ~/ratio-double-calendar-daemon
             git pull origin master
             pnpm install --frozen-lockfile
             pnpm build
