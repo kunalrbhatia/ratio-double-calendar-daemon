@@ -156,7 +156,7 @@ Once connected via SSH, the deploy workflow executes the following commands:
     ```
 2.  **Navigate and Pull**: Changes directory to the target project folder and pulls the latest updates:
     ```bash
-    cd ~/nifty-supertrend
+    cd ~/ratio-double-calendar-daemon
     git pull origin master
     ```
 3.  **Install Dependencies**: Resolves and installs packages matching lockfile:
