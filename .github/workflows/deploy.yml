@@ -22,6 +22,8 @@ jobs:
           script: |
             export PATH=$PATH:/home/ubuntu/.nvm/versions/node/v24.16.0/bin
             cd ~/ratio-double-calendar-daemon
+            git reset --hard
+            git clean -fd
             git pull origin master
             pnpm install --frozen-lockfile
             pnpm build
