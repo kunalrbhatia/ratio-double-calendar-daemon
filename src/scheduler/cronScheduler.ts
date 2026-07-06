@@ -59,10 +59,10 @@ export class CronScheduler {
         logger.info('Scheduled job: Running 08:40 AM IST initialization script...');
         logger.info('Logging in to SmartAPI...');
         await sessionManager.login();
-        
+
         logger.info('Updating scriptmaster / instrument list...');
         await instrumentManager.loadInstruments(true);
-        
+
         logger.info('Fetching India VIX...');
         const { vix } = await strategyManager.checkVix();
         logger.info(`Initialization complete. India VIX is ready: ${vix}`);
