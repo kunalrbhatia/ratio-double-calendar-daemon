@@ -52,6 +52,27 @@ export class CronScheduler {
     });
     this.cronTasks.push(scripMasterJob);
 
+    // Task 2b: Daily initialization at 08:40 AM IST (login, refresh instrument cache, check and log India VIX)
+    const initializationJob = cron.schedule('40 8 * * 1-5', async () => {
+      /* istanbul ignore next */
+      try {
+        logger.info('Scheduled job: Running 08:40 AM IST initialization script...');
+        logger.info('Logging in to SmartAPI...');
+        await sessionManager.login();
+
+        logger.info('Updating scriptmaster / instrument list...');
+        await instrumentManager.loadInstruments(true);
+
+        logger.info('Fetching India VIX...');
+        const { vix } = await strategyManager.checkVix();
+        logger.info(`Initialization complete. India VIX is ready: ${vix}`);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Failed 08:40 AM IST initialization: ${msg}`);
+      }
+    });
+    this.cronTasks.push(initializationJob);
+
     // Task 3: Daily cleanup job at midnight
     const cleanupJob = cron.schedule('0 0 * * *', () => {
       /* istanbul ignore next */
