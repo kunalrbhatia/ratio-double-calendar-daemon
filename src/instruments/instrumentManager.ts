@@ -187,8 +187,8 @@ export class InstrumentManager implements IInstrumentManager {
     const entry = this.cache['INDIA_VIX'];
     if (!entry) {
       // Return a standard fallback token for VIX if missing
-      // NSE INDIA VIX token is usually "26017" in NSE/NIFTY
-      return '26017';
+      // NSE INDIA VIX token is "99926017"
+      return '99926017';
     }
     return entry.symboltoken;
   }

@@ -115,6 +115,6 @@ describe('InstrumentManager', () => {
   });
 
   test('getVixToken returns fallback if INDIA VIX not in cache', () => {
-    expect(manager.getVixToken()).toBe('26017');
+    expect(manager.getVixToken()).toBe('99926017');
   });
 });
