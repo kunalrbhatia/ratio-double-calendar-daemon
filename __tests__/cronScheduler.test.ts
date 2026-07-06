@@ -44,7 +44,7 @@ describe('CronScheduler', () => {
 
   test('start and stop scheduled jobs', () => {
     scheduler.start();
-    expect(cron.schedule).toHaveBeenCalledTimes(3);
+    expect(cron.schedule).toHaveBeenCalledTimes(4);
 
     scheduler.stop();
   });
