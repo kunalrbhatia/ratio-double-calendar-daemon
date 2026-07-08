@@ -26,6 +26,21 @@ The strategy consists of a 6-leg options basket matching specific delta targets:
 | **BUY** | 2 | $T_2$ (Week After Next) | Call | $\sim 0.20$ |
 | **BUY** | 2 | $T_2$ (Week After Next) | Put | $\sim 0.20$ |
 
+### 💡 Strategy Rationale: Selling T0 vs. Buying T2
+
+The core logic of the Ratio Double Calendar configuration focuses on extracting maximum premium via theta (time decay) while structuring a robust hedge using long-term option legs:
+
+1. **Why Sell Two Options (Call & Put) of the Current Expiry ($T_0$)?**
+   - **Theta Decay Maximization:** Current weekly expiry options ($T_0$) exhibit the fastest, exponential time decay (theta) as they approach their expiration date. By selling both the Call and the Put (creating a short strangle), we collect time premium aggressively from both sides.
+   - **Neutral/Range-bound Profile:** Selling the two options at a low delta ($\sim 0.20$) sets up a wide, high-probability profit zone that benefits if the market remains relatively range-bound.
+
+2. **Why Buy Four Options (Call & Put at two strikes) of the $T_2$ Expiry (Week After Next)?**
+   - **Slower Decay Hedge:** The further expiry ($T_2$) options decay much slower than $T_0$ options. This mismatch in decay rates creates the calendar advantage.
+   - **Multi-layered Protection:** We buy four options (two on the Call side, two on the Put side) at different strikes to build a dynamic, multi-layered risk mitigation profile:
+     - **Inner Hedge ($1$ Lot Call/Put at $\sim 0.30$ Delta):** These are closer to the money, offering higher delta sensitivity. They act as immediate protection against rapid breakouts or trend movements.
+     - **Outer Hedge ($2$ Lots Call/Put at $\sim 0.20$ Delta):** These are further out-of-the-money but are bought in a higher ratio ($2:1$ relative to the inner hedge). This provides protection against extreme tail-risk. If a major breakout occurs, the rapid delta/gamma expansion on the outer long options offsets the losses from the short options, capping the downside.
+     - **Vega Expansion Benefit:** In the event of a market panic or sharp volatility expansion, the $T_2$ long options benefit significantly from rising implied volatility (positive vega), protecting the portfolio from margin spikes.
+
 ---
 
 ## 🛠️ Tech Stack & Conventions
@@ -120,11 +135,32 @@ The daemon watches specific files in the repository root in real-time to adjust 
 
 ---
 
-## 📊 Logging, Notifications, & Housekeeping
+## 📊 Reports & Monitoring
 
-*   **Logging:** Daily rotating logs are saved to `logs/YYYY-MM-DD.log`.
-*   **Notifications:** Broadcasts events (order fills, VIX skip notifications, stoploss triggers, and `.kill`/`.paper` changes) to Telegram and Slack channels.
-*   **Data Retention:** A daily cleanup routine deletes log files and week-wise `positions.json` files older than **1 month** (excluding the current week's logs/positions).
+The daemon generates multiple levels of telemetry and reporting to ensure transparent tracking, auditability, and immediate alerting:
+
+### 1. Position State Reports (`data/`)
+The primary trading reports are stored under `data/live/` (for production) and `data/paper/` (for paper trading) as week-wise JSON files (`positions-YYYY-WXX.json`):
+*   **Status Indicators:** Records the state of the trading week (e.g., `open`, `skipped`, or `closed`).
+*   **Margin Tracking:** Captures the initial margin requirement computed by the Angel One margin calculator API.
+*   **Order Audits:** Lists every executed order with detailed fill attributes including `orderId`, `status`, `averagePrice`, `transactionType`, `quantity`, and execution timestamps.
+*   **Performance Metrics:** Tracks the cumulative and final realized P&L of the 6-leg basket.
+
+### 2. Operational & Execution Logs (`logs/`)
+Daily rotating logs are saved to `logs/YYYY-MM-DD.log` to track execution details:
+*   **Tick Logs:** Detailed trace records of every minute-by-minute evaluation tick, including LTP values, delta checks, and active P&L calculations.
+*   **System Lifecycle:** Audits bootstrap configurations, API logins, and daily scriptmaster updates.
+*   **Error Reporting:** Captures stack traces, API response schemas validation errors, and network retry attempts.
+
+### 3. Push Reports & Alerts (Telegram & Slack)
+Real-time push reports are broadcast instantly to connected Telegram and Slack channels:
+*   **Transaction Alerts:** Broadcasts when orders are placed, filled, or rejected.
+*   **Daily Status Updates:** Sends India VIX check outcomes at morning initialization (08:40 AM IST) and whether entry was skipped.
+*   **Risk Metrics:** Reports MTM alerts, trailing drawdowns, and stoploss breach details.
+*   **Control Toggles:** Alerts when operational control flags (`.paper` or `.kill`) are modified.
+
+### 4. Housekeeping & Data Retention
+*   **Daily Cleanup:** A cron job runs daily at midnight to delete log files and position JSON reports older than **1 month** (excluding the current week's logs and position data) to optimize VM storage.
 
 ---
 
