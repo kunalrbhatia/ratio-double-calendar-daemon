@@ -27,7 +27,7 @@ async function bootstrap() {
     const { smartStream } = await import('./execution/smartStream');
     const { positionsStore } = await import('./positions/positionsStore');
 
-    smartStream.connect((tick) => {
+    smartStream.connect((_tick) => {
       // Real-time tick callback - cache is updated automatically in smartStream
     });
 
