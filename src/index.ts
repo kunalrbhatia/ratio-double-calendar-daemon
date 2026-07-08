@@ -23,7 +23,24 @@ async function bootstrap() {
     // 2. Load Instruments Cache
     await instrumentManager.loadInstruments();
 
-    // 3. Start Scheduler
+    // 3. Initialize SmartStream WebSocket
+    const { smartStream } = await import('./execution/smartStream');
+    const { positionsStore } = await import('./positions/positionsStore');
+
+    smartStream.connect((_tick) => {
+      // Real-time tick callback - cache is updated automatically in smartStream
+    });
+
+    const isPaper = flagWatcher.isPaperMode();
+    const currentWeek = positionsStore.getCurrentWeekString();
+    const currentPosition = positionsStore.readPosition(currentWeek, isPaper);
+    if (currentPosition && currentPosition.status === 'open') {
+      const tokens = currentPosition.orders.map((o) => o.symboltoken);
+      smartStream.subscribe(tokens);
+      logger.info(`Resubscribed SmartStream to active position tokens: ${tokens.join(', ')}`);
+    }
+
+    // 4. Start Scheduler
     cronScheduler.start();
 
     // 4. Create simple HTTP server for health monitoring (built-in, no express needed)
@@ -54,6 +71,7 @@ async function bootstrap() {
     const shutdown = () => {
       logger.info('Shutting down gracefully...');
       cronScheduler.stop();
+      smartStream.disconnect();
       server.close(() => {
         logger.info('HTTP server closed. Process exiting.');
         process.exit(0);
