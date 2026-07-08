@@ -101,12 +101,14 @@ describe('SmartStreamClient', () => {
 
     // Construct buffer matching:
     // Byte 0: subscription type (1)
-    // Bytes 1-25: Token (token123)
-    // Bytes 26-29: LTP (150.50 * 100 = 15050)
-    const buf = Buffer.alloc(40);
+    // Byte 1: exchange type (2)
+    // Bytes 2-26: Token (token123)
+    // Bytes 43-50: LTP (150.50 * 100 = 15050)
+    const buf = Buffer.alloc(60);
     buf.writeUInt8(1, 0);
-    buf.write('token123', 1, 25, 'utf8');
-    buf.writeInt32LE(15050, 26);
+    buf.writeUInt8(2, 1);
+    buf.write('token123', 2, 25, 'utf8');
+    buf.writeBigInt64LE(15050n, 43);
 
     messageCallback(buf);
 
@@ -116,8 +118,8 @@ describe('SmartStreamClient', () => {
     });
     expect(smartStream.getCachedLtp('token123')).toBe(150.5);
 
-    // Cover invalid binary frame (type != 1 or 3)
-    const buf2 = Buffer.alloc(40);
+    // Cover invalid binary frame (type != 1, 2, or 3)
+    const buf2 = Buffer.alloc(60);
     buf2.writeUInt8(9, 0);
     messageCallback(buf2);
 
@@ -162,14 +164,15 @@ describe('SmartStreamClient', () => {
 
     const messageCallback = mockWsInstance.on.mock.calls.find((c: any) => c[0] === 'message')[1];
 
-    // Pass a buffer that is too small, which will cause readInt32LE to throw a RangeError (Error instance)
-    const badBuf = Buffer.alloc(2);
+    // Pass a buffer that triggers an error in parsing (covers Error instance branch in catch block)
+    const badBuf = Buffer.alloc(60);
     badBuf.writeUInt8(1, 0);
-
-    // This should trigger the catch block (Error instance branch)
+    badBuf.slice = () => {
+      throw new Error('slice error');
+    };
     messageCallback(badBuf);
 
-    // Pass a fake buffer that throws a non-Error string when readUInt8 is called (covers String(err) branch on line 94)
+    // Pass a fake buffer that throws a non-Error string when readUInt8 is called (covers String(err) / fallback branch in catch block)
     const stringThrowBuf = Buffer.alloc(10);
     stringThrowBuf.readUInt8 = () => {
       throw 'string parse error';
@@ -177,25 +180,25 @@ describe('SmartStreamClient', () => {
     messageCallback(stringThrowBuf);
 
     // Cover token/ltp filters (token is empty string)
-    const emptyTokenBuf = Buffer.alloc(40);
+    const emptyTokenBuf = Buffer.alloc(60);
     emptyTokenBuf.writeUInt8(1, 0);
     // Write spaces/nulls
-    emptyTokenBuf.write('', 1, 25, 'utf8');
-    emptyTokenBuf.writeInt32LE(15050, 26);
+    emptyTokenBuf.write('', 2, 25, 'utf8');
+    emptyTokenBuf.writeBigInt64LE(15050n, 43);
     messageCallback(emptyTokenBuf);
 
     // Cover token/ltp filters (ltp <= 0)
-    const badLtpBuf = Buffer.alloc(40);
+    const badLtpBuf = Buffer.alloc(60);
     badLtpBuf.writeUInt8(1, 0);
-    badLtpBuf.write('token123', 1, 25, 'utf8');
-    badLtpBuf.writeInt32LE(0, 26);
+    badLtpBuf.write('token123', 2, 25, 'utf8');
+    badLtpBuf.writeBigInt64LE(0n, 43);
     messageCallback(badLtpBuf);
 
     // Cover type === 3 branch
-    const type3Buf = Buffer.alloc(40);
+    const type3Buf = Buffer.alloc(60);
     type3Buf.writeUInt8(3, 0);
-    type3Buf.write('token123', 1, 25, 'utf8');
-    type3Buf.writeInt32LE(15050, 26);
+    type3Buf.write('token123', 2, 25, 'utf8');
+    type3Buf.writeBigInt64LE(15050n, 43);
     messageCallback(type3Buf);
     expect(callback).toHaveBeenLastCalledWith({ token: 'token123', ltp: 150.5 });
   });
