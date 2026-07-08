@@ -76,12 +76,12 @@ class SmartStreamClient {
         try {
           if (Buffer.isBuffer(data)) {
             const type = data.readUInt8(0);
-            const isLtpOrQuote = type === 1 || type === 3;
-            if (isLtpOrQuote) {
-              const tokenBuffer = data.slice(1, 26);
+            const isLtpOrQuote = type === 1 || type === 2 || type === 3;
+            if (isLtpOrQuote && data.length >= 51) {
+              const tokenBuffer = data.slice(2, 27);
               const token = tokenBuffer.toString('utf8').replace(/\0/g, '').trim();
-              const ltpRaw = data.readInt32LE(26);
-              const ltp = ltpRaw / 100;
+              const ltpRaw = data.readBigInt64LE(43);
+              const ltp = Number(ltpRaw) / 100;
 
               if (token && ltp > 0) {
                 if (this.callback) {
