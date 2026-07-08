@@ -267,4 +267,72 @@ describe('ExecutionManager', () => {
 
     await expect(executionManager.monitorPnl('2026-W27', true)).resolves.not.toThrow();
   });
+
+  test('monitorPnl exits on profit target reached', async () => {
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+
+    const openPosition = {
+      week: '2026-W27',
+      status: 'open' as const,
+      marginUtilized: 100000,
+      orders: [
+        {
+          symboltoken: 'T1_CE_BUY',
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          transactiontype: 'BUY' as const,
+          quantity: 50,
+          exchange: 'NFO',
+          orderid: 'O1',
+          status: 'COMPLETE',
+          price: 100,
+        },
+      ],
+      realizedPnl: 0,
+      skippedThisWeek: false,
+    };
+    (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
+    (brokerClient.getLtp as jest.Mock).mockResolvedValue(150);
+
+    const executeExitSpy = jest.spyOn(executionManager, 'executeExit').mockResolvedValue(true);
+
+    await executionManager.monitorPnl('2026-W27', true);
+
+    expect(executeExitSpy).toHaveBeenCalledWith('2026-W27', true);
+    expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('2026-W27', true, true);
+    executeExitSpy.mockRestore();
+  });
+
+  test('monitorPnl exits on profit target reached and handles exit failure', async () => {
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+
+    const openPosition = {
+      week: '2026-W27',
+      status: 'open' as const,
+      marginUtilized: 100000,
+      orders: [
+        {
+          symboltoken: 'T1_CE_BUY',
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          transactiontype: 'BUY' as const,
+          quantity: 50,
+          exchange: 'NFO',
+          orderid: 'O1',
+          status: 'COMPLETE',
+          price: 100,
+        },
+      ],
+      realizedPnl: 0,
+      skippedThisWeek: false,
+    };
+    (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
+    (brokerClient.getLtp as jest.Mock).mockResolvedValue(150);
+
+    const executeExitSpy = jest.spyOn(executionManager, 'executeExit').mockResolvedValue(false);
+
+    await executionManager.monitorPnl('2026-W27', true);
+
+    expect(executeExitSpy).toHaveBeenCalledWith('2026-W27', true);
+    expect(positionsStore.setWeeklySkipState).not.toHaveBeenCalledWith('2026-W27', true, true);
+    executeExitSpy.mockRestore();
+  });
 });

@@ -11,7 +11,7 @@ The daemon automates a **Ratio Double Calendar Spread** on Indian indices (**NIF
 *   **Entry Window:** Basket construction and order execution happen exclusively on **Wednesdays** (if entry filters are met).
 *   **VIX Entry Filter:** Entry is only allowed if **India VIX is between 10 and 13.5** at the time of entry.
 *   **Hold & Monitor:** Positions are held and monitored continuously from Wednesday through **Tuesday** (the next weekly expiry day).
-*   **Exit:** Positions are unwound on stoploss breach (any day) or naturally allowed to run to Tuesday expiry. There is no take-profit exit.
+*   **Exit:** Positions are unwound on stoploss breach (1% of weekly margin, any day), profit target reach (2% of weekly margin, any day), or naturally allowed to run to Tuesday expiry. There is no other exit trigger.
 
 ### Leg Structure & Target Deltas
 
@@ -40,6 +40,37 @@ The core logic of the Ratio Double Calendar configuration focuses on extracting 
      - **Inner Hedge ($1$ Lot Call/Put at $\sim 0.30$ Delta):** These are closer to the money, offering higher delta sensitivity. They act as immediate protection against rapid breakouts or trend movements.
      - **Outer Hedge ($2$ Lots Call/Put at $\sim 0.20$ Delta):** These are further out-of-the-money but are bought in a higher ratio ($2:1$ relative to the inner hedge). This provides protection against extreme tail-risk. If a major breakout occurs, the rapid delta/gamma expansion on the outer long options offsets the losses from the short options, capping the downside.
      - **Vega Expansion Benefit:** In the event of a market panic or sharp volatility expansion, the $T_2$ long options benefit significantly from rising implied volatility (positive vega), protecting the portfolio from margin spikes.
+
+### 📈 Strategy Payoff Profile
+
+A typical Double Calendar Spread payoff profile has two peak profit zones centered around the short strikes. However, because this is a **Ratio** Double Calendar (where we buy more contracts in $T_2$ than we sell in $T_0$), extreme market moves cause the long option values to expand and outpace the short option liabilities, leading to a capped tail-risk or rising profit curve in the far wings rather than standard calendar decay.
+
+```text
+  Profit (₹)
+     ▲
+     │         ▲ (T0 Put Peak)             ▲ (T0 Call Peak)
+     │        / \                         / \
+     │       /   \                       /   \
+     │      /     \     Spot Valley     /     \
+     │     /       \________.__________/       \
+  0 ─┼────/─────────────────────────────────────\────► Price (Spot)
+     │   /                                       \
+     │  /                                         \
+     ▼ (T2 Put Hedged Tail)                 (T2 Call Hedged Tail)
+```
+
+```mermaid
+graph TD
+    subgraph Profit & Loss Profile
+        direction LR
+        A["Extreme Downside<br>(Profit/Net Longs Expand)"] --- B("T2 Put Strike<br>(Protection Peak)")
+        B --- C("T0 Put Strike<br>(Short Option Peak)")
+        C --- D("Current Spot Price<br>(Theta Harvest Valley)")
+        D --- E("T0 Call Strike<br>(Short Option Peak)")
+        E --- F("T2 Call Strike<br>(Protection Peak)")
+        F --- G["Extreme Upside<br>(Profit/Net Longs Expand)"]
+    end
+```
 
 ---
 
@@ -114,11 +145,12 @@ To optimize margin utilization and avoid transient order blocks, orders are sequ
 *   **Exit:** Sell legs are closed (buy-to-cover) and verified `COMPLETE` before any Buy leg is unwound.
 *   **Failure Recovery:** If any buy leg fails to complete, the entry sequence is aborted, alerts are sent, and the daemon does not proceed to sells.
 
-### 2. Risk Management (1% Stoploss)
+### 2. Risk Management & Profit Targets (1% Stoploss / 2% Profit Exit)
 *   **Margin Base:** During entry, the daemon computes the required margin using the Angel One margin calculator API.
 *   **Monitoring:** The daemon polls LTP/WebSockets to monitor cumulative mark-to-market P&L.
 *   **Stoploss:** If cumulative losses exceed **1% of the weekly utilized margin**, all legs are unwound.
-*   **Cool-off:** Once stopped out, the daemon persists a skip-state to prevent re-entering for the rest of that trading week.
+*   **Profit Target:** If cumulative profits reach or exceed **2% of the weekly utilized margin**, all legs are unwound immediately to lock in gains.
+*   **Cool-off:** Once stopped out or exited for profit, the daemon persists a skip-state to prevent re-entering for the rest of that trading week.
 
 ---
 

@@ -385,8 +385,14 @@ export class ExecutionManager implements IExecutionManager {
 
     // If cumulative loss exceeds 1% of the margin utilized, exit immediately
     const stoplossThreshold = -0.01 * pos.marginUtilized;
+    // If cumulative profit exceeds 2% of the margin utilized, exit immediately
+    const profitTargetThreshold = 0.02 * pos.marginUtilized;
+
     logger.info(
       `Stoploss threshold: ₹${stoplossThreshold.toLocaleString()} (1% of ₹${pos.marginUtilized.toLocaleString()})`,
+    );
+    logger.info(
+      `Profit target threshold: ₹${profitTargetThreshold.toLocaleString()} (2% of ₹${pos.marginUtilized.toLocaleString()})`,
     );
 
     if (currentPnl <= stoplossThreshold) {
@@ -402,6 +408,20 @@ export class ExecutionManager implements IExecutionManager {
         // Set skip state for rest of week
         positionsStore.setWeeklySkipState(week, isPaper, true);
         logger.info(`Set skip state for week ${week}.`);
+      }
+    } else if (currentPnl >= profitTargetThreshold) {
+      logger.info(
+        `Profit target reached! Current P&L (₹${currentPnl.toLocaleString()}) >= threshold (₹${profitTargetThreshold.toLocaleString()})`,
+      );
+      await notifier.send(
+        `🎉 PROFIT TARGET REACHED [${isPaper ? 'PAPER' : 'LIVE'}]: P&L is ₹${currentPnl.toLocaleString()}. Unwinding positions to lock in gains...`,
+      );
+
+      const success = await this.executeExit(week, isPaper);
+      if (success) {
+        // Set skip state for rest of week
+        positionsStore.setWeeklySkipState(week, isPaper, true);
+        logger.info(`Set skip state for week ${week} after profit target exit.`);
       }
     }
   }
