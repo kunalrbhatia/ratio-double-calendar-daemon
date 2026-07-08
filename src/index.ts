@@ -26,7 +26,7 @@ async function bootstrap() {
     // 3. Initialize SmartStream WebSocket
     const { smartStream } = await import('./execution/smartStream');
     const { positionsStore } = await import('./positions/positionsStore');
-    
+
     smartStream.connect((tick) => {
       // Real-time tick callback - cache is updated automatically in smartStream
     });

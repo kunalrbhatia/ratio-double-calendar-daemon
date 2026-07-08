@@ -365,7 +365,9 @@ export class ExecutionManager implements IExecutionManager {
       try {
         let ltp = smartStream.getCachedLtp(leg.symboltoken);
         if (ltp === null) {
-          logger.info(`LTP for ${leg.tradingsymbol} not found in SmartStream cache. Falling back to REST API.`);
+          logger.info(
+            `LTP for ${leg.tradingsymbol} not found in SmartStream cache. Falling back to REST API.`,
+          );
           ltp = await brokerClient.getLtp(leg.exchange, leg.tradingsymbol, leg.symboltoken);
         }
         if (leg.transactiontype === 'BUY') {

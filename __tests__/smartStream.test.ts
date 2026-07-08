@@ -37,9 +37,7 @@ describe('SmartStreamClient', () => {
     (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W28');
     (positionsStore.readPosition as jest.Mock).mockReturnValue({
       status: 'open',
-      orders: [
-        { symboltoken: 'token123', price: 150 },
-      ],
+      orders: [{ symboltoken: 'token123', price: 150 }],
     });
 
     const callback = jest.fn();
@@ -96,13 +94,11 @@ describe('SmartStreamClient', () => {
     expect(mockWsInstance.send).toHaveBeenCalled();
 
     smartStream.subscribe(['token123']);
-    expect(mockWsInstance.send).toHaveBeenLastCalledWith(
-      expect.stringContaining('token123'),
-    );
+    expect(mockWsInstance.send).toHaveBeenLastCalledWith(expect.stringContaining('token123'));
 
     // Simulate binary message parsing
     const messageCallback = mockWsInstance.on.mock.calls.find((c: any) => c[0] === 'message')[1];
-    
+
     // Construct buffer matching:
     // Byte 0: subscription type (1)
     // Bytes 1-25: Token (token123)
@@ -223,9 +219,9 @@ describe('SmartStreamClient', () => {
 
   test('covers callback is null check in startMockGenerator', () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
-    
+
     smartStream.connect(jest.fn());
-    
+
     // Set callback to null to cover line 153 branch: if (!this.callback) return;
     (smartStream as any).callback = null;
 
@@ -234,7 +230,7 @@ describe('SmartStreamClient', () => {
 
   test('connect checks missing tokens gracefully', () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
-    
+
     // Case 1: Both empty
     (sessionManager.getJwtToken as jest.Mock).mockReturnValue('');
     (sessionManager.getFeedToken as jest.Mock).mockReturnValue('');
