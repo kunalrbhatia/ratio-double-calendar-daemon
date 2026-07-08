@@ -5,6 +5,7 @@ import brokerClient, { PlaceOrderParams } from './brokerClient';
 import positionsStore from '../positions/positionsStore';
 import { StrategyLeg } from '../strategy/strategyManager';
 import { OrderRecord, WeeklyPosition } from '../schemas/smartApi';
+import smartStream from './smartStream';
 
 export interface IExecutionManager {
   executeEntry(underlying: string, basket: StrategyLeg[]): Promise<boolean>;
@@ -75,6 +76,12 @@ export class ExecutionManager implements IExecutionManager {
     };
 
     positionsStore.writePosition(week, isPaper, position);
+
+    // Subscribe SmartStream to the newly opened positions
+    const tokens = executedOrders.map((o) => o.symboltoken);
+    smartStream.subscribe(tokens);
+    logger.info(`Subscribed SmartStream to new position tokens: ${tokens.join(', ')}`);
+
     await notifier.send(
       `✅ ENTRY COMPLETE [${modeStr}] for ${underlying} Spread. Margin Utilized: ₹${marginUtilized.toLocaleString()}`,
     );
@@ -265,6 +272,9 @@ export class ExecutionManager implements IExecutionManager {
     pos.realizedPnl = totalPnl;
     positionsStore.writePosition(week, isPaper, pos);
 
+    // Disconnect/cleanup SmartStream after exit
+    smartStream.disconnect();
+
     await notifier.send(
       `📉 EXIT COMPLETE [${modeStr}] for week ${week}. Realized P&L: ₹${totalPnl.toLocaleString()}`,
     );
@@ -353,7 +363,11 @@ export class ExecutionManager implements IExecutionManager {
     let currentPnl = 0;
     for (const leg of pos.orders) {
       try {
-        const ltp = await brokerClient.getLtp(leg.exchange, leg.tradingsymbol, leg.symboltoken);
+        let ltp = smartStream.getCachedLtp(leg.symboltoken);
+        if (ltp === null) {
+          logger.info(`LTP for ${leg.tradingsymbol} not found in SmartStream cache. Falling back to REST API.`);
+          ltp = await brokerClient.getLtp(leg.exchange, leg.tradingsymbol, leg.symboltoken);
+        }
         if (leg.transactiontype === 'BUY') {
           currentPnl += (ltp - leg.price) * leg.quantity;
         } else {
