@@ -154,10 +154,11 @@ export class ExecutionManager implements IExecutionManager {
       const order = orderBook.find((o) => o.orderid === orderid);
 
       if (order) {
-        if (order.status === 'COMPLETE') {
+        const statusUpper = order.status.toUpperCase();
+        if (statusUpper === 'COMPLETE') {
           return true;
         }
-        if (order.status === 'REJECTED' || order.status === 'CANCELLED') {
+        if (statusUpper === 'REJECTED' || statusUpper === 'CANCELLED') {
           logger.warn(`Order ${orderid} was ${order.status}. Detail: ${order.text || 'None'}`);
           return false;
         }
