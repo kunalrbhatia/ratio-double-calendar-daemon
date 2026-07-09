@@ -70,4 +70,81 @@ The ratio double calendar spread was positioned for a range-bound market, but th
 - **⚠️ Skip State Active:** No re-entry for the remainder of this week
 - **⚠️ Geopolitical Risk:** US-Iran tensions remain elevated — crude oil above $77 could sustain market pressure
 - **⚠️ API Rate Limiting:** The 403 rate limit errors during exit need investigation — could delay critical stoploss fills in future
-- **📌 Next Entry:** Next opportunity on Wednesday, 15 Jul 2026 (Week 2026-W29), subject to VIX filter
+|- **📌 Next Entry:** Next opportunity on Wednesday, 15 Jul 2026 (Week 2026-W29), subject to VIX filter
+
+---
+
+# Trading Report — Thursday, 09 Jul 2026
+
+## 📊 Market Overview
+
+| Index | Value | Change | % Change |
+|-------|:-----:|:------:|:--------:|
+| Nifty 50 | 23,962.80 | +80.75 | +0.34% |
+| Bank Nifty | 57,252.45 | +509.85 | +0.90% |
+| India VIX | 13.36 | -1.32 | -8.99% |
+
+## 📋 Position Status
+
+- **Strategy:** Ratio Double Calendar Spread
+- **Entry Date:** 08 Jul 2026
+- **Expiry:** 14 Jul 2026 (Weekly)
+- **Status:** Closed (Stoploss Hit on 08 Jul 2026) — No Position Today
+- **Skip State:** Active for Week 2026-W28 (no re-entry attempted)
+
+The system maintained the skip state from yesterday's stoploss event. No entry was attempted today. The 08:40 AM initialization script confirmed VIX at 14.68 (well above typical thresholds), and the skip flag prevented any position management activity.
+
+### Yesterday's Closed Position Recap
+
+| Leg | Action | Strike | Type | Qty | Entry Price |
+|:---:|:------:|:-----:|:----:|:---:|:-----------:|
+| T1-CE | BUY | 24,700 | CE (28 Jul) | 65 | 95.55 |
+| T1-PE | BUY | 24,000 | PE (28 Jul) | 65 | 143.30 |
+| T1-CE | BUY | 25,000 | CE (28 Jul) | 130 | 39.10 |
+| T1-PE | BUY | 23,800 | PE (28 Jul) | 130 | 93.88 |
+| T0-CE | SELL | 24,600 | CE (14 Jul) | 195 | 30.30 |
+| T0-PE | SELL | 24,000 | PE (14 Jul) | 195 | 51.85 |
+
+**Total Realized P&L (Yesterday):** ₹ -4,525.95
+**⛔ Stoploss:** 1% of margin (₹-4,500 on ₹4,50,000) — Triggered
+**🎯 Profit Target:** 2% of margin (₹+9,000 on ₹4,50,000) — Not Reached
+
+## 📈 Daily Activity
+
+**Market Context:** The market staged a modest recovery today following yesterday's sharp selloff. Nifty gained 80.75 points (+0.34%) to close at 23,962.80, partially recovering from the 516-point drop on Wednesday. Bank Nifty showed stronger recovery momentum, climbing 509.85 points (+0.90%) to 57,252.45. The India VIX cooled significantly from 14.68 to 13.36 (-8.99%), indicating reduced fear levels.
+
+**Daemon Activity:**
+- **00:00 IST** — Daily cleanup completed normally
+- **08:30 IST** — Instrument master download and cache update completed (5,151 options cached)
+- **08:40 IST** — Initialization script: VIX at 14.68 (elevated from yesterday's close). Entry skipped due to active skip state.
+- **12:39 IST** — Daemon restarted (graceful shutdown then restart). Fresh SmartAPI login and session established.
+- **14:19-15:40 IST** — SmartStream WebSocket entered a persistent reconnect loop, closing and re-establishing every ~2 minutes. This did not affect any trading activity as no positions were open.
+- **15:30 IST** — Market closed. No positions managed today.
+
+## 🔍 Market Response Analysis
+
+**Recovery Dynamics:**
+The market's partial recovery (+0.34%) after a 2.12% crash is characteristic of a dead-cat bounce or consolidation day. The low volume/volatility recovery suggests uncertainty rather than conviction:
+
+- **Mean Reversion:** A 516-point drop creates natural mean-reversion pressure. Today's +80-point recovery represents just 15.6% of the prior day's loss — a weak bounce.
+- **VIX Cooling:** The 8.99% drop in India VIX from 14.68 to 13.36 suggests options premiums are contracting, which would have benefited yesterday's short option positions had they survived.
+- **Bank Nifty Leadership:** Bank Nifty's stronger recovery (+0.90%) vs Nifty (+0.34%) is noteworthy — banks led the selloff on Wednesday and led the recovery today, suggesting sector-specific rotation rather than broad market sentiment change.
+- **Missed Theta Decay:** Yesterday's positioned would have collected meaningful theta today (Wednesday expiry +1 day) if it had survived. The seller of the 14 Jul 24,600 CE and 24,000 PE would have benefited from both the range-bound movement and time decay.
+
+## 🎯 Key Observations
+
+- Market recovered only 15.6% of Wednesday's loss — a weak bounce signaling continued uncertainty
+- India VIX cooled 8.99%, indicating reduced fear pricing after the initial panic subsided
+- Bank Nifty outperformed Nifty today, recovering 0.90% vs Nifty's 0.34%
+- Daemon had zero trading activity today due to skip state — the stoploss discipline is working correctly
+- The SmartStream WebSocket reconnect loop (every ~2 min from 14:19 onward) did not interfere with operations since no positions were active, but should be monitored
+- The 08:40 AM init showed VIX at 14.68 (above typical entry thresholds), confirming the skip state was appropriate
+- No SENSEX positions file was found for Week 2026-W28 — the dual-index functionality is not yet active or was not triggered this week
+
+## ⚠️ Alerts / Risks
+
+- **⛔ No Position This Week:** Week 2026-W28 is closed with a realized loss of ₹-4,525.95. The skip state correctly prevented re-entry.
+- **🔌 WebSocket Stability:** The SmartStream WebSocket exhibited persistent reconnect behavior (14:19-15:40+). While benign today, this could affect real-time data delivery for future active positions.
+- **🌍 Geopolitical Watch:** US-Iran tensions remain a wildcard. Any escalation could trigger another wave of selling.
+- **📆 Next Entry:** Wednesday, 15 Jul 2026 (Week 2026-W29). The VIX filter must be below threshold before entry is attempted.
+- **📊 Weekend Risk:** With positions closed for the week, no weekend gap risk exposure exists. Fresh assessment on Monday.
