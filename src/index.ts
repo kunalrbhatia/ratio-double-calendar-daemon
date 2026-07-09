@@ -33,11 +33,21 @@ async function bootstrap() {
 
     const isPaper = flagWatcher.isPaperMode();
     const currentWeek = positionsStore.getCurrentWeekString();
-    const currentPosition = positionsStore.readPosition(currentWeek, isPaper);
-    if (currentPosition && currentPosition.status === 'open') {
-      const tokens = currentPosition.orders.map((o) => o.symboltoken);
-      smartStream.subscribe(tokens);
-      logger.info(`Resubscribed SmartStream to active position tokens: ${tokens.join(', ')}`);
+    const subscribeTokens: string[] = [];
+
+    for (const underlying of ['NIFTY', 'SENSEX']) {
+      const currentPosition = positionsStore.readPosition(underlying, currentWeek, isPaper);
+      if (currentPosition && currentPosition.status === 'open') {
+        const tokens = currentPosition.orders.map((o) => o.symboltoken);
+        subscribeTokens.push(...tokens);
+      }
+    }
+
+    if (subscribeTokens.length > 0) {
+      smartStream.subscribe(subscribeTokens);
+      logger.info(
+        `Resubscribed SmartStream to active position tokens: ${subscribeTokens.join(', ')}`,
+      );
     }
 
     // 4. Start Scheduler

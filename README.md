@@ -6,12 +6,18 @@ A production-grade, testable, self-hosted automated options trading pipeline bui
 
 ## 📋 Strategy Overview
 
-The daemon automates a **Ratio Double Calendar Spread** on Indian indices (**NIFTY** or **SENSEX**):
+The daemon automates a **Ratio Double Calendar Spread** on Indian indices (**NIFTY** and **SENSEX**):
 
-*   **Entry Window:** Basket construction and order execution happen exclusively on **Wednesdays** (if entry filters are met).
-*   **VIX Entry Filter:** Entry is only allowed if **India VIX is between 10 and 13.5** at the time of entry.
-*   **Hold & Monitor:** Positions are held and monitored continuously from Wednesday through **Tuesday** (the next weekly expiry day).
-*   **Exit:** Positions are unwound on stoploss breach (1% of weekly margin, any day), profit target reach (2% of weekly margin, any day), or naturally allowed to run to Tuesday expiry. There is no other exit trigger.
+*   **NIFTY Schedule:**
+    *   **Entry Window:** Basket construction and order execution happen on **Wednesdays** (after 09:30 AM IST).
+    *   **Hold & Monitor:** Wednesday through **Tuesday**.
+    *   **Exit Window:** Tuesday at 15:15 PM IST.
+*   **SENSEX Schedule:**
+    *   **Entry Window:** Basket construction and order execution happen on **Fridays** (after 09:30 AM IST).
+    *   **Hold & Monitor:** Friday through **Thursday**.
+    *   **Exit Window:** Thursday at 15:15 PM IST.
+*   **VIX Entry Filter:** Entry for either index is only allowed if **India VIX is between 10 and 13.5** at the time of entry.
+*   **Exit Rules:** Positions are unwound on stoploss breach (1% of utilized margin, any day), profit target reach (2% of utilized margin, any day), or naturally closed at the scheduled exit window. There is no other exit trigger.
 
 ### Leg Structure & Target Deltas
 
@@ -127,8 +133,8 @@ To optimize margin utilization and avoid transient order blocks, orders are sequ
 The daemon watches specific files in the repository root in real-time to adjust its operational mode without requiring a process restart:
 
 *   **`.paper` (Paper Trading Mode):**
-    *   **Present:** Runs strategy logic, checks VIX, matches deltas, and monitors simulated positions in `data/paper/positions-<week>.json` without sending real orders to Angel One.
-    *   **Absent:** Live trading is active; real orders are submitted to the market. Live state is logged in `data/live/positions-<week>.json`.
+    *   **Present:** Runs strategy logic, checks VIX, matches deltas, and monitors simulated positions in `data/paper/positions-{underlying}-<week>.json` without sending real orders to Angel One.
+    *   **Absent:** Live trading is active; real orders are submitted to the market. Live state is logged in `data/live/positions-{underlying}-<week>.json`.
 *   **`.kill` (Emergency Stop / Pause):**
     *   **Present:** Immediately pauses all execution actions (no new entries, no exits, no adjustments). It continues monitoring and logging in read-only mode.
     *   **Absent:** Resumes normal automated operations.
@@ -140,7 +146,7 @@ The daemon watches specific files in the repository root in real-time to adjust 
 The daemon generates multiple levels of telemetry and reporting to ensure transparent tracking, auditability, and immediate alerting:
 
 ### 1. Position State Reports (`data/`)
-The primary trading reports are stored under `data/live/` (for production) and `data/paper/` (for paper trading) as week-wise JSON files (`positions-YYYY-WXX.json`):
+The primary trading reports are stored under `data/live/` (for production) and `data/paper/` (for paper trading) as week-wise JSON files (`positions-{underlying}-YYYY-WXX.json`):
 *   **Status Indicators:** Records the state of the trading week (e.g., `open`, `skipped`, or `closed`).
 *   **Margin Tracking:** Captures the initial margin requirement computed by the Angel One margin calculator API.
 *   **Order Audits:** Lists every executed order with detailed fill attributes including `orderId`, `status`, `averagePrice`, `transactionType`, `quantity`, and execution timestamps.

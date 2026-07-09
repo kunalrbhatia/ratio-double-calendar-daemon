@@ -8,11 +8,11 @@ import logger from '../logging/logger';
 dayjs.extend(isoWeek);
 
 export interface IPositionsStore {
-  readPosition(week: string, isPaper: boolean): WeeklyPosition | null;
-  writePosition(week: string, isPaper: boolean, position: WeeklyPosition): void;
+  readPosition(underlying: string, week: string, isPaper: boolean): WeeklyPosition | null;
+  writePosition(underlying: string, week: string, isPaper: boolean, position: WeeklyPosition): void;
   getCurrentWeekString(): string;
-  getWeeklySkipState(week: string, isPaper: boolean): boolean;
-  setWeeklySkipState(week: string, isPaper: boolean, skip: boolean): void;
+  getWeeklySkipState(underlying: string, week: string, isPaper: boolean): boolean;
+  setWeeklySkipState(underlying: string, week: string, isPaper: boolean, skip: boolean): void;
   cleanupOldFiles(retentionMonths: number): void;
 }
 
@@ -23,14 +23,14 @@ export class PositionsStore implements IPositionsStore {
     this.baseDir = path.resolve(process.cwd(), 'data');
   }
 
-  private getFilePath(week: string, isPaper: boolean): string {
+  private getFilePath(underlying: string, week: string, isPaper: boolean): string {
     const subfolder = isPaper ? 'paper' : 'live';
     const dir = path.join(this.baseDir, subfolder);
     /* istanbul ignore next */
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    return path.join(dir, `positions-${week}.json`);
+    return path.join(dir, `positions-${underlying.toLowerCase()}-${week}.json`);
   }
 
   getCurrentWeekString(): string {
@@ -38,8 +38,8 @@ export class PositionsStore implements IPositionsStore {
     return `${now.year()}-W${String(now.isoWeek()).padStart(2, '0')}`;
   }
 
-  readPosition(week: string, isPaper: boolean): WeeklyPosition | null {
-    const filePath = this.getFilePath(week, isPaper);
+  readPosition(underlying: string, week: string, isPaper: boolean): WeeklyPosition | null {
+    const filePath = this.getFilePath(underlying, week, isPaper);
     if (!fs.existsSync(filePath)) {
       return null;
     }
@@ -56,8 +56,13 @@ export class PositionsStore implements IPositionsStore {
     }
   }
 
-  writePosition(week: string, isPaper: boolean, position: WeeklyPosition): void {
-    const filePath = this.getFilePath(week, isPaper);
+  writePosition(
+    underlying: string,
+    week: string,
+    isPaper: boolean,
+    position: WeeklyPosition,
+  ): void {
+    const filePath = this.getFilePath(underlying, week, isPaper);
     try {
       // Validate schema before writing to guarantee integrity
       WeeklyPositionSchema.parse(position);
@@ -71,13 +76,13 @@ export class PositionsStore implements IPositionsStore {
     }
   }
 
-  getWeeklySkipState(week: string, isPaper: boolean): boolean {
-    const pos = this.readPosition(week, isPaper);
+  getWeeklySkipState(underlying: string, week: string, isPaper: boolean): boolean {
+    const pos = this.readPosition(underlying, week, isPaper);
     return pos ? pos.skippedThisWeek : false;
   }
 
-  setWeeklySkipState(week: string, isPaper: boolean, skip: boolean): void {
-    let pos = this.readPosition(week, isPaper);
+  setWeeklySkipState(underlying: string, week: string, isPaper: boolean, skip: boolean): void {
+    let pos = this.readPosition(underlying, week, isPaper);
     if (!pos) {
       pos = {
         week,
@@ -93,7 +98,7 @@ export class PositionsStore implements IPositionsStore {
         pos.status = 'skipped';
       }
     }
-    this.writePosition(week, isPaper, pos);
+    this.writePosition(underlying, week, isPaper, pos);
   }
 
   cleanupOldFiles(retentionMonths: number): void {

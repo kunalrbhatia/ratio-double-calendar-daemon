@@ -89,7 +89,7 @@ describe('CronScheduler', () => {
 
     expect(sessionManager.login).toHaveBeenCalled();
     expect(instrumentManager.loadInstruments).toHaveBeenCalled();
-    expect(executionManager.executeEntry).toHaveBeenCalled();
+    expect(executionManager.executeEntry).toHaveBeenCalledWith('NIFTY', []);
   });
 
   test('handleTradingTick skips entry if VIX is invalid', async () => {
@@ -104,7 +104,7 @@ describe('CronScheduler', () => {
 
     await scheduler.handleTradingTick();
 
-    expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('2026-W27', true, true);
+    expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
     expect(strategyManager.buildBasket).not.toHaveBeenCalled();
   });
 
@@ -135,7 +135,7 @@ describe('CronScheduler', () => {
 
     await scheduler.handleTradingTick();
 
-    expect(executionManager.monitorPnl).toHaveBeenCalledWith('2026-W27', true);
+    expect(executionManager.monitorPnl).toHaveBeenCalledWith('NIFTY', '2026-W27', true);
   });
 
   test('handleTradingTick does nothing if position already skipped or closed', async () => {
@@ -162,7 +162,7 @@ describe('CronScheduler', () => {
 
     await scheduler.handleTradingTick();
 
-    expect(executionManager.executeExit).toHaveBeenCalledWith('2026-W28', true);
+    expect(executionManager.executeExit).toHaveBeenCalledWith('NIFTY', '2026-W28', true);
   });
 
   test('runDailyCleanup works correctly', () => {

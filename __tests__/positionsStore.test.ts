@@ -20,8 +20,8 @@ describe('PositionsStore', () => {
 
   test('readPosition returns null when file does not exist', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(false);
-    expect(store.readPosition('2026-W27', true)).toBeNull();
-    expect(store.readPosition('2026-W27', false)).toBeNull();
+    expect(store.readPosition('NIFTY', '2026-W27', true)).toBeNull();
+    expect(store.readPosition('NIFTY', '2026-W27', false)).toBeNull();
   });
 
   test('readPosition returns parsed positions on valid file', () => {
@@ -47,7 +47,7 @@ describe('PositionsStore', () => {
     };
     (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(validData));
 
-    const result = store.readPosition('2026-W27', true);
+    const result = store.readPosition('NIFTY', '2026-W27', true);
     expect(result).not.toBeNull();
     expect(result?.week).toBe('2026-W27');
     expect(result?.orders[0].tradingsymbol).toBe('NIFTY09JUL26C19000');
@@ -57,7 +57,7 @@ describe('PositionsStore', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ malformed: 'data' }));
 
-    expect(store.readPosition('2026-W27', true)).toBeNull();
+    expect(store.readPosition('NIFTY', '2026-W27', true)).toBeNull();
   });
 
   test('writePosition validates and writes data', () => {
@@ -72,8 +72,8 @@ describe('PositionsStore', () => {
       skippedThisWeek: false,
     };
 
-    expect(() => store.writePosition('2026-W27', true, position)).not.toThrow();
-    expect(() => store.writePosition('2026-W27', false, position)).not.toThrow();
+    expect(() => store.writePosition('NIFTY', '2026-W27', true, position)).not.toThrow();
+    expect(() => store.writePosition('NIFTY', '2026-W27', false, position)).not.toThrow();
     expect(fs.writeFileSync).toHaveBeenCalled();
   });
 
@@ -83,14 +83,14 @@ describe('PositionsStore', () => {
     };
 
     expect(() =>
-      store.writePosition('2026-W27', true, invalidPosition as unknown as WeeklyPosition),
+      store.writePosition('NIFTY', '2026-W27', true, invalidPosition as unknown as WeeklyPosition),
     ).toThrow();
   });
 
   test('getWeeklySkipState and setWeeklySkipState', () => {
     // getWeeklySkipState when no position
     (fs.existsSync as jest.Mock).mockReturnValue(false);
-    expect(store.getWeeklySkipState('2026-W27', true)).toBe(false);
+    expect(store.getWeeklySkipState('NIFTY', '2026-W27', true)).toBe(false);
 
     // getWeeklySkipState when position exists and skippedThisWeek is false
     jest.clearAllMocks();
@@ -105,12 +105,12 @@ describe('PositionsStore', () => {
         skippedThisWeek: false,
       }),
     );
-    expect(store.getWeeklySkipState('2026-W27', true)).toBe(false);
+    expect(store.getWeeklySkipState('NIFTY', '2026-W27', true)).toBe(false);
 
     // setWeeklySkipState when no position (mock existsSync to return false so pos is null)
     jest.clearAllMocks();
     (fs.existsSync as jest.Mock).mockReturnValue(false);
-    store.setWeeklySkipState('2026-W27', true, true);
+    store.setWeeklySkipState('NIFTY', '2026-W27', true, true);
     expect(fs.writeFileSync).toHaveBeenCalled();
 
     // setWeeklySkipState with active open position
@@ -126,7 +126,7 @@ describe('PositionsStore', () => {
         skippedThisWeek: false,
       }),
     );
-    store.setWeeklySkipState('2026-W27', true, true);
+    store.setWeeklySkipState('NIFTY', '2026-W27', true, true);
     expect(fs.writeFileSync).toHaveBeenCalled();
   });
 

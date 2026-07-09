@@ -9,8 +9,8 @@ import smartStream from './smartStream';
 
 export interface IExecutionManager {
   executeEntry(underlying: string, basket: StrategyLeg[]): Promise<boolean>;
-  executeExit(week: string, isPaper: boolean): Promise<boolean>;
-  monitorPnl(week: string, isPaper: boolean): Promise<void>;
+  executeExit(underlying: string, week: string, isPaper: boolean): Promise<boolean>;
+  monitorPnl(underlying: string, week: string, isPaper: boolean): Promise<void>;
 }
 
 export class ExecutionManager implements IExecutionManager {
@@ -75,7 +75,7 @@ export class ExecutionManager implements IExecutionManager {
       skippedThisWeek: false,
     };
 
-    positionsStore.writePosition(week, isPaper, position);
+    positionsStore.writePosition(underlying, week, isPaper, position);
 
     // Subscribe SmartStream to the newly opened positions
     const tokens = executedOrders.map((o) => o.symboltoken);
@@ -207,15 +207,15 @@ export class ExecutionManager implements IExecutionManager {
     }
   }
 
-  async executeExit(week: string, isPaper: boolean): Promise<boolean> {
-    const pos = positionsStore.readPosition(week, isPaper);
+  async executeExit(underlying: string, week: string, isPaper: boolean): Promise<boolean> {
+    const pos = positionsStore.readPosition(underlying, week, isPaper);
     if (!pos || pos.status !== 'open') {
-      logger.warn(`No open positions found to exit for week ${week}.`);
+      logger.warn(`No open positions found to exit for ${underlying} week ${week}.`);
       return false;
     }
 
     const modeStr = isPaper ? 'PAPER' : 'LIVE';
-    logger.info(`Starting exit unwind in ${modeStr} mode...`);
+    logger.info(`Starting exit unwind for ${underlying} in ${modeStr} mode...`);
 
     // In exit unwind, we close SHORT legs first (buy to cover) before closing LONG legs
     // Short legs are SELL orders in the entry basket. We must BUY them to close.
@@ -270,13 +270,13 @@ export class ExecutionManager implements IExecutionManager {
 
     pos.status = 'closed';
     pos.realizedPnl = totalPnl;
-    positionsStore.writePosition(week, isPaper, pos);
+    positionsStore.writePosition(underlying, week, isPaper, pos);
 
     // Disconnect/cleanup SmartStream after exit
     smartStream.disconnect();
 
     await notifier.send(
-      `📉 EXIT COMPLETE [${modeStr}] for week ${week}. Realized P&L: ₹${totalPnl.toLocaleString()}`,
+      `📉 EXIT COMPLETE [${modeStr}] for ${underlying} week ${week}. Realized P&L: ₹${totalPnl.toLocaleString()}`,
     );
     return exitSuccess;
   }
@@ -346,19 +346,19 @@ export class ExecutionManager implements IExecutionManager {
     }
   }
 
-  async monitorPnl(week: string, isPaper: boolean): Promise<void> {
+  async monitorPnl(underlying: string, week: string, isPaper: boolean): Promise<void> {
     // If kill switch is active, do absolutely nothing (no exit)
     if (flagWatcher.isKillSwitched()) {
       logger.info('Kill switch is ACTIVE. Monitoring is paused (read-only).');
       return;
     }
 
-    const pos = positionsStore.readPosition(week, isPaper);
+    const pos = positionsStore.readPosition(underlying, week, isPaper);
     if (!pos || pos.status !== 'open') {
       return;
     }
 
-    logger.info(`Monitoring P&L for week ${week}...`);
+    logger.info(`Monitoring P&L for ${underlying} week ${week}...`);
 
     let currentPnl = 0;
     for (const leg of pos.orders) {
@@ -381,7 +381,7 @@ export class ExecutionManager implements IExecutionManager {
       }
     }
 
-    logger.info(`Current unrealized P&L: ₹${currentPnl.toLocaleString()}`);
+    logger.info(`Current unrealized P&L for ${underlying}: ₹${currentPnl.toLocaleString()}`);
 
     // If cumulative loss exceeds 1% of the margin utilized, exit immediately
     const stoplossThreshold = -0.01 * pos.marginUtilized;
@@ -389,39 +389,39 @@ export class ExecutionManager implements IExecutionManager {
     const profitTargetThreshold = 0.02 * pos.marginUtilized;
 
     logger.info(
-      `Stoploss threshold: ₹${stoplossThreshold.toLocaleString()} (1% of ₹${pos.marginUtilized.toLocaleString()})`,
+      `[${underlying}] Stoploss threshold: ₹${stoplossThreshold.toLocaleString()} (1% of ₹${pos.marginUtilized.toLocaleString()})`,
     );
     logger.info(
-      `Profit target threshold: ₹${profitTargetThreshold.toLocaleString()} (2% of ₹${pos.marginUtilized.toLocaleString()})`,
+      `[${underlying}] Profit target threshold: ₹${profitTargetThreshold.toLocaleString()} (2% of ₹${pos.marginUtilized.toLocaleString()})`,
     );
 
     if (currentPnl <= stoplossThreshold) {
       logger.warn(
-        `Stoploss breached! Current P&L (₹${currentPnl.toLocaleString()}) <= threshold (₹${stoplossThreshold.toLocaleString()})`,
+        `Stoploss breached for ${underlying}! Current P&L (₹${currentPnl.toLocaleString()}) <= threshold (₹${stoplossThreshold.toLocaleString()})`,
       );
       await notifier.send(
-        `🚨 STOPLOSS BREACHED [${isPaper ? 'PAPER' : 'LIVE'}]: P&L is ₹${currentPnl.toLocaleString()}. Unwinding positions...`,
+        `🚨 STOPLOSS BREACHED [${isPaper ? 'PAPER' : 'LIVE'}] for ${underlying}: P&L is ₹${currentPnl.toLocaleString()}. Unwinding positions...`,
       );
 
-      const success = await this.executeExit(week, isPaper);
+      const success = await this.executeExit(underlying, week, isPaper);
       if (success) {
         // Set skip state for rest of week
-        positionsStore.setWeeklySkipState(week, isPaper, true);
-        logger.info(`Set skip state for week ${week}.`);
+        positionsStore.setWeeklySkipState(underlying, week, isPaper, true);
+        logger.info(`Set skip state for ${underlying} week ${week}.`);
       }
     } else if (currentPnl >= profitTargetThreshold) {
       logger.info(
-        `Profit target reached! Current P&L (₹${currentPnl.toLocaleString()}) >= threshold (₹${profitTargetThreshold.toLocaleString()})`,
+        `Profit target reached for ${underlying}! Current P&L (₹${currentPnl.toLocaleString()}) >= threshold (₹${profitTargetThreshold.toLocaleString()})`,
       );
       await notifier.send(
-        `🎉 PROFIT TARGET REACHED [${isPaper ? 'PAPER' : 'LIVE'}]: P&L is ₹${currentPnl.toLocaleString()}. Unwinding positions to lock in gains...`,
+        `🎉 PROFIT TARGET REACHED [${isPaper ? 'PAPER' : 'LIVE'}] for ${underlying}: P&L is ₹${currentPnl.toLocaleString()}. Unwinding positions to lock in gains...`,
       );
 
-      const success = await this.executeExit(week, isPaper);
+      const success = await this.executeExit(underlying, week, isPaper);
       if (success) {
         // Set skip state for rest of week
-        positionsStore.setWeeklySkipState(week, isPaper, true);
-        logger.info(`Set skip state for week ${week} after profit target exit.`);
+        positionsStore.setWeeklySkipState(underlying, week, isPaper, true);
+        logger.info(`Set skip state for ${underlying} week ${week} after profit target exit.`);
       }
     }
   }

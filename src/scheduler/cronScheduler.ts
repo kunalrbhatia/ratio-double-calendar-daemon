@@ -111,51 +111,66 @@ export class CronScheduler {
       return;
     }
 
+    // Run NIFTY trading tick (Entry: Wed, Exit: Tue)
+    await this.processUnderlyingTick('NIFTY', 3, 2, now, minutesSinceMidnight, isPaper);
+
+    // Run SENSEX trading tick (Entry: Fri, Exit: Thu)
+    await this.processUnderlyingTick('SENSEX', 5, 4, now, minutesSinceMidnight, isPaper);
+  }
+
+  async processUnderlyingTick(
+    underlying: string,
+    entryDay: number,
+    exitDay: number,
+    now: dayjs.Dayjs,
+    minutesSinceMidnight: number,
+    isPaper: boolean,
+  ) {
     const currentWeek = positionsStore.getCurrentWeekString();
-    const currentPosition = positionsStore.readPosition(currentWeek, isPaper);
+    const currentPosition = positionsStore.readPosition(underlying, currentWeek, isPaper);
+    const dayOfWeek = now.day();
 
-    const dayOfWeek = now.day(); // 0 = Sun, 1 = Mon, ..., 3 = Wed, ..., 5 = Fri, 6 = Sat
-
-    // 1. Entry Logic: Wednesday Entry Window (e.g. after 09:30 AM)
-    if (dayOfWeek === 3) {
+    // 1. Entry Logic
+    if (dayOfWeek === entryDay) {
       if (minutesSinceMidnight >= 570) {
         // After 09:30 AM IST
         // Check if we should entry
         if (!currentPosition) {
           // No position exists at all, run entry
-          await this.attemptEntry(currentWeek);
+          await this.attemptEntry(underlying, currentWeek);
         } else if (currentPosition.status === 'skipped') {
           // Already skipped this week, do nothing
           return;
         } else if (currentPosition.status === 'open') {
           // Position is already open, monitor PnL
-          await executionManager.monitorPnl(currentWeek, isPaper);
+          await executionManager.monitorPnl(underlying, currentWeek, isPaper);
         }
       }
     }
 
-    // 2. Monitoring Logic: Wed through Tuesday (except exit window on Tuesday)
-    const isTradingWeekDay =
-      (dayOfWeek === 3 && minutesSinceMidnight >= 570) || // Wed after entry
-      dayOfWeek === 4 || // Thurs
-      dayOfWeek === 5 || // Fri
-      dayOfWeek === 1 || // Mon
-      (dayOfWeek === 2 && minutesSinceMidnight < 915); // Tuesday before 15:15 IST
+    // 2. Monitoring Logic
+    const relDay = (dayOfWeek - entryDay + 7) % 7;
+    const isMonitoringDay =
+      (relDay === 0 && minutesSinceMidnight >= 570) ||
+      (relDay === 6 && minutesSinceMidnight < 915) ||
+      (relDay >= 1 && relDay <= 5);
 
-    if (isTradingWeekDay && currentPosition && currentPosition.status === 'open') {
-      await executionManager.monitorPnl(currentWeek, isPaper);
+    if (isMonitoringDay && currentPosition && currentPosition.status === 'open') {
+      await executionManager.monitorPnl(underlying, currentWeek, isPaper);
     }
 
-    // 3. Exit Logic: Tuesday at 15:15 PM IST (Market close is 15:30)
-    if (dayOfWeek === 2 && minutesSinceMidnight >= 915 && minutesSinceMidnight <= 930) {
+    // 3. Exit Logic
+    if (dayOfWeek === exitDay && minutesSinceMidnight >= 915 && minutesSinceMidnight <= 930) {
       if (currentPosition && currentPosition.status === 'open') {
-        logger.info(`Scheduled exit time reached (Tuesday 15:15 IST). Closing position...`);
-        await executionManager.executeExit(currentWeek, isPaper);
+        logger.info(
+          `Scheduled exit time reached for ${underlying} (${now.format('dddd')} 15:15 IST). Closing position...`,
+        );
+        await executionManager.executeExit(underlying, currentWeek, isPaper);
       }
     }
   }
 
-  private async attemptEntry(week: string) {
+  private async attemptEntry(underlying: string, week: string) {
     const isPaper = flagWatcher.isPaperMode();
 
     // Login to SmartAPI first
@@ -164,19 +179,19 @@ export class CronScheduler {
 
     const { passed, vix } = await strategyManager.checkVix();
     if (!passed) {
-      logger.warn(`VIX check failed (VIX: ${vix}). Skipping entry for this week.`);
-      positionsStore.setWeeklySkipState(week, isPaper, true);
+      logger.warn(`VIX check failed (VIX: ${vix}). Skipping entry for ${underlying} this week.`);
+      positionsStore.setWeeklySkipState(underlying, week, isPaper, true);
       return;
     }
 
-    // Build the NIFTY basket
-    const basket = await strategyManager.buildBasket('NIFTY');
+    // Build the basket
+    const basket = await strategyManager.buildBasket(underlying);
     if (!basket) {
-      logger.error('Failed to construct NIFTY basket. Skipping entry.');
+      logger.error(`Failed to construct ${underlying} basket. Skipping entry.`);
       return;
     }
 
-    await executionManager.executeEntry('NIFTY', basket);
+    await executionManager.executeEntry(underlying, basket);
   }
 
   runDailyCleanup() {
