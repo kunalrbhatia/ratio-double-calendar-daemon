@@ -195,7 +195,7 @@ describe('ExecutionManager', () => {
 
   test('executeExit returns false if no open position', async () => {
     (positionsStore.readPosition as jest.Mock).mockReturnValue(null);
-    const success = await executionManager.executeExit('2026-W27', true);
+    const success = await executionManager.executeExit('NIFTY', '2026-W27', true);
     expect(success).toBe(false);
   });
 
@@ -225,18 +225,18 @@ describe('ExecutionManager', () => {
     (brokerClient.getLtp as jest.Mock).mockResolvedValue(90);
     (brokerClient.placeOrder as jest.Mock).mockRejectedValue(new Error('Order API down'));
 
-    const success = await executionManager.executeExit('2026-W27', false);
+    const success = await executionManager.executeExit('NIFTY', '2026-W27', false);
     expect(success).toBe(false);
   });
 
   test('monitorPnl handles kill switch and non-open positions', async () => {
     (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(true);
-    await executionManager.monitorPnl('2026-W27', true);
+    await executionManager.monitorPnl('NIFTY', '2026-W27', true);
     expect(positionsStore.readPosition).not.toHaveBeenCalled();
 
     (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
     (positionsStore.readPosition as jest.Mock).mockReturnValue(null);
-    await executionManager.monitorPnl('2026-W27', true);
+    await executionManager.monitorPnl('NIFTY', '2026-W27', true);
     expect(brokerClient.getLtp).not.toHaveBeenCalled();
   });
 
@@ -265,7 +265,7 @@ describe('ExecutionManager', () => {
     (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
     (brokerClient.getLtp as jest.Mock).mockRejectedValue(new Error('LTP fetch failed'));
 
-    await expect(executionManager.monitorPnl('2026-W27', true)).resolves.not.toThrow();
+    await expect(executionManager.monitorPnl('NIFTY', '2026-W27', true)).resolves.not.toThrow();
   });
 
   test('monitorPnl exits on profit target reached', async () => {
@@ -295,10 +295,10 @@ describe('ExecutionManager', () => {
 
     const executeExitSpy = jest.spyOn(executionManager, 'executeExit').mockResolvedValue(true);
 
-    await executionManager.monitorPnl('2026-W27', true);
+    await executionManager.monitorPnl('NIFTY', '2026-W27', true);
 
-    expect(executeExitSpy).toHaveBeenCalledWith('2026-W27', true);
-    expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('2026-W27', true, true);
+    expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true);
+    expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
     executeExitSpy.mockRestore();
   });
 
@@ -329,10 +329,15 @@ describe('ExecutionManager', () => {
 
     const executeExitSpy = jest.spyOn(executionManager, 'executeExit').mockResolvedValue(false);
 
-    await executionManager.monitorPnl('2026-W27', true);
+    await executionManager.monitorPnl('NIFTY', '2026-W27', true);
 
-    expect(executeExitSpy).toHaveBeenCalledWith('2026-W27', true);
-    expect(positionsStore.setWeeklySkipState).not.toHaveBeenCalledWith('2026-W27', true, true);
+    expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true);
+    expect(positionsStore.setWeeklySkipState).not.toHaveBeenCalledWith(
+      'NIFTY',
+      '2026-W27',
+      true,
+      true,
+    );
     executeExitSpy.mockRestore();
   });
 });

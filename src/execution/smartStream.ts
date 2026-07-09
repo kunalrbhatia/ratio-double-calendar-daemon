@@ -157,8 +157,21 @@ class SmartStreamClient {
       if (!this.callback) return;
 
       const currentWeek = positionsStore.getCurrentWeekString();
-      const positions = positionsStore.readPosition(currentWeek, true);
-      if (!positions || positions.status !== 'open' || positions.orders.length === 0) {
+      const openOrders: any[] = [];
+      const seenTokens = new Set<string>();
+      for (const underlying of ['NIFTY', 'SENSEX']) {
+        const positions = positionsStore.readPosition(underlying, currentWeek, true);
+        if (positions && positions.status === 'open') {
+          for (const order of positions.orders) {
+            if (!seenTokens.has(order.symboltoken)) {
+              seenTokens.add(order.symboltoken);
+              openOrders.push(order);
+            }
+          }
+        }
+      }
+
+      if (openOrders.length === 0) {
         for (const token of this.subscribedTokens) {
           const ltp = 100 + (Math.random() - 0.5) * 5;
           this.callback({ token, ltp: parseFloat(ltp.toFixed(2)) });
@@ -166,7 +179,7 @@ class SmartStreamClient {
         return;
       }
 
-      for (const order of positions.orders) {
+      for (const order of openOrders) {
         if (this.subscribedTokens.has(order.symboltoken)) {
           const currentPrice = this.ltpCache.get(order.symboltoken) || order.price;
           const change = (Math.random() - 0.53) * 1.5;
