@@ -16,6 +16,7 @@ class SmartStreamClient {
   private ws: WebSocket | null = null;
   private isConnected = false;
   private mockInterval: NodeJS.Timeout | null = null;
+  private pingInterval: NodeJS.Timeout | null = null;
   private callback: TickCallback | null = null;
   private subscribedTokens: Set<string> = new Set();
   private ltpCache: Map<string, number> = new Map();
@@ -24,7 +25,11 @@ class SmartStreamClient {
     return this.ltpCache.get(token) || null;
   }
 
-  public connect(callback: TickCallback) {
+  public getIsConnected(): boolean {
+    return this.isConnected;
+  }
+
+  public async connect(callback: TickCallback) {
     this.callback = (tick) => {
       this.ltpCache.set(tick.token, tick.ltp);
       callback(tick);
@@ -34,6 +39,35 @@ class SmartStreamClient {
       logger.info('Starting SmartStream Client in [PAPER MODE] mock tick generator');
       this.startMockGenerator();
       this.isConnected = true;
+      return;
+    }
+
+    try {
+      logger.info('Refreshing session before connecting/reconnecting SmartStream WebSocket...');
+      try {
+        await sessionManager.refreshSession();
+      } catch (refreshErr) {
+        logger.warn(
+          `Session refresh failed: ${
+            refreshErr instanceof Error ? refreshErr.message : refreshErr
+          }. Attempting full login...`,
+        );
+        await sessionManager.login();
+      }
+    } catch (authError: any) {
+      logger.error(
+        `Failed to refresh session or login during SmartStream connect: ${
+          authError?.message || authError
+        }`,
+      );
+      this.isConnected = false;
+      if (this.pingInterval) {
+        clearInterval(this.pingInterval);
+        this.pingInterval = null;
+      }
+      setTimeout(() => {
+        this.connect(callback);
+      }, 5000);
       return;
     }
 
@@ -66,6 +100,16 @@ class SmartStreamClient {
       this.ws.on('open', () => {
         logger.info('SmartStream WebSocket connection established successfully.');
         this.isConnected = true;
+
+        if (this.pingInterval) {
+          clearInterval(this.pingInterval);
+        }
+        this.pingInterval = setInterval(() => {
+          if (this.ws && this.isConnected) {
+            this.ws.ping();
+          }
+        }, 30000);
+
         // Re-subscribe if we had previous tokens
         if (this.subscribedTokens.size > 0) {
           this.subscribe(Array.from(this.subscribedTokens));
@@ -102,6 +146,10 @@ class SmartStreamClient {
       this.ws.on('close', () => {
         logger.warn('SmartStream WebSocket connection closed. Attempting reconnect in 5s...');
         this.isConnected = false;
+        if (this.pingInterval) {
+          clearInterval(this.pingInterval);
+          this.pingInterval = null;
+        }
         setTimeout(() => {
           this.connect(callback);
         }, 5000);
@@ -139,6 +187,10 @@ class SmartStreamClient {
 
   public disconnect() {
     this.stopMockGenerator();
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
     if (this.ws) {
       this.ws.removeAllListeners();
       this.ws.close();

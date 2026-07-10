@@ -95,6 +95,51 @@ export const SmartApiLtpResponseSchema = z.object({
 });
 export type SmartApiLtpResponse = z.infer<typeof SmartApiLtpResponseSchema>;
 
+export const SmartApiQuoteResponseSchema = z.object({
+  status: z.boolean(),
+  message: z.string(),
+  errorcode: z.string(),
+  data: z
+    .object({
+      fetched: z.array(
+        z.object({
+          exchange: z.string(),
+          tradingSymbol: z.string(),
+          symbolToken: z.string(),
+          ltp: z.coerce.number(),
+          depth: z
+            .object({
+              buy: z
+                .array(
+                  z.object({
+                    price: z.coerce.number(),
+                    quantity: z.coerce.number(),
+                    nooforders: z.coerce.number().optional(),
+                  }),
+                )
+                .optional()
+                .nullable(),
+              sell: z
+                .array(
+                  z.object({
+                    price: z.coerce.number(),
+                    quantity: z.coerce.number(),
+                    nooforders: z.coerce.number().optional(),
+                  }),
+                )
+                .optional()
+                .nullable(),
+            })
+            .optional()
+            .nullable(),
+        }),
+      ).optional().nullable(),
+    })
+    .optional()
+    .nullable(),
+});
+export type SmartApiQuoteResponse = z.infer<typeof SmartApiQuoteResponseSchema>;
+
 // Batch margin request response schema
 export const MarginCalculatorResponseSchema = z.object({
   status: z.boolean(),

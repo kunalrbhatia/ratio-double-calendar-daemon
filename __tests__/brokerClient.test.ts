@@ -175,4 +175,63 @@ describe('BrokerClient', () => {
     const margin = await client.getMarginUtilized([]);
     expect(margin).toBe(450000);
   });
+
+  test('getMarketData returns ltp, bid, and ask', async () => {
+    const mockQuoteRes = {
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: {
+        fetched: [
+          {
+            exchange: 'NFO',
+            tradingSymbol: 'NIFTY16JUL26C19100',
+            symbolToken: 'token123',
+            ltp: 100,
+            depth: {
+              buy: [{ price: 99.5, quantity: 100 }],
+              sell: [{ price: 100.5, quantity: 100 }],
+            },
+          },
+        ],
+      },
+    };
+    (httpClient.request as jest.Mock).mockResolvedValueOnce(mockQuoteRes);
+
+    const res = await client.getMarketData('NFO', 'token123');
+    expect(res).toEqual({ ltp: 100, bid: 99.5, ask: 100.5 });
+  });
+
+  test('getMarketData falls back to ltp if depth is empty', async () => {
+    const mockQuoteRes = {
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: {
+        fetched: [
+          {
+            exchange: 'NFO',
+            tradingSymbol: 'NIFTY16JUL26C19100',
+            symbolToken: 'token123',
+            ltp: 100,
+            depth: null,
+          },
+        ],
+      },
+    };
+    (httpClient.request as jest.Mock).mockResolvedValueOnce(mockQuoteRes);
+
+    const res = await client.getMarketData('NFO', 'token123');
+    expect(res).toEqual({ ltp: 100, bid: 100, ask: 100 });
+  });
+
+  test('getMarketData throws on status false', async () => {
+    (httpClient.request as jest.Mock).mockResolvedValueOnce({
+      status: false,
+      message: 'Quote check failed',
+      errorcode: '999',
+    });
+
+    await expect(client.getMarketData('NFO', 'token123')).rejects.toThrow('Market quote check failed');
+  });
 });

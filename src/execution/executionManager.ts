@@ -92,6 +92,115 @@ export class ExecutionManager implements IExecutionManager {
     leg: StrategyLeg,
     isPaper: boolean,
   ): Promise<OrderRecord | null> {
+    const { instrumentManager } = await import('../instruments/instrumentManager');
+
+    if (!isPaper) {
+      // 1. Liquidity check & strike adjustment loop
+      let currentStrike = leg.strike;
+      let currentToken = leg.symboltoken;
+      let currentSymbol = leg.tradingsymbol;
+
+      while (true) {
+        try {
+          const marketData = await brokerClient.getMarketData(leg.exchange, currentToken);
+          const { ltp, bid, ask } = marketData;
+
+          const spread = ask - bid;
+          const midpoint = (bid + ask) / 2;
+          const isPoorLiquidity =
+            ltp > 5 &&
+            (spread / ltp > 0.1 || Math.abs(ltp - midpoint) / ltp > 0.1);
+
+          if (!isPoorLiquidity) {
+            leg.symboltoken = currentToken;
+            leg.tradingsymbol = currentSymbol;
+            leg.strike = currentStrike;
+            break;
+          }
+
+          logger.info(
+            `Poor liquidity detected for ${currentSymbol} (LTP: ${ltp}, Bid: ${bid}, Ask: ${ask}). Shifting strike...`,
+          );
+        } catch (marketErr) {
+          logger.warn(`Failed to fetch market data for quote check, proceeding: ${marketErr}`);
+          break;
+        }
+
+        const step = leg.tradingsymbol.toUpperCase().includes('SENSEX') ? 100 : 50;
+        const underlying = leg.tradingsymbol.toUpperCase().includes('SENSEX') ? 'SENSEX' : 'NIFTY';
+        const underlyingExchange = underlying === 'NIFTY' ? 'NSE' : 'BSE';
+        const underlyingSymbol = underlying === 'NIFTY' ? 'Nifty 50' : 'SENSEX';
+        const underlyingToken = underlying === 'NIFTY' ? '99926000' : '1';
+
+        let underlyingLtp = 0;
+        try {
+          underlyingLtp = await brokerClient.getLtp(
+            underlyingExchange,
+            underlyingSymbol,
+            underlyingToken,
+          );
+        } catch (ltpErr) {
+          logger.warn(`Failed to get underlying LTP, aborting strike shift: ${ltpErr}`);
+          break;
+        }
+
+        if (leg.type === 'CE') {
+          currentStrike =
+            currentStrike > underlyingLtp ? currentStrike - step : currentStrike + step;
+        } else {
+          currentStrike =
+            currentStrike < underlyingLtp ? currentStrike + step : currentStrike - step;
+        }
+
+        const nextInst = instrumentManager.getInstrument(
+          underlying,
+          leg.expiry,
+          currentStrike,
+          leg.type,
+        );
+        if (!nextInst) {
+          logger.error(
+            `Could not find instrument for shifted strike ${currentStrike} on expiry ${leg.expiry}`,
+          );
+          break;
+        }
+
+        currentToken = nextInst.symboltoken;
+        currentSymbol = nextInst.tradingsymbol;
+      }
+
+      // 2. Duplicate order prevention using resolved token
+      try {
+        const orderBook = await brokerClient.getOrderBook();
+        const existing = orderBook.find(
+          (o) =>
+            o.symboltoken === leg.symboltoken &&
+            (o.status.toUpperCase() === 'COMPLETE' ||
+              o.status.toUpperCase() === 'PENDING' ||
+              o.status.toUpperCase() === 'OPEN' ||
+              o.status.toUpperCase() === 'VALIDATION_PENDING'),
+        );
+
+        if (existing) {
+          logger.info(
+            `Duplicate order prevention: found existing order ${existing.orderid} (${existing.status}) for token ${leg.symboltoken}. Skipping leg.`,
+          );
+          return {
+            symboltoken: leg.symboltoken,
+            tradingsymbol: leg.tradingsymbol,
+            transactiontype: leg.action,
+            quantity: leg.quantity,
+            exchange: leg.exchange,
+            orderid: existing.orderid,
+            status: existing.status.toUpperCase(),
+            price: existing.averageprice || existing.price || 0,
+          };
+        }
+      } catch (obErr) {
+        logger.warn(`Failed to fetch order book for duplicate check: ${obErr}`);
+      }
+    }
+
     const ltp = await brokerClient.getLtp(leg.exchange, leg.tradingsymbol, leg.symboltoken);
 
     if (isPaper) {
