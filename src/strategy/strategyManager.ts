@@ -95,11 +95,16 @@ export class StrategyManager implements IStrategyManager {
     return candidates;
   }
 
-  private isLiquid(candidate: LiquidCandidate, minLotsDepth = 2, maxSpreadPct = 0.08): boolean {
+  private isLiquid(
+    candidate: LiquidCandidate,
+    minLotsDepth = 2,
+    maxSpreadPct = 0.08,
+    maxMidpointDiffPct = 0.08,
+  ): boolean {
     const { ltp, bid, ask, bidQty, askQty, inst } = candidate;
     if (ltp <= 0) return false;
     if ((ask - bid) / ltp > maxSpreadPct) return false;
-    if (Math.abs(ltp - (ask + bid) / 2) / ltp > maxSpreadPct) return false;
+    if (Math.abs(ltp - (ask + bid) / 2) / ltp > maxMidpointDiffPct) return false;
     if (bidQty < minLotsDepth * inst.lotsize) return false;
     if (askQty < minLotsDepth * inst.lotsize) return false;
     return true;

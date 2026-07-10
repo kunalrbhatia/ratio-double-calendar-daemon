@@ -483,4 +483,120 @@ describe('ExecutionManager', () => {
     const result = await (executionManager as any).placeAndConfirmOrder(mockBasket[0], false);
     expect(result).toBeNull();
   });
+
+  test('reprice handles cancelOrder failure and aborts when status is open', async () => {
+    (brokerClient.getOrderBook as jest.Mock).mockReset();
+    (brokerClient.placeOrder as jest.Mock).mockReset();
+    (brokerClient.cancelOrder as jest.Mock).mockReset();
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (brokerClient.getMarketData as jest.Mock).mockResolvedValue({
+      ltp: 100,
+      bid: 99.5,
+      ask: 100.5,
+    });
+    (brokerClient.placeOrder as jest.Mock).mockResolvedValue('ORD-LIMIT');
+    (brokerClient.cancelOrder as jest.Mock).mockRejectedValue(new Error('Cancel failed'));
+
+    let getOrderBookCalls = 0;
+    (brokerClient.getOrderBook as jest.Mock).mockImplementation(async () => {
+      getOrderBookCalls++;
+      if (getOrderBookCalls === 1) {
+        return [];
+      }
+      return [
+        {
+          orderid: 'ORD-LIMIT',
+          status: 'PENDING',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+      ];
+    });
+
+    const result = await (executionManager as any).placeAndConfirmOrder(mockBasket[0], false);
+    expect(result).toBeNull();
+  });
+
+  test('reprice handles cancelOrder failure and proceeds when status is cancelled', async () => {
+    (brokerClient.getOrderBook as jest.Mock).mockReset();
+    (brokerClient.placeOrder as jest.Mock).mockReset();
+    (brokerClient.cancelOrder as jest.Mock).mockReset();
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (brokerClient.getMarketData as jest.Mock).mockResolvedValue({
+      ltp: 100,
+      bid: 99.5,
+      ask: 100.5,
+    });
+    (brokerClient.placeOrder as jest.Mock)
+      .mockResolvedValueOnce('ORD-LIMIT')
+      .mockResolvedValueOnce('ORD-LIMIT-2')
+      .mockResolvedValueOnce('ORD-LIMIT-3')
+      .mockResolvedValueOnce('ORD-LIMIT-4')
+      .mockResolvedValueOnce('ORD-MARKET');
+    (brokerClient.cancelOrder as jest.Mock).mockRejectedValue(new Error('Cancel failed'));
+
+    let getOrderBookCalls = 0;
+    (brokerClient.getOrderBook as jest.Mock).mockImplementation(async () => {
+      getOrderBookCalls++;
+      if (getOrderBookCalls === 1) {
+        return [];
+      }
+      return [
+        {
+          orderid: 'ORD-LIMIT',
+          status: 'CANCELLED',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+        {
+          orderid: 'ORD-LIMIT-2',
+          status: 'CANCELLED',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+        {
+          orderid: 'ORD-LIMIT-3',
+          status: 'CANCELLED',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+        {
+          orderid: 'ORD-LIMIT-4',
+          status: 'CANCELLED',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+        {
+          orderid: 'ORD-MARKET',
+          status: 'COMPLETE',
+          price: 101.5,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+      ];
+    });
+
+    const result = await (executionManager as any).placeAndConfirmOrder(mockBasket[0], false);
+    expect(result).not.toBeNull();
+    expect(result?.orderid).toBe('ORD-MARKET');
+  });
 });

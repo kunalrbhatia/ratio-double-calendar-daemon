@@ -7,6 +7,8 @@ import { StrategyLeg } from '../strategy/strategyManager';
 import { OrderRecord, WeeklyPosition } from '../schemas/smartApi';
 import smartStream from './smartStream';
 
+const OPTION_TICK_SIZE = 0.05;
+
 export interface IExecutionManager {
   executeEntry(underlying: string, basket: StrategyLeg[]): Promise<boolean>;
   executeExit(
@@ -93,13 +95,16 @@ export class ExecutionManager implements IExecutionManager {
     return true;
   }
 
+  // TODO: Add support for partial-fill tracking and dynamic sizing.
+  // Currently, if a limit order is partially filled and then cancelled, the remaining
+  // quantity needs to be scaled down on subsequent repricing / fallback orders to prevent over-filling.
   private async placeLimitOrderWithReprice(
     leg: { symboltoken: string; tradingsymbol: string; exchange: string; quantity: number },
     transactiontype: 'BUY' | 'SELL',
     maxSlippagePct = 0.03,
     repriceIntervalMs = 3000,
     maxAttempts = 4,
-  ): Promise<string | null> {
+  ): Promise<{ orderid: string | null; cancelFailed: boolean }> {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const marketData = await brokerClient.getMarketData(leg.exchange, leg.symboltoken);
@@ -107,7 +112,7 @@ export class ExecutionManager implements IExecutionManager {
 
         if (ltp <= 0) {
           logger.error(`Invalid LTP (${ltp}) for ${leg.tradingsymbol}`);
-          return null;
+          return { orderid: null, cancelFailed: false };
         }
 
         const passive = transactiontype === 'BUY' ? bid : ask;
@@ -128,7 +133,7 @@ export class ExecutionManager implements IExecutionManager {
           }
         }
 
-        const limitPrice = Math.round(targetPrice / 0.05) * 0.05;
+        const limitPrice = Math.round(targetPrice / OPTION_TICK_SIZE) * OPTION_TICK_SIZE;
 
         logger.info(
           `[Reprice Attempt ${attempt + 1}/${maxAttempts}] Placing LIMIT ${transactiontype} order for ${leg.tradingsymbol} @ ₹${limitPrice.toFixed(2)} (LTP: ₹${ltp}, Bid: ₹${bid}, Ask: ₹${ask})`,
@@ -151,24 +156,39 @@ export class ExecutionManager implements IExecutionManager {
 
         const isFilled = await this.pollOrderStatusWithInterval(orderid, repriceIntervalMs);
         if (isFilled) {
-          return orderid;
+          return { orderid, cancelFailed: false };
         }
 
         logger.info(`Order ${orderid} unfilled. Cancelling and repricing...`);
+        let cancelSucceeded = false;
         try {
           await brokerClient.cancelOrder(orderid, 'NORMAL');
+          cancelSucceeded = true;
         } catch (cancelErr: unknown) {
           const msg = cancelErr instanceof Error ? cancelErr.message : String(cancelErr);
-          logger.warn(`Failed to cancel order ${orderid}: ${msg}. Checking if it filled...`);
+          logger.warn(`Failed to cancel order ${orderid}: ${msg}. Checking status...`);
           try {
             const orderBook = await brokerClient.getOrderBook();
             const order = orderBook.find((o) => o.orderid === orderid);
-            if (order && order.status.toUpperCase() === 'COMPLETE') {
-              return orderid;
+            if (order) {
+              const statusUpper = order.status.toUpperCase();
+              if (statusUpper === 'COMPLETE') {
+                return { orderid, cancelFailed: false };
+              }
+              if (statusUpper === 'CANCELLED' || statusUpper === 'REJECTED') {
+                cancelSucceeded = true;
+              }
             }
           } catch (obErr) {
-            logger.warn(`Failed to verify status after cancel failure: ${obErr}`);
+            logger.error(`Failed to verify status after cancel failure: ${obErr}`);
           }
+        }
+
+        if (!cancelSucceeded) {
+          logger.error(
+            `Could not confirm cancellation of order ${orderid}. Aborting reprice to avoid double-fill risk.`,
+          );
+          return { orderid: null, cancelFailed: true };
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -176,10 +196,12 @@ export class ExecutionManager implements IExecutionManager {
       }
     }
 
-    return null;
+    return { orderid: null, cancelFailed: false };
   }
 
   private async pollOrderStatusWithInterval(orderid: string, durationMs: number): Promise<boolean> {
+    // Computes the number of polling attempts per reprice walk iteration.
+    // Splits the repriceIntervalMs duration into pollIntervalMs (1s) check increments.
     const attempts = Math.min(
       this.maxPollAttempts,
       Math.max(1, Math.floor(durationMs / this.pollIntervalMs)),
@@ -261,7 +283,16 @@ export class ExecutionManager implements IExecutionManager {
       };
     }
 
-    let orderid = await this.placeLimitOrderWithReprice(leg, leg.action, 0.03, 3000, 4);
+    const repriceRes = await this.placeLimitOrderWithReprice(leg, leg.action, 0.03, 3000, 4);
+
+    if (repriceRes.cancelFailed) {
+      logger.error(
+        `Unconfirmed cancellation on leg ${leg.tradingsymbol}. Aborting execution sequence to prevent double-fill risk.`,
+      );
+      return null;
+    }
+
+    let orderid = repriceRes.orderid;
 
     if (!orderid) {
       await notifier.send(
@@ -398,6 +429,7 @@ export class ExecutionManager implements IExecutionManager {
     const closedOrders: OrderRecord[] = [];
     let exitSuccess = true;
 
+    // Step 1: Buy back short legs first to release margin and control risk
     for (const leg of shortLegs) {
       const order = await this.placeExitLeg(leg, 'BUY', isPaper, isStoploss);
       if (!order) {
@@ -408,6 +440,7 @@ export class ExecutionManager implements IExecutionManager {
       }
     }
 
+    // Step 2: Unwind long legs (sells) after short legs are closed
     for (const leg of longLegs) {
       const order = await this.placeExitLeg(leg, 'SELL', isPaper, isStoploss);
       if (!order) {
@@ -477,13 +510,22 @@ export class ExecutionManager implements IExecutionManager {
     const maxSlippagePct = isStoploss ? 0.015 : 0.03;
     const maxAttempts = isStoploss ? 2 : 4;
 
-    let orderid = await this.placeLimitOrderWithReprice(
+    const repriceRes = await this.placeLimitOrderWithReprice(
       entryOrder,
       exitAction,
       maxSlippagePct,
       3000,
       maxAttempts,
     );
+
+    if (repriceRes.cancelFailed) {
+      logger.error(
+        `Unconfirmed cancellation on exit leg ${entryOrder.tradingsymbol}. Aborting exit execution for this leg.`,
+      );
+      return null;
+    }
+
+    let orderid = repriceRes.orderid;
 
     if (!orderid) {
       await notifier.send(

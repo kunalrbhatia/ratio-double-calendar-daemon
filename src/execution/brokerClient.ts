@@ -152,6 +152,8 @@ export class BrokerClient implements IBrokerClient {
       return resultMap;
     }
 
+    // Angel One's /rest/secure/angelbroking/market/v1/quote endpoint in FULL mode
+    // accepts a maximum of 50 symbol tokens per API request.
     const chunkSize = 50;
     const chunks: string[][] = [];
     for (let i = 0; i < symboltokens.length; i += chunkSize) {

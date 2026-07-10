@@ -12,6 +12,11 @@ import logger from '../logging/logger';
 
 async function main() {
   const underlying = (process.argv[2] || 'NIFTY').toUpperCase();
+  if (underlying !== 'NIFTY' && underlying !== 'SENSEX') {
+    logger.error(`Invalid underlying index: "${underlying}". Only NIFTY or SENSEX are supported.`);
+    process.exit(1);
+  }
+
   logger.info(`===================================================`);
   logger.info(`Generating order basket for ${underlying}...`);
   logger.info(`===================================================`);
