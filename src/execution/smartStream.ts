@@ -52,7 +52,9 @@ class SmartStreamClient {
         await sessionManager.login();
       }
     } catch (authError: any) {
-      logger.error(`Failed to refresh session or login during SmartStream connect: ${authError?.message || authError}`);
+      logger.error(
+        `Failed to refresh session or login during SmartStream connect: ${authError?.message || authError}`,
+      );
       this.isConnected = false;
       if (this.heartbeatInterval) {
         clearInterval(this.heartbeatInterval);
