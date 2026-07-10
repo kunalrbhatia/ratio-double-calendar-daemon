@@ -285,6 +285,9 @@ describe('SmartStreamClient', () => {
 
     expect(smartStream.getIsConnected()).toBe(true);
 
+    // Subscribe a token so the heartbeat has something to re-subscribe
+    smartStream.subscribe(['SOME_TOKEN']);
+
     // Advance timer to trigger heartbeat (re-subscribe)
     jest.advanceTimersByTime(45000);
     expect(mockWsInstance.send).toHaveBeenCalled();
