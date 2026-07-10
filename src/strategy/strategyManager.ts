@@ -67,8 +67,8 @@ export class StrategyManager implements IStrategyManager {
     logger.info(`Resolved Expiry_T0: ${expiryT0}, Expiry_T1: ${expiryT1}, Expiry_T2: ${expiryT2}`);
 
     // 2. Fetch underlying price (LTP)
-    // NIFTY index token: "99926000" on NSE. SENSEX index token: "99926037" on BSE.
-    const underlyingToken = underlying.toUpperCase() === 'NIFTY' ? '99926000' : '99926037';
+    // NIFTY index token: "99926000" on NSE. SENSEX index token: "1" on BSE.
+    const underlyingToken = underlying.toUpperCase() === 'NIFTY' ? '99926000' : '1';
     const underlyingExchange = underlying.toUpperCase() === 'NIFTY' ? 'NSE' : 'BSE';
     const underlyingLtp = await brokerClient.getLtp(
       underlyingExchange,
@@ -102,14 +102,14 @@ export class StrategyManager implements IStrategyManager {
         qtyMult: 3,
         expiry: expiryT0,
         type: 'CE' as const,
-        targetDelta: 0.2,
+        targetDelta: 0.15,
       },
       {
         action: 'SELL' as const,
         qtyMult: 3,
         expiry: expiryT0,
         type: 'PE' as const,
-        targetDelta: 0.2,
+        targetDelta: 0.15,
       },
       {
         action: 'BUY' as const,

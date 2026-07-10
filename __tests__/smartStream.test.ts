@@ -21,10 +21,13 @@ describe('SmartStreamClient', () => {
       on: jest.fn(),
       send: jest.fn(),
       close: jest.fn(),
+      ping: jest.fn(),
       removeAllListeners: jest.fn(),
     };
 
     (WebSocket as unknown as jest.Mock).mockImplementation(() => mockWsInstance);
+    (sessionManager.refreshSession as jest.Mock).mockResolvedValue(undefined);
+    (sessionManager.login as jest.Mock).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -32,7 +35,7 @@ describe('SmartStreamClient', () => {
     jest.useRealTimers();
   });
 
-  test('connect in Paper Mode starts mock generator', () => {
+  test('connect in Paper Mode starts mock generator', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
     (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W28');
     (positionsStore.readPosition as jest.Mock).mockReturnValue({
@@ -41,7 +44,7 @@ describe('SmartStreamClient', () => {
     });
 
     const callback = jest.fn();
-    smartStream.connect(callback);
+    await smartStream.connect(callback);
 
     smartStream.subscribe(['token123']);
 
@@ -55,13 +58,13 @@ describe('SmartStreamClient', () => {
     expect(smartStream.getCachedLtp('token123')).toBe(mockTick.ltp);
   });
 
-  test('connect in Paper Mode starts mock generator and handles empty positions', () => {
+  test('connect in Paper Mode starts mock generator and handles empty positions', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
     (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W28');
     (positionsStore.readPosition as jest.Mock).mockReturnValue(null);
 
     const callback = jest.fn();
-    smartStream.connect(callback);
+    await smartStream.connect(callback);
 
     smartStream.subscribe(['token123']);
 
@@ -71,7 +74,7 @@ describe('SmartStreamClient', () => {
     expect(callback).toHaveBeenCalled();
   });
 
-  test('connect in Live Mode starts real WebSocket and subscribes', () => {
+  test('connect in Live Mode starts real WebSocket and subscribes', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     (sessionManager.getJwtToken as jest.Mock).mockReturnValue('mockJwt');
     (sessionManager.getFeedToken as jest.Mock).mockReturnValue('mockFeed');
@@ -80,7 +83,7 @@ describe('SmartStreamClient', () => {
     smartStream.subscribe(['pre-existing-token']);
 
     const callback = jest.fn();
-    smartStream.connect(callback);
+    await smartStream.connect(callback);
 
     expect(WebSocket).toHaveBeenCalledWith(
       'wss://smartapisocket.angelone.in/smart-stream',
@@ -127,13 +130,13 @@ describe('SmartStreamClient', () => {
     messageCallback('not-a-buffer');
   });
 
-  test('handles connect errors and socket disconnect/close', () => {
+  test('handles connect errors and socket disconnect/close', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     (sessionManager.getJwtToken as jest.Mock).mockReturnValue('mockJwt');
     (sessionManager.getFeedToken as jest.Mock).mockReturnValue('mockFeed');
 
     const callback = jest.fn();
-    smartStream.connect(callback);
+    await smartStream.connect(callback);
 
     const closeCallback = mockWsInstance.on.mock.calls.find((c: any) => c[0] === 'close')[1];
     const errorCallback = mockWsInstance.on.mock.calls.find((c: any) => c[0] === 'error')[1];
@@ -146,17 +149,17 @@ describe('SmartStreamClient', () => {
     closeCallback();
 
     // Advance timers by 5s for reconnect check
-    jest.advanceTimersByTime(5000);
+    await jest.advanceTimersByTimeAsync(5000);
     expect(WebSocket).toHaveBeenCalledTimes(2);
   });
 
-  test('covers parse error catch block in message callback', () => {
+  test('covers parse error catch block in message callback', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     (sessionManager.getJwtToken as jest.Mock).mockReturnValue('mockJwt');
     (sessionManager.getFeedToken as jest.Mock).mockReturnValue('mockFeed');
 
     const callback = jest.fn();
-    smartStream.connect(callback);
+    await smartStream.connect(callback);
 
     // Simulate WS Open
     const openCallback = mockWsInstance.on.mock.calls.find((c: any) => c[0] === 'open')[1];
@@ -203,27 +206,27 @@ describe('SmartStreamClient', () => {
     expect(callback).toHaveBeenLastCalledWith({ token: 'token123', ltp: 150.5 });
   });
 
-  test('covers catch block in connect method', () => {
+  test('covers catch block in connect method', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     // Make jwtToken getter throw an Error instance
     (sessionManager.getJwtToken as jest.Mock).mockImplementation(() => {
       throw new Error('Test throw in connect');
     });
 
-    smartStream.connect(jest.fn());
+    await smartStream.connect(jest.fn());
 
     // Make jwtToken getter throw a non-Error string to cover line 112 branch
     (sessionManager.getJwtToken as jest.Mock).mockImplementation(() => {
       throw 'string connect error';
     });
 
-    smartStream.connect(jest.fn());
+    await smartStream.connect(jest.fn());
   });
 
-  test('covers callback is null check in startMockGenerator', () => {
+  test('covers callback is null check in startMockGenerator', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
 
-    smartStream.connect(jest.fn());
+    await smartStream.connect(jest.fn());
 
     // Set callback to null to cover line 153 branch: if (!this.callback) return;
     (smartStream as any).callback = null;
@@ -231,30 +234,31 @@ describe('SmartStreamClient', () => {
     jest.advanceTimersByTime(1500);
   });
 
-  test('connect checks missing tokens gracefully', () => {
+  test('connect checks missing tokens gracefully', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
 
     // Case 1: Both empty
     (sessionManager.getJwtToken as jest.Mock).mockReturnValue('');
     (sessionManager.getFeedToken as jest.Mock).mockReturnValue('');
-    smartStream.connect(jest.fn());
+    await smartStream.connect(jest.fn());
     expect(WebSocket).not.toHaveBeenCalled();
 
     // Case 2: jwtToken present, feedToken empty
     (sessionManager.getJwtToken as jest.Mock).mockReturnValue('mockJwt');
     (sessionManager.getFeedToken as jest.Mock).mockReturnValue('');
-    smartStream.connect(jest.fn());
+    await smartStream.connect(jest.fn());
     expect(WebSocket).not.toHaveBeenCalled();
 
     // Case 3: jwtToken empty, feedToken present
     (sessionManager.getJwtToken as jest.Mock).mockReturnValue('');
     (sessionManager.getFeedToken as jest.Mock).mockReturnValue('mockFeed');
-    smartStream.connect(jest.fn());
+    await smartStream.connect(jest.fn());
     expect(WebSocket).not.toHaveBeenCalled();
   });
 
   test('disconnect when not connected does not throw', () => {
     // Fresh smartStream or disconnected
+    expect(smartStream.getIsConnected()).toBe(false);
     smartStream.disconnect(); // should not throw since ws is null
   });
 
@@ -262,5 +266,65 @@ describe('SmartStreamClient', () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     smartStream.disconnect();
     smartStream.subscribe(['token123']); // should check ws/isConnected and do nothing
+  });
+
+  test('ping interval is started on open and cleared on close', async () => {
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (sessionManager.getJwtToken as jest.Mock).mockReturnValue('mockJwt');
+    (sessionManager.getFeedToken as jest.Mock).mockReturnValue('mockFeed');
+
+    const callback = jest.fn();
+    await smartStream.connect(callback);
+
+    mockWsInstance.ping = jest.fn();
+
+    // Set a dummy interval to cover the branch where pingInterval already exists on open
+    (smartStream as any).pingInterval = setInterval(() => {}, 1000);
+
+    // Simulate WS Open to start interval
+    const openCallback = mockWsInstance.on.mock.calls.find((c: any) => c[0] === 'open')[1];
+    openCallback();
+
+    expect(smartStream.getIsConnected()).toBe(true);
+
+    // Advance timer to trigger ping
+    jest.advanceTimersByTime(30000);
+    expect(mockWsInstance.ping).toHaveBeenCalled();
+
+    // Close the socket to clear interval
+    const closeCallback = mockWsInstance.on.mock.calls.find((c: any) => c[0] === 'close')[1];
+    closeCallback();
+
+    mockWsInstance.ping.mockClear();
+    jest.advanceTimersByTime(30000);
+    expect(mockWsInstance.ping).not.toHaveBeenCalled();
+  });
+
+  test('covers auth failure retry pathway', async () => {
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (sessionManager.refreshSession as jest.Mock).mockRejectedValue(new Error('auth failed'));
+    (sessionManager.login as jest.Mock).mockRejectedValue(new Error('login failed'));
+
+    // Set a dummy interval to cover the branch where pingInterval exists during auth failure
+    (smartStream as any).pingInterval = setInterval(() => {}, 1000);
+
+    await smartStream.connect(jest.fn());
+    expect(WebSocket).not.toHaveBeenCalled();
+
+    // Advance timer to trigger retry connection
+    await jest.advanceTimersByTimeAsync(5000);
+  });
+
+  test('covers auth failure retry pathway with string error rejections', async () => {
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (sessionManager.refreshSession as jest.Mock).mockRejectedValue('auth failed string');
+    (sessionManager.login as jest.Mock).mockRejectedValue('login failed string');
+
+    (smartStream as any).pingInterval = setInterval(() => {}, 1000);
+
+    await smartStream.connect(jest.fn());
+    expect(WebSocket).not.toHaveBeenCalled();
+
+    await jest.advanceTimersByTimeAsync(5000);
   });
 });

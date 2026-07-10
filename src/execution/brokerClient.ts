@@ -6,6 +6,7 @@ import {
   SmartApiOrderResponseSchema,
   SmartApiOrderBookResponseSchema,
   MarginCalculatorResponseSchema,
+  SmartApiQuoteResponseSchema,
   OrderBookItem,
 } from '../schemas/smartApi';
 import logger from '../logging/logger';
@@ -32,6 +33,10 @@ export interface MarginLeg {
 
 export interface IBrokerClient {
   getLtp(exchange: string, tradingsymbol: string, symboltoken: string): Promise<number>;
+  getMarketData(
+    exchange: string,
+    symboltoken: string,
+  ): Promise<{ ltp: number; bid: number; ask: number }>;
   placeOrder(params: PlaceOrderParams): Promise<string>;
   getOrderBook(): Promise<OrderBookItem[]>;
   getMarginUtilized(basket: MarginLeg[]): Promise<number>;
@@ -76,6 +81,52 @@ export class BrokerClient implements IBrokerClient {
       /* istanbul ignore next */
       const msg = error instanceof Error ? error.message : String(error);
       logger.error(`Error getting LTP for ${tradingsymbol}: ${msg}`);
+      throw error;
+    }
+  }
+
+  async getMarketData(
+    exchange: string,
+    symboltoken: string,
+  ): Promise<{ ltp: number; bid: number; ask: number }> {
+    const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/market/v1/quote';
+    const payload = {
+      mode: 'FULL',
+      exchangeTokens: {
+        [exchange]: [symboltoken],
+      },
+    };
+
+    try {
+      const response = await httpClient.request<unknown>(url, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      const parsed = SmartApiQuoteResponseSchema.parse(response);
+      if (
+        !parsed.status ||
+        !parsed.data ||
+        !parsed.data.fetched ||
+        parsed.data.fetched.length === 0
+      ) {
+        throw new Error(`Market quote check failed: ${parsed.message}`);
+      }
+
+      const item = parsed.data.fetched[0];
+      const ltp = item.ltp;
+      const buyOrders = item.depth?.buy || [];
+      const sellOrders = item.depth?.sell || [];
+
+      const bid = buyOrders.length > 0 ? buyOrders[0].price : ltp;
+      const ask = sellOrders.length > 0 ? sellOrders[0].price : ltp;
+
+      return { ltp, bid, ask };
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error getting market quote for token ${symboltoken}: ${msg}`);
       throw error;
     }
   }

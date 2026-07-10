@@ -69,8 +69,9 @@ describe('StrategyManager', () => {
   });
 
   test('buildBasket resolves SENSEX underlying parameters', async () => {
+    const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
     (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
-      '09JUL2026',
+      todayStr,
       '16JUL2026',
       '23JUL2026',
     ]);
@@ -93,15 +94,17 @@ describe('StrategyManager', () => {
   });
 
   test('buildBasket fails when not enough future expiries', async () => {
-    (instrumentManager.getExpiries as jest.Mock).mockReturnValue(['09JUL2026', '16JUL2026']);
+    const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
+    (instrumentManager.getExpiries as jest.Mock).mockReturnValue([todayStr, '16JUL2026']);
 
     const basket = await manager.buildBasket('NIFTY');
     expect(basket).toBeNull();
   });
 
   test('buildBasket returns null when strike resolution fails', async () => {
+    const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
     (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
-      '09JUL2026',
+      todayStr,
       '16JUL2026',
       '23JUL2026',
     ]);
