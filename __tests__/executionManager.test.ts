@@ -4,8 +4,6 @@ import flagWatcher from '../src/flags/flagWatcher';
 import positionsStore from '../src/positions/positionsStore';
 import notifier from '../src/notify/notifier';
 import { StrategyLeg } from '../src/strategy/strategyManager';
-import { InstrumentCacheEntry } from '../src/schemas/smartApi';
-import { instrumentManager } from '../src/instruments/instrumentManager';
 
 jest.mock('../src/execution/brokerClient');
 jest.mock('../src/flags/flagWatcher');
@@ -377,35 +375,21 @@ describe('ExecutionManager', () => {
     (brokerClient.placeOrder as jest.Mock).mockResolvedValue('ORD-ID-2');
   });
 
-  test('performs liquidity check and strike shift for Nifty CE', async () => {
+  test('reprice fills on first attempt', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
-
-    // First token (T1_CE_BUY) has poor liquidity: ltp=100, bid/ask=250/255 -> spread=5, midpoint=252.5. Diff to LTP is 152.5%
-    // Shifted token (T1_CE_SHIFTED) has good liquidity: ltp=100, bid=99.5, ask=100.5
-    (brokerClient.getMarketData as jest.Mock)
-      .mockResolvedValueOnce({ ltp: 100, bid: 250, ask: 255 })
-      .mockResolvedValueOnce({ ltp: 100, bid: 99.5, ask: 100.5 });
-
-    (brokerClient.getLtp as jest.Mock)
-      .mockResolvedValueOnce(19000) // Underlying Nifty LTP for direction check
-      .mockResolvedValueOnce(100); // Shifted option LTP
-
-    const shiftedInst: InstrumentCacheEntry = {
-      symboltoken: 'T1_CE_SHIFTED',
-      tradingsymbol: 'NIFTY16JUL26C19050',
-      lotsize: 50,
-      exchange: 'NFO',
-    };
-    (instrumentManager.getInstrument as jest.Mock).mockReturnValue(shiftedInst);
-
-    (brokerClient.placeOrder as jest.Mock).mockResolvedValue('ORD-ID');
+    (brokerClient.getMarketData as jest.Mock).mockResolvedValue({
+      ltp: 100,
+      bid: 99.5,
+      ask: 100.5,
+    });
+    (brokerClient.placeOrder as jest.Mock).mockResolvedValue('ORD-LIMIT');
     (brokerClient.getOrderBook as jest.Mock).mockResolvedValue([
       {
-        orderid: 'ORD-ID',
+        orderid: 'ORD-LIMIT',
         status: 'COMPLETE',
         price: 100,
-        tradingsymbol: 'NIFTY16JUL26C19050',
-        symboltoken: 'T1_CE_SHIFTED',
+        tradingsymbol: 'NIFTY16JUL26C19100',
+        symboltoken: 'T1_CE_BUY',
         transactiontype: 'BUY',
         quantity: 50,
       },
@@ -413,6 +397,206 @@ describe('ExecutionManager', () => {
 
     const result = await (executionManager as any).placeAndConfirmOrder(mockBasket[0], false);
     expect(result).not.toBeNull();
-    expect(result?.symboltoken).toBe('T1_CE_SHIFTED');
+    expect(result?.orderid).toBe('ORD-LIMIT');
+  });
+
+  test('reprice exhausts and falls back to market', async () => {
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (brokerClient.getMarketData as jest.Mock).mockResolvedValue({
+      ltp: 100,
+      bid: 99.5,
+      ask: 100.5,
+    });
+    (brokerClient.placeOrder as jest.Mock)
+      .mockResolvedValueOnce('ORD-LIMIT')
+      .mockResolvedValueOnce('ORD-LIMIT')
+      .mockResolvedValueOnce('ORD-LIMIT')
+      .mockResolvedValueOnce('ORD-LIMIT')
+      .mockResolvedValueOnce('ORD-MARKET');
+
+    let getOrderBookCalls = 0;
+    (brokerClient.getOrderBook as jest.Mock).mockImplementation(async () => {
+      getOrderBookCalls++;
+      if (getOrderBookCalls === 1) {
+        return [];
+      }
+      return [
+        {
+          orderid: 'ORD-LIMIT',
+          status: 'PENDING',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+        {
+          orderid: 'ORD-MARKET',
+          status: 'COMPLETE',
+          price: 101.5,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+      ];
+    });
+    (brokerClient.cancelOrder as jest.Mock).mockResolvedValue(undefined);
+
+    const result = await (executionManager as any).placeAndConfirmOrder(mockBasket[0], false);
+    expect(result).not.toBeNull();
+    expect(result?.orderid).toBe('ORD-MARKET');
+    expect(notifier.send).toHaveBeenCalled();
+  });
+
+  test('reprice handles cancelOrder failure and detects fill', async () => {
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (brokerClient.getMarketData as jest.Mock).mockResolvedValue({
+      ltp: 100,
+      bid: 99.5,
+      ask: 100.5,
+    });
+    (brokerClient.placeOrder as jest.Mock).mockResolvedValue('ORD-LIMIT');
+    (brokerClient.cancelOrder as jest.Mock).mockRejectedValue(new Error('Cancel failed'));
+
+    (brokerClient.getOrderBook as jest.Mock).mockResolvedValue([
+      {
+        orderid: 'ORD-LIMIT',
+        status: 'COMPLETE',
+        price: 100,
+        tradingsymbol: 'NIFTY16JUL26C19100',
+        symboltoken: 'T1_CE_BUY',
+        transactiontype: 'BUY',
+        quantity: 50,
+      },
+    ]);
+
+    const result = await (executionManager as any).placeAndConfirmOrder(mockBasket[0], false);
+    expect(result).not.toBeNull();
+    expect(result?.orderid).toBe('ORD-LIMIT');
+  });
+
+  test('reprice handles error inside loop', async () => {
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (brokerClient.getMarketData as jest.Mock).mockRejectedValue(new Error('Market data fail'));
+
+    const result = await (executionManager as any).placeAndConfirmOrder(mockBasket[0], false);
+    expect(result).toBeNull();
+  });
+
+  test('reprice handles cancelOrder failure and aborts when status is open', async () => {
+    (brokerClient.getOrderBook as jest.Mock).mockReset();
+    (brokerClient.placeOrder as jest.Mock).mockReset();
+    (brokerClient.cancelOrder as jest.Mock).mockReset();
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (brokerClient.getMarketData as jest.Mock).mockResolvedValue({
+      ltp: 100,
+      bid: 99.5,
+      ask: 100.5,
+    });
+    (brokerClient.placeOrder as jest.Mock).mockResolvedValue('ORD-LIMIT');
+    (brokerClient.cancelOrder as jest.Mock).mockRejectedValue(new Error('Cancel failed'));
+
+    let getOrderBookCalls = 0;
+    (brokerClient.getOrderBook as jest.Mock).mockImplementation(async () => {
+      getOrderBookCalls++;
+      if (getOrderBookCalls === 1) {
+        return [];
+      }
+      return [
+        {
+          orderid: 'ORD-LIMIT',
+          status: 'PENDING',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+      ];
+    });
+
+    const result = await (executionManager as any).placeAndConfirmOrder(mockBasket[0], false);
+    expect(result).toBeNull();
+  });
+
+  test('reprice handles cancelOrder failure and proceeds when status is cancelled', async () => {
+    (brokerClient.getOrderBook as jest.Mock).mockReset();
+    (brokerClient.placeOrder as jest.Mock).mockReset();
+    (brokerClient.cancelOrder as jest.Mock).mockReset();
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (brokerClient.getMarketData as jest.Mock).mockResolvedValue({
+      ltp: 100,
+      bid: 99.5,
+      ask: 100.5,
+    });
+    (brokerClient.placeOrder as jest.Mock)
+      .mockResolvedValueOnce('ORD-LIMIT')
+      .mockResolvedValueOnce('ORD-LIMIT-2')
+      .mockResolvedValueOnce('ORD-LIMIT-3')
+      .mockResolvedValueOnce('ORD-LIMIT-4')
+      .mockResolvedValueOnce('ORD-MARKET');
+    (brokerClient.cancelOrder as jest.Mock).mockRejectedValue(new Error('Cancel failed'));
+
+    let getOrderBookCalls = 0;
+    (brokerClient.getOrderBook as jest.Mock).mockImplementation(async () => {
+      getOrderBookCalls++;
+      if (getOrderBookCalls === 1) {
+        return [];
+      }
+      return [
+        {
+          orderid: 'ORD-LIMIT',
+          status: 'CANCELLED',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+        {
+          orderid: 'ORD-LIMIT-2',
+          status: 'CANCELLED',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+        {
+          orderid: 'ORD-LIMIT-3',
+          status: 'CANCELLED',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+        {
+          orderid: 'ORD-LIMIT-4',
+          status: 'CANCELLED',
+          price: 100,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+        {
+          orderid: 'ORD-MARKET',
+          status: 'COMPLETE',
+          price: 101.5,
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          symboltoken: 'T1_CE_BUY',
+          transactiontype: 'BUY',
+          quantity: 50,
+        },
+      ];
+    });
+
+    const result = await (executionManager as any).placeAndConfirmOrder(mockBasket[0], false);
+    expect(result).not.toBeNull();
+    expect(result?.orderid).toBe('ORD-MARKET');
   });
 });

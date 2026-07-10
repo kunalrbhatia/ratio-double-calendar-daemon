@@ -2,9 +2,11 @@ import dayjs from 'dayjs';
 import { StrategyManager } from '../src/strategy/strategyManager';
 import brokerClient from '../src/execution/brokerClient';
 import instrumentManager from '../src/instruments/instrumentManager';
+import notifier from '../src/notify/notifier';
 
 jest.mock('../src/execution/brokerClient');
 jest.mock('../src/instruments/instrumentManager');
+jest.mock('../src/notify/notifier');
 
 describe('StrategyManager', () => {
   let manager: StrategyManager;
@@ -12,6 +14,21 @@ describe('StrategyManager', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     manager = new StrategyManager();
+    (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(
+      async (exchange: string, tokens: string[]) => {
+        const map = new Map();
+        for (const token of tokens) {
+          map.set(token, {
+            ltp: 100,
+            bid: 99.5,
+            ask: 100.5,
+            bidQty: 1000,
+            askQty: 1000,
+          });
+        }
+        return map;
+      },
+    );
   });
 
   test('checkVix passes when VIX is between 10 and 13.5', async () => {
@@ -114,5 +131,96 @@ describe('StrategyManager', () => {
 
     const basket = await manager.buildBasket('NIFTY');
     expect(basket).toBeNull();
+  });
+
+  test('buildBasket falls back to theoretical best when no liquid strikes are found', async () => {
+    const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
+    (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
+      todayStr,
+      '16JUL2026',
+      '23JUL2026',
+    ]);
+    (brokerClient.getLtp as jest.Mock).mockResolvedValueOnce(19000).mockResolvedValueOnce(12.5);
+
+    (instrumentManager.getInstrument as jest.Mock).mockImplementation(
+      (underlying, expiry, strike, type) => {
+        return {
+          symboltoken: `token-${expiry}-${strike}-${type}`,
+          tradingsymbol: `NIFTY-${expiry}-${strike}-${type}`,
+          lotsize: 50,
+          exchange: 'NFO',
+        };
+      },
+    );
+
+    (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(
+      async (exchange: string, tokens: string[]) => {
+        const map = new Map();
+        for (const token of tokens) {
+          map.set(token, {
+            ltp: 100,
+            bid: 99.5,
+            ask: 100.5,
+            bidQty: 0,
+            askQty: 0,
+          });
+        }
+        return map;
+      },
+    );
+
+    const basket = await manager.buildBasket('NIFTY');
+    expect(basket).not.toBeNull();
+    expect(basket).toHaveLength(6);
+    expect(notifier.send).toHaveBeenCalled();
+  });
+
+  test('isLiquid handles ltp <= 0, high spread, high midpoint diff, and low qty', () => {
+    const minLotsDepth = 2;
+    const maxSpreadPct = 0.08;
+    const inst = { lotsize: 50 } as any;
+
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 0, bid: 99.5, ask: 100.5, bidQty: 100, askQty: 100, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(false);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 100, bid: 90, ask: 110, bidQty: 100, askQty: 100, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(false);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 100, bid: 110, ask: 110, bidQty: 100, askQty: 100, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(false);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 100, bid: 99.5, ask: 100.5, bidQty: 50, askQty: 100, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(false);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 100, bid: 99.5, ask: 100.5, bidQty: 100, askQty: 50, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(false);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 100, bid: 99.5, ask: 100.5, bidQty: 100, askQty: 100, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(true);
   });
 });

@@ -17,6 +17,7 @@ The daemon automates a **Ratio Double Calendar Spread** on Indian indices (**NIF
     *   **Hold & Monitor:** Friday through **Thursday**.
     *   **Exit Window:** Thursday at 15:15 PM IST.
 *   **VIX Entry Filter:** Entry for either index is only allowed if **India VIX is between 10 and 13.5** at the time of entry.
+*   **Liquidity Screening:** Candidates are filtered dynamically using real-time quotes to ensure active market depth, preventing orders on illiquid option strikes. If no liquid strikes match, it falls back to the theoretical best strike and alerts the operator.
 *   **Exit Rules:** Positions are unwound on stoploss breach (1% of utilized margin, any day), profit target reach (2% of utilized margin, any day), or naturally closed at the scheduled exit window. There is no other exit trigger.
 
 ### Leg Structure & Target Deltas
@@ -31,6 +32,13 @@ The strategy consists of a 6-leg options basket matching specific delta targets:
 | **BUY** | 1 | $T_2$ (Week After Next) | Put | $\sim 0.30$ |
 | **BUY** | 2 | $T_2$ (Week After Next) | Call | $\sim 0.20$ |
 | **BUY** | 2 | $T_2$ (Week After Next) | Put | $\sim 0.20$ |
+
+### 💧 Liquidity Screening Criteria
+To prevent execution on illiquid strikes (reducing transaction costs and bid-ask slippage), options are screened in real-time. A strike is considered liquid only if it meets all of the following conditions:
+1.  **Positive LTP:** The Last Traded Price must be greater than zero.
+2.  **Tight Bid/Ask Spread:** The relative spread `(Ask - Bid) / LTP` must be within **8%**.
+3.  **LTP-Midpoint Alignment:** The distance between the LTP and the bid-ask midpoint `|LTP - (Ask + Bid) / 2| / LTP` must be within **8%**.
+4.  **Sufficient Depth:** The order book must have at least `2 * lotsize` bid/ask quantity at the best quote level (e.g. 100 contracts for NIFTY).
 
 ### 💡 Strategy Rationale: Selling T0 vs. Buying T2
 
@@ -130,6 +138,13 @@ To optimize margin utilization and avoid transient order blocks, orders are sequ
 *   **Profit Target:** If cumulative profits reach or exceed **2% of the weekly utilized margin**, all legs are unwound immediately to lock in gains.
 *   **Cool-off:** Once stopped out or exited for profit, the daemon persists a skip-state to prevent re-entering for the rest of that trading week.
 
+### 3. Limit Order Repricing Walk with Market Fallback
+To avoid poor fills and ensure execution reliability without leaving un-executed orders hanging:
+*   **LIMIT Repricing Walk:** Orders are first placed as `LIMIT` orders. If unfilled, the daemon automatically cancels and reprices the order closer to the market over multiple attempts (starting passive and walking towards aggressive).
+    - **Normal Entry/Exit:** Reprices up to **4 attempts** with a maximum slippage threshold of **3%** of LTP.
+    - **Stoploss Exit:** Reprices up to **2 attempts** with a tighter slippage threshold of **1.5%** of LTP to ensure faster emergency exit.
+*   **MARKET Sweep Fallback:** If the walk runs out of attempts without filling, the daemon cancels the remaining limit order and submits a `MARKET` order to sweep the book immediately, firing a warning notification to Telegram/Slack.
+
 ---
 
 ## 🕹️ Operational Controls (Filesystem Flags)
@@ -217,3 +232,16 @@ Once connected via SSH, the deploy workflow executes the following commands:
     ```bash
     pm2 restart ecosystem.config.cjs --env production
     ```
+
+---
+
+## 🛠️ Utility Scripts
+
+### Generate Option Basket
+Constructs the liquidity-screened option basket for a given underlying index and saves it to a JSON file.
+```bash
+pnpm generate-basket [underlying]
+```
+- **Arguments:** `underlying` (optional, defaults to `NIFTY`). Case-insensitive. E.g., `pnpm generate-basket SENSEX`.
+- **Output:** Saves the constructed basket to `data/basket-<underlying>.json` (e.g. `data/basket-nifty.json`).
+
