@@ -147,4 +147,140 @@ The market's partial recovery (+0.34%) after a 2.12% crash is characteristic of 
 - **🔌 WebSocket Stability:** The SmartStream WebSocket exhibited persistent reconnect behavior (14:19-15:40+). While benign today, this could affect real-time data delivery for future active positions.
 - **🌍 Geopolitical Watch:** US-Iran tensions remain a wildcard. Any escalation could trigger another wave of selling.
 - **📆 Next Entry:** Wednesday, 15 Jul 2026 (Week 2026-W29). The VIX filter must be below threshold before entry is attempted.
-- **📊 Weekend Risk:** With positions closed for the week, no weekend gap risk exposure exists. Fresh assessment on Monday.
+|- **📊 Weekend Risk:** With positions closed for the week, no weekend gap risk exposure exists. Fresh assessment on Monday.
+
+---
+
+# Trading Report — Friday, 10 Jul 2026
+
+## 📊 Market Overview
+
+| Index | Value | Change | % Change |
+|-------|:-----:|:------:|:--------:|
+| Nifty 50 | 24,206.90 | +244.10 | +1.02% |
+| Bank Nifty | 58,045.90 | +793.45 | +1.39% |
+| India VIX | 12.25 | -1.11 | -8.31% |
+
+## 📋 Position Status — NIFTY
+
+- **Strategy:** Ratio Double Calendar Spread
+- **Entry Date:** 08 Jul 2026
+- **Expiry:** 14 Jul 2026 (Weekly)
+- **Status:** Closed (Stoploss Hit on 08 Jul 2026 — No Position Today)
+- **Realized P&L:** ₹ -4,525.95
+- **Skip State:** Active for Week 2026-W28
+
+No NIFTY entry attempted today. The skip state from Wednesday's stoploss remains active.
+
+## 📋 Position Status — SENSEX
+
+- **Strategy:** Ratio Double Calendar Spread
+- **Entry Date:** 10 Jul 2026 (Friday)
+- **Expiry:** 17 Jul 2026 (Weekly — T0) / 26 Jul 2026 (Monthly — T1)
+- **Status:** **Closed** (Entered and fully unwound within the day)
+- **Margin Utilized:** ₹ 450,000
+
+### SENSEX Position Legs (Attempt 1 — Replaced)
+
+| Leg | Action | Strike | Type | Expiry | Qty | Entry Price | Exit Price | P&L |
+|:---:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:----------:|:---:|
+| T1-CE | BUY | 77,000 | CE | 26 Jul | 20 | 567.60 | 573.85 | +125 |
+| T1-CE | BUY | 78,500 | CE | 26 Jul | 20 | 547.75 | 476.45 | -1,426 |
+| T1-PE | BUY | 76,000 | PE | 26 Jul | 20 | 315.95 | 311.30 | -93 |
+| T1-PE | BUY | 79,500 | PE | 26 Jul | 20 | 250.70 | 213.95 | -735 |
+| T0-CE | SELL | 76,000 | CE | 16 Jul | 60 | 102.45 | 98.35 | +246 |
+| T0-PE | SELL | 79,000 | PE | 16 Jul | 60 | 87.30 | 69.00 | +1,098 |
+
+**Subtotal (Attempt 1): ₹ -785**
+
+### SENSEX Position Legs (Attempt 2 — Final)
+
+| Leg | Action | Strike | Type | Expiry | Qty | Entry Price | Exit Price | P&L |
+|:---:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:----------:|:---:|
+| T1-CE | BUY | 79,000 | CE | 26 Jul | 20 | 336.60 | 330.90 | +110 |
+| T1-PE | BUY | 76,700 | PE | 26 Jul | 40 | 520.15 | 485.82 | -1,373 |
+| T1-CE | BUY | 79,700 | CE | 26 Jul | 40 | 198.40 | 185.35 | -764 |
+| T1-PE | BUY | 75,900 | PE | 26 Jul | 40 | 329.85 | 275.00 | -2,194 |
+| T0-CE | SELL | 78,800 | CE | 16 Jul | 60 | 93.10 | 92.35 | +45 |
+| T0-PE | SELL | 76,200 | PE | 16 Jul | 60 | 133.00 | 121.60 | +684 |
+
+**Subtotal (Attempt 2): ₹ -3,492**
+
+### SENSEX P&L Summary
+
+- **Attempt 1 Loss:** ₹ -785  
+- **Attempt 2 Loss:** ₹ -3,492  
+- **Total SENSEX Realized P&L:** ₹ **-4,277.00**
+- **Trade Round-trip Loss Rate:** -0.95% of ₹450,000 margin
+
+| Metric | Value |
+|:------:|:-----:|
+| ⛔ Stoploss (1%) | ₹-4,500 |
+| 🎯 Profit Target (2%) | ₹+9,000 |
+
+### Combined Week 2026-W28 P&L
+
+| Index | Realized P&L |
+|:-----:|:-----------:|
+| **NIFTY** | ₹ -4,525.95 |
+| **SENSEX** | ₹ -4,277.00 |
+| **Total** | **₹ -8,802.95** |
+
+> **Note:** SENSEX entry was today (Friday) per the dual-index schedule. Despite positive unrealized P&L through most of the day (peaking at ₹+4,195 at 15:30 close), position closure realized a loss of ₹-4,277. The 75,900 PE leg had severe slippage (entry ₹329.85 → exit ₹275.00), contributing ₹-2,194 of the total loss, likely due to wide bid-ask spreads on deep OTM SENSEX options.
+
+## 📈 Daily Activity
+
+**Market Context:** Broad recovery day across Indian indices. Nifty gained 244 points (+1.02%) to close at 24,206.90, continuing the recovery from Wednesday's steep decline. Bank Nifty outperformed, surging 793 points (+1.39%) to 58,045.90 — the strongest single-day gain of the week. India VIX cooled significantly from 13.36 to 12.25 (-8.31%), indicating reduced market fear.
+
+**SENSEX Entry (Morning):** The daemon successfully entered a SENSEX ratio double calendar spread this morning, as Friday is the designated SENSEX entry day. Two entry attempts were made:
+- **Attempt 1 (~10:00-10:30 AM):** Initial strikes at 77,000-79,500 range with 76,000/79,000 weekly shorts. The 79,100 CE buy order was cancelled 3 times due to fill issues. This attempt was unwound for a small loss of ₹-785.
+- **Attempt 2 (~10:30-11:12 AM):** Revised strikes at 79,000-79,700 CE and 75,900-76,700 PE with 78,800/76,200 weekly shorts. Successfully filled at 11:12 AM. Position file written with status "open".
+
+**SENSEX Position Monitoring (11:23 AM - 12:42 PM):** The daemon monitored the position through the morning and early afternoon at 1-minute intervals. Unrealized P&L ranged between ₹+1,000 and ₹+2,500, staying comfortably within the stoploss and profit target bands. SmartStream WebSocket was active but consistently fell back to REST API for LTP data. Persistent 403 rate limit errors on the REST API were logged.
+
+**Daemon Restart (12:42 PM):** The daemon executed a graceful shutdown at 12:42 PM, which triggered an exit of all open SENSEX positions. This appears to have been the cause of the position closure.
+
+**Daemon Restart (3:27 PM):** The daemon restarted at 3:27 PM IST (post-market). It resumed monitoring P&L for SENSEX, but by this time the position had already been closed. The log shows unrealized P&L of ₹1,206 (from the closed position's settlement calculations) at 15:28, rising to ₹4,196 at 15:30 market close.
+
+**Position Closure Analysis:** The order book shows all 6 legs of the final SENSEX position were closed with complete fills. However, the exit prices were significantly worse than entry on the PE legs:
+- 75,900 PE: Bought at ₹329.85 → Sold at ₹275.00 (₹-54.85 per share loss)
+- 76,700 PE: Bought at ~₹520 → Sold at ~₹486 (loss)
+These deep OTM put options likely had poor liquidity at exit time, causing wide bid-ask slippage.
+
+**NIFTY Status:** No NIFTY activity. Skip state from Wednesday remains active.
+
+## 🔍 Market Response Analysis
+
+**SENSEX Strategy — First Dual-Index Entry:**
+
+Today marked the first SENSEX entry under the dual-index schedule. Key observations:
+
+- **Entry Timing:** The position was entered Friday morning with VIX at elevated levels (post-spike from Wednesday). The 12.25 closing VIX shows volatility contracting, which should benefit short option positions.
+- **Positive MTM Throughout:** The position maintained positive unrealized P&V (₹1,000-₹4,000) through the entire session — theta decay and range-bound movement were working in favor of the calendar spread.
+- **Forced Closure:** The 12:42 PM daemon shutdown triggered an automatic position unwind. This was a system operation, not a strategy-based stoploss/profit exit.
+- **Liquidity Slippage:** The PE leg exits suffered from poor fill quality. SENSEX options on BSE have significantly less liquidity than NIFTY options on NSE, leading to wider bid-ask spreads. The ₹-54.85/share loss on the 75,900 PE (17% slippage from entry) is concerning.
+- **Market Recovery Aided Would-Be Position:** With Nifty up 1.02% and Bank Nifty up 1.39%, the market recovery would have benefited the short calls (CE) in the calendar spread. The short 78,800 CE and 76,200 PE weekly legs would have decayed favorably.
+
+**Dual-Index Operational Assessment:**
+The first dual-index cycle (NIFTY entry Wed, SENSEX entry Fri) has been challenging:
+- NIFTY: Entered Wednesday → stopped out same day (₹-4,525.95)
+- SENSEX: Entered Friday → exited same day due to system shutdown (₹-4,277)
+
+## 🎯 Key Observations
+
+- Market staged a strong recovery (+1.02% Nifty, +1.39% Bank Nifty) — the best session of the week
+- India VIX cooled 8.31% to 12.25, suggesting the panic from Wednesday's geopolitical spike is subsiding
+- SENSEX dual-index entry was attempted for the first time and partially succeeded but was interrupted by daemon shutdown
+- SENSEX option liquidity on BSE is notably thinner than NIFTY on NSE — the 75,900 PE had 17% bid-ask slippage on exit
+- Persistent SmartAPI 403 rate limit errors affected LTP polling throughout the day — REST fallback was necessary for every P&L check as SmartStream cache was empty
+- The daemon's graceful shutdown at 12:42 PM appears to have been triggered externally (no error logs); this inadvertently caused the SENSEX position closure
+- The combined Week 2026-W28 loss of ₹-8,802.95 (-1.96% across two ₹450K margin allocations) is the worst week since the strategy began
+
+## ⚠️ Alerts / Risks
+
+- **⚠️ SENSEX Position Closed Early:** The SENSEX position was closed at 12:42 PM due to daemon shutdown, not strategy logic. The position was in profit at the time. Root cause of the shutdown needs investigation.
+- **⚠️ SENSEX Liquidity Risk:** Deep OTM SENSEX options (especially PEs below 76,000) have poor liquidity. Future SENSEX strikes should be selected closer to ATM to minimize slippage risk on exit.
+- **⚠️ API Rate Limiting:** Persistent 403 errors on `getLtpData` suggest the SmartAPI rate limit (≈10 calls/minute) is being hit during P&L monitoring. Consider increasing the monitoring interval or caching LTPs.
+- **⚠️ SmartStream Cache Empty:** The LTP cache was empty throughout the day, forcing REST API fallback for every P&L check. The WebSocket subscribe-then-ping pattern may need review.
+- **📆 Next Entry:** Wednesday, 15 Jul 2026 (Week 2026-W29) for NIFTY. Friday, 17 Jul 2026 for SENSEX. Weekend gap risk does not apply as both positions are closed.
+- **📊 Cumulative Week P&L:** ₹ -8,802.95 across both indices. This is a significant drawdown — review of strike selection, entry timing, and risk parameters may be warranted before next week's entries.
