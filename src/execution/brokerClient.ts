@@ -37,7 +37,12 @@ export interface IBrokerClient {
     exchange: string,
     symboltoken: string,
   ): Promise<{ ltp: number; bid: number; ask: number }>;
+  getMarketDataBatch(
+    exchange: string,
+    symboltokens: string[],
+  ): Promise<Map<string, { ltp: number; bid: number; ask: number; bidQty: number; askQty: number }>>;
   placeOrder(params: PlaceOrderParams): Promise<string>;
+  cancelOrder(orderid: string, variety: string): Promise<void>;
   getOrderBook(): Promise<OrderBookItem[]>;
   getMarginUtilized(basket: MarginLeg[]): Promise<number>;
 }
@@ -131,6 +136,67 @@ export class BrokerClient implements IBrokerClient {
     }
   }
 
+  async getMarketDataBatch(
+    exchange: string,
+    symboltokens: string[],
+  ): Promise<Map<string, { ltp: number; bid: number; ask: number; bidQty: number; askQty: number }>> {
+    const resultMap = new Map<string, { ltp: number; bid: number; ask: number; bidQty: number; askQty: number }>();
+    if (symboltokens.length === 0) {
+      return resultMap;
+    }
+
+    const chunkSize = 50;
+    const chunks: string[][] = [];
+    for (let i = 0; i < symboltokens.length; i += chunkSize) {
+      chunks.push(symboltokens.slice(i, i + chunkSize));
+    }
+
+    const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/market/v1/quote';
+
+    const promises = chunks.map(async (chunk) => {
+      const payload = {
+        mode: 'FULL',
+        exchangeTokens: {
+          [exchange]: chunk,
+        },
+      };
+
+      try {
+        const response = await httpClient.request<unknown>(url, {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify(payload),
+        });
+
+        const parsed = SmartApiQuoteResponseSchema.parse(response);
+        if (!parsed.status || !parsed.data || !parsed.data.fetched) {
+          throw new Error(`Market quote batch check failed: ${parsed.message}`);
+        }
+
+        for (const item of parsed.data.fetched) {
+          const ltp = item.ltp;
+          const buyOrders = item.depth?.buy || [];
+          const sellOrders = item.depth?.sell || [];
+
+          const bid = buyOrders.length > 0 ? buyOrders[0].price : ltp;
+          const bidQty = buyOrders.length > 0 ? buyOrders[0].quantity : 0;
+          const ask = sellOrders.length > 0 ? sellOrders[0].price : ltp;
+          const askQty = sellOrders.length > 0 ? sellOrders[0].quantity : 0;
+
+          resultMap.set(item.symbolToken, { ltp, bid, ask, bidQty, askQty });
+        }
+      } catch (error: unknown) {
+        /* istanbul ignore next */
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Error getting market quote batch: ${msg}`);
+        throw error;
+      }
+    });
+
+    await Promise.all(promises);
+    return resultMap;
+  }
+
   async placeOrder(params: PlaceOrderParams): Promise<string> {
     const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/placeOrder';
     const payload = {
@@ -162,6 +228,32 @@ export class BrokerClient implements IBrokerClient {
       /* istanbul ignore next */
       const msg = error instanceof Error ? error.message : String(error);
       logger.error(`Error placing order for ${params.tradingsymbol}: ${msg}`);
+      throw error;
+    }
+  }
+
+  async cancelOrder(orderid: string, variety: string): Promise<void> {
+    const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/cancelOrder';
+    const payload = {
+      orderid,
+      variety,
+    };
+
+    try {
+      const response = await httpClient.request<unknown>(url, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      const parsed = SmartApiOrderResponseSchema.parse(response);
+      if (!parsed.status || !parsed.data) {
+        throw new Error(`Order cancellation failed: ${parsed.message}`);
+      }
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error cancelling order ${orderid}: ${msg}`);
       throw error;
     }
   }

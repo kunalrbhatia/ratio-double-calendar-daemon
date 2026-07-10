@@ -4,6 +4,7 @@ import instrumentManager from '../instruments/instrumentManager';
 import brokerClient from '../execution/brokerClient';
 import { calculateDelta } from './blackScholes';
 import { InstrumentCacheEntry } from '../schemas/smartApi';
+import notifier from '../notify/notifier';
 
 export interface StrategyLeg {
   action: 'BUY' | 'SELL';
@@ -17,6 +18,17 @@ export interface StrategyLeg {
   lotsize: number;
   targetDelta: number;
   actualDelta: number;
+}
+
+export interface LiquidCandidate {
+  strike: number;
+  inst: InstrumentCacheEntry;
+  ltp: number;
+  bid: number;
+  ask: number;
+  bidQty: number;
+  askQty: number;
+  delta?: number;
 }
 
 export interface IStrategyManager {
@@ -40,6 +52,61 @@ export class StrategyManager implements IStrategyManager {
       logger.error(`Failed to check VIX: ${msg}. Proceeding assuming VIX check fails.`);
       return { passed: false, vix: 0 };
     }
+  }
+
+  private async getLiquidCandidates(
+    underlying: string,
+    expiry: string,
+    type: 'CE' | 'PE',
+    strikes: number[],
+  ): Promise<LiquidCandidate[]> {
+    const instrumentsWithStrikes: { strike: number; inst: InstrumentCacheEntry }[] = [];
+    for (const strike of strikes) {
+      const inst = instrumentManager.getInstrument(underlying, expiry, strike, type);
+      if (inst) {
+        instrumentsWithStrikes.push({ strike, inst });
+      }
+    }
+
+    if (instrumentsWithStrikes.length === 0) {
+      return [];
+    }
+
+    const exchange = instrumentsWithStrikes[0].inst.exchange;
+    const tokens = instrumentsWithStrikes.map((x) => x.inst.symboltoken);
+
+    const marketDataMap = await brokerClient.getMarketDataBatch(exchange, tokens);
+
+    const candidates: LiquidCandidate[] = [];
+    for (const { strike, inst } of instrumentsWithStrikes) {
+      const quote = marketDataMap.get(inst.symboltoken);
+      if (quote) {
+        candidates.push({
+          strike,
+          inst,
+          ltp: quote.ltp,
+          bid: quote.bid,
+          ask: quote.ask,
+          bidQty: quote.bidQty,
+          askQty: quote.askQty,
+        });
+      }
+    }
+    return candidates;
+  }
+
+  private isLiquid(
+    candidate: LiquidCandidate,
+    minLotsDepth = 2,
+    maxSpreadPct = 0.08,
+  ): boolean {
+    const { ltp, bid, ask, bidQty, askQty, inst } = candidate;
+    if (ltp <= 0) return false;
+    if ((ask - bid) / ltp > maxSpreadPct) return false;
+    if (Math.abs(ltp - (ask + bid) / 2) / ltp > maxSpreadPct) return false;
+    if (bidQty < minLotsDepth * inst.lotsize) return false;
+    if (askQty < minLotsDepth * inst.lotsize) return false;
+    return true;
   }
 
   async buildBasket(underlying: string): Promise<StrategyLeg[] | null> {
@@ -148,28 +215,40 @@ export class StrategyManager implements IStrategyManager {
       const daysToExpiry = Math.max(0.01, expDate.diff(now, 'day', true));
       const t = daysToExpiry / 365;
 
-      let bestStrike = 0;
-      let minDiff = Infinity;
-      let bestInstrument: InstrumentCacheEntry | null = null;
-      let bestDelta = 0;
+      const candidates = await this.getLiquidCandidates(underlying, def.expiry, def.type, candidateStrikes);
 
-      for (const strike of candidateStrikes) {
-        const inst = instrumentManager.getInstrument(underlying, def.expiry, strike, def.type);
-        if (!inst) continue;
+      for (const candidate of candidates) {
+        const delta = calculateDelta(underlyingLtp, candidate.strike, t, iv, 0.07, def.type);
+        candidate.delta = Math.abs(delta);
+      }
 
-        const delta = calculateDelta(underlyingLtp, strike, t, iv, 0.07, def.type);
-        const absDelta = Math.abs(delta);
-        const diff = Math.abs(absDelta - def.targetDelta);
+      const liquidOnes = candidates.filter((c) => this.isLiquid(c));
 
-        if (diff < minDiff) {
-          minDiff = diff;
-          bestStrike = strike;
-          bestInstrument = inst;
-          bestDelta = absDelta;
+      let chosen: LiquidCandidate | undefined;
+      if (liquidOnes.length > 0) {
+        chosen = liquidOnes.reduce((best, cur) => {
+          const curDiff = Math.abs(cur.delta! - def.targetDelta);
+          const bestDiff = Math.abs(best.delta! - def.targetDelta);
+          return curDiff < bestDiff ? cur : best;
+        }, liquidOnes[0]);
+      } else {
+        logger.warn(
+          `No liquid strikes found for ${underlying} ${def.type} ${def.expiry} near target delta ${def.targetDelta}. Falling back to theoretical best.`
+        );
+        await notifier.send(
+          `⚠️ No liquid strikes found for ${underlying} ${def.type} ${def.expiry} near target delta ${def.targetDelta}. Falling back to theoretical best — review before going live.`
+        );
+
+        if (candidates.length > 0) {
+          chosen = candidates.reduce((best, cur) => {
+            const curDiff = Math.abs(cur.delta! - def.targetDelta);
+            const bestDiff = Math.abs(best.delta! - def.targetDelta);
+            return curDiff < bestDiff ? cur : best;
+          }, candidates[0]);
         }
       }
 
-      if (!bestInstrument) {
+      if (!chosen || !chosen.inst) {
         logger.error(
           `Could not resolve strike for ${def.type} with target delta ${def.targetDelta} on expiry ${def.expiry}`,
         );
@@ -178,16 +257,16 @@ export class StrategyManager implements IStrategyManager {
 
       basket.push({
         action: def.action,
-        quantity: bestInstrument.lotsize * def.qtyMult,
+        quantity: chosen.inst.lotsize * def.qtyMult,
         expiry: def.expiry,
-        strike: bestStrike,
+        strike: chosen.strike,
         type: def.type,
-        symboltoken: bestInstrument.symboltoken,
-        tradingsymbol: bestInstrument.tradingsymbol,
-        exchange: bestInstrument.exchange,
-        lotsize: bestInstrument.lotsize,
+        symboltoken: chosen.inst.symboltoken,
+        tradingsymbol: chosen.inst.tradingsymbol,
+        exchange: chosen.inst.exchange,
+        lotsize: chosen.inst.lotsize,
         targetDelta: def.targetDelta,
-        actualDelta: bestDelta,
+        actualDelta: chosen.delta!,
       });
     }
 

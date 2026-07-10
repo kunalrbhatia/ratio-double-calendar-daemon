@@ -236,4 +236,145 @@ describe('BrokerClient', () => {
       'Market quote check failed',
     );
   });
+
+  test('getMarketDataBatch returns map of quotes', async () => {
+    const mockQuoteRes = {
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: {
+        fetched: [
+          {
+            exchange: 'NFO',
+            tradingSymbol: 'NIFTY16JUL26C19100',
+            symbolToken: 'token123',
+            ltp: 100,
+            depth: {
+              buy: [{ price: 99.5, quantity: 100 }],
+              sell: [{ price: 100.5, quantity: 100 }],
+            },
+          },
+        ],
+      },
+    };
+    (httpClient.request as jest.Mock).mockResolvedValueOnce(mockQuoteRes);
+
+    const res = await client.getMarketDataBatch('NFO', ['token123']);
+    expect(res.size).toBe(1);
+    const quote = res.get('token123');
+    expect(quote).toEqual({ ltp: 100, bid: 99.5, ask: 100.5, bidQty: 100, askQty: 100 });
+  });
+
+  test('getMarketDataBatch handles empty tokens list', async () => {
+    const res = await client.getMarketDataBatch('NFO', []);
+    expect(res.size).toBe(0);
+  });
+
+  test('getMarketDataBatch handles chunking for > 50 tokens', async () => {
+    const tokens = Array.from({ length: 60 }, (_, i) => `token${i}`);
+    const mockQuoteRes1 = {
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: {
+        fetched: Array.from({ length: 50 }, (_, i) => ({
+          exchange: 'NFO',
+          tradingSymbol: `NIFTY-${i}`,
+          symbolToken: `token${i}`,
+          ltp: 100,
+          depth: {
+            buy: [{ price: 99.5, quantity: 100 }],
+            sell: [{ price: 100.5, quantity: 100 }],
+          },
+        })),
+      },
+    };
+    const mockQuoteRes2 = {
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: {
+        fetched: Array.from({ length: 10 }, (_, i) => ({
+          exchange: 'NFO',
+          tradingSymbol: `NIFTY-${i + 50}`,
+          symbolToken: `token${i + 50}`,
+          ltp: 100,
+          depth: {
+            buy: [{ price: 99.5, quantity: 100 }],
+            sell: [{ price: 100.5, quantity: 100 }],
+          },
+        })),
+      },
+    };
+
+    (httpClient.request as jest.Mock)
+      .mockResolvedValueOnce(mockQuoteRes1)
+      .mockResolvedValueOnce(mockQuoteRes2);
+
+    const res = await client.getMarketDataBatch('NFO', tokens);
+    expect(res.size).toBe(60);
+    expect(res.get('token0')).toBeDefined();
+    expect(res.get('token59')).toBeDefined();
+  });
+
+  test('getMarketDataBatch throws on status false', async () => {
+    (httpClient.request as jest.Mock).mockResolvedValueOnce({
+      status: false,
+      message: 'Quote check failed',
+      errorcode: '999',
+    });
+
+    await expect(client.getMarketDataBatch('NFO', ['token123'])).rejects.toThrow(
+      'Market quote batch check failed',
+    );
+  });
+
+  test('getMarketDataBatch falls back to ltp when depth is empty', async () => {
+    const mockQuoteRes = {
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: {
+        fetched: [
+          {
+            exchange: 'NFO',
+            tradingSymbol: 'NIFTY16JUL26C19100',
+            symbolToken: 'token123',
+            ltp: 100,
+            depth: null,
+          },
+        ],
+      },
+    };
+    (httpClient.request as jest.Mock).mockResolvedValueOnce(mockQuoteRes);
+
+    const res = await client.getMarketDataBatch('NFO', ['token123']);
+    expect(res.size).toBe(1);
+    const quote = res.get('token123');
+    expect(quote).toEqual({ ltp: 100, bid: 100, ask: 100, bidQty: 0, askQty: 0 });
+  });
+
+  test('cancelOrder succeeds on status true', async () => {
+    const mockCancelRes = {
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: {
+        orderid: 'ORD12345',
+      },
+    };
+    (httpClient.request as jest.Mock).mockResolvedValueOnce(mockCancelRes);
+
+    await expect(client.cancelOrder('ORD12345', 'NORMAL')).resolves.not.toThrow();
+  });
+
+  test('cancelOrder throws on status false', async () => {
+    (httpClient.request as jest.Mock).mockResolvedValueOnce({
+      status: false,
+      message: 'Order already completed',
+      errorcode: '123',
+    });
+
+    await expect(client.cancelOrder('ORD12345', 'NORMAL')).rejects.toThrow('Order cancellation failed');
+  });
 });

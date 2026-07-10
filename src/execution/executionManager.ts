@@ -9,7 +9,7 @@ import smartStream from './smartStream';
 
 export interface IExecutionManager {
   executeEntry(underlying: string, basket: StrategyLeg[]): Promise<boolean>;
-  executeExit(underlying: string, week: string, isPaper: boolean): Promise<boolean>;
+  executeExit(underlying: string, week: string, isPaper: boolean, isStoploss?: boolean): Promise<boolean>;
   monitorPnl(underlying: string, week: string, isPaper: boolean): Promise<void>;
 }
 
@@ -88,88 +88,122 @@ export class ExecutionManager implements IExecutionManager {
     return true;
   }
 
+  private async placeLimitOrderWithReprice(
+    leg: { symboltoken: string; tradingsymbol: string; exchange: string; quantity: number },
+    transactiontype: 'BUY' | 'SELL',
+    maxSlippagePct = 0.03,
+    repriceIntervalMs = 3000,
+    maxAttempts = 4,
+  ): Promise<string | null> {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const marketData = await brokerClient.getMarketData(leg.exchange, leg.symboltoken);
+        const { ltp, bid, ask } = marketData;
+
+        if (ltp <= 0) {
+          logger.error(`Invalid LTP (${ltp}) for ${leg.tradingsymbol}`);
+          return null;
+        }
+
+        const passive = transactiontype === 'BUY' ? bid : ask;
+        const aggressive = transactiontype === 'BUY' ? ask : bid;
+
+        const fraction = maxAttempts > 1 ? attempt / (maxAttempts - 1) : 1;
+        let targetPrice = passive + fraction * (aggressive - passive);
+
+        if (transactiontype === 'BUY') {
+          const cap = ltp * (1 + maxSlippagePct);
+          if (targetPrice > cap) {
+            targetPrice = cap;
+          }
+        } else {
+          const cap = ltp * (1 - maxSlippagePct);
+          if (targetPrice < cap) {
+            targetPrice = cap;
+          }
+        }
+
+        const limitPrice = Math.round(targetPrice / 0.05) * 0.05;
+
+        logger.info(
+          `[Reprice Attempt ${attempt + 1}/${maxAttempts}] Placing LIMIT ${transactiontype} order for ${leg.tradingsymbol} @ ₹${limitPrice.toFixed(2)} (LTP: ₹${ltp}, Bid: ₹${bid}, Ask: ₹${ask})`
+        );
+
+        const orderParams: PlaceOrderParams = {
+          variety: 'NORMAL',
+          tradingsymbol: leg.tradingsymbol,
+          symboltoken: leg.symboltoken,
+          transactiontype,
+          exchange: leg.exchange,
+          ordertype: 'LIMIT',
+          producttype: 'CARRYFORWARD',
+          duration: 'DAY',
+          quantity: leg.quantity,
+          price: limitPrice,
+        };
+
+        const orderid = await brokerClient.placeOrder(orderParams);
+
+        const isFilled = await this.pollOrderStatusWithInterval(orderid, repriceIntervalMs);
+        if (isFilled) {
+          return orderid;
+        }
+
+        logger.info(`Order ${orderid} unfilled. Cancelling and repricing...`);
+        try {
+          await brokerClient.cancelOrder(orderid, 'NORMAL');
+        } catch (cancelErr: unknown) {
+          const msg = cancelErr instanceof Error ? cancelErr.message : String(cancelErr);
+          logger.warn(`Failed to cancel order ${orderid}: ${msg}. Checking if it filled...`);
+          try {
+            const orderBook = await brokerClient.getOrderBook();
+            const order = orderBook.find((o) => o.orderid === orderid);
+            if (order && order.status.toUpperCase() === 'COMPLETE') {
+              return orderid;
+            }
+          } catch (obErr) {
+            logger.warn(`Failed to verify status after cancel failure: ${obErr}`);
+          }
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`Error on reprice attempt ${attempt + 1}: ${msg}`);
+      }
+    }
+
+    return null;
+  }
+
+  private async pollOrderStatusWithInterval(orderid: string, durationMs: number): Promise<boolean> {
+    const attempts = Math.min(this.maxPollAttempts, Math.max(1, Math.floor(durationMs / this.pollIntervalMs)));
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      await new Promise((r) => setTimeout(r, this.pollIntervalMs));
+      try {
+        const orderBook = await brokerClient.getOrderBook();
+        const order = orderBook.find((o) => o.orderid === orderid);
+
+        if (order) {
+          const statusUpper = order.status.toUpperCase();
+          if (statusUpper === 'COMPLETE') {
+            return true;
+          }
+          if (statusUpper === 'REJECTED' || statusUpper === 'CANCELLED') {
+            logger.warn(`Order ${orderid} was ${order.status}. Detail: ${order.text || 'None'}`);
+            return false;
+          }
+        }
+      } catch (err) {
+        logger.warn(`Failed to poll order status: ${err}`);
+      }
+    }
+    return false;
+  }
+
   private async placeAndConfirmOrder(
     leg: StrategyLeg,
     isPaper: boolean,
   ): Promise<OrderRecord | null> {
-    const { instrumentManager } = await import('../instruments/instrumentManager');
-
     if (!isPaper) {
-      // 1. Liquidity check & strike adjustment loop
-      let currentStrike = leg.strike;
-      let currentToken = leg.symboltoken;
-      let currentSymbol = leg.tradingsymbol;
-
-      const isSearchingLiquidity = true;
-      while (isSearchingLiquidity) {
-        try {
-          const marketData = await brokerClient.getMarketData(leg.exchange, currentToken);
-          const { ltp, bid, ask } = marketData;
-
-          const spread = ask - bid;
-          const midpoint = (bid + ask) / 2;
-          const isPoorLiquidity =
-            ltp > 5 && (spread / ltp > 0.1 || Math.abs(ltp - midpoint) / ltp > 0.1);
-
-          if (!isPoorLiquidity) {
-            leg.symboltoken = currentToken;
-            leg.tradingsymbol = currentSymbol;
-            leg.strike = currentStrike;
-            break;
-          }
-
-          logger.info(
-            `Poor liquidity detected for ${currentSymbol} (LTP: ${ltp}, Bid: ${bid}, Ask: ${ask}). Shifting strike...`,
-          );
-        } catch (marketErr) {
-          logger.warn(`Failed to fetch market data for quote check, proceeding: ${marketErr}`);
-          break;
-        }
-
-        const step = leg.tradingsymbol.toUpperCase().includes('SENSEX') ? 100 : 50;
-        const underlying = leg.tradingsymbol.toUpperCase().includes('SENSEX') ? 'SENSEX' : 'NIFTY';
-        const underlyingExchange = underlying === 'NIFTY' ? 'NSE' : 'BSE';
-        const underlyingSymbol = underlying === 'NIFTY' ? 'Nifty 50' : 'SENSEX';
-        const underlyingToken = underlying === 'NIFTY' ? '99926000' : '1';
-
-        let underlyingLtp = 0;
-        try {
-          underlyingLtp = await brokerClient.getLtp(
-            underlyingExchange,
-            underlyingSymbol,
-            underlyingToken,
-          );
-        } catch (ltpErr) {
-          logger.warn(`Failed to get underlying LTP, aborting strike shift: ${ltpErr}`);
-          break;
-        }
-
-        if (leg.type === 'CE') {
-          currentStrike =
-            currentStrike > underlyingLtp ? currentStrike - step : currentStrike + step;
-        } else {
-          currentStrike =
-            currentStrike < underlyingLtp ? currentStrike + step : currentStrike - step;
-        }
-
-        const nextInst = instrumentManager.getInstrument(
-          underlying,
-          leg.expiry,
-          currentStrike,
-          leg.type,
-        );
-        if (!nextInst) {
-          logger.error(
-            `Could not find instrument for shifted strike ${currentStrike} on expiry ${leg.expiry}`,
-          );
-          break;
-        }
-
-        currentToken = nextInst.symboltoken;
-        currentSymbol = nextInst.tradingsymbol;
-      }
-
-      // 2. Duplicate order prevention using resolved token
       try {
         const orderBook = await brokerClient.getOrderBook();
         const existing = orderBook.find(
@@ -219,29 +253,48 @@ export class ExecutionManager implements IExecutionManager {
       };
     }
 
-    // Live order
-    const orderParams: PlaceOrderParams = {
-      variety: 'NORMAL',
-      tradingsymbol: leg.tradingsymbol,
-      symboltoken: leg.symboltoken,
-      transactiontype: leg.action,
-      exchange: leg.exchange,
-      ordertype: 'MARKET',
-      producttype: 'CARRYFORWARD',
-      duration: 'DAY',
-      quantity: leg.quantity,
-    };
+    let orderid = await this.placeLimitOrderWithReprice(
+      leg,
+      leg.action,
+      0.03,
+      3000,
+      4,
+    );
+
+    if (!orderid) {
+      await notifier.send(
+        `⚠️ ${leg.tradingsymbol} unfilled at capped slippage — sweeping at MARKET. Check fill quality manually.`
+      );
+      logger.warn(`Limit reprice exhausted for entry leg ${leg.tradingsymbol}. Sweeping at MARKET.`);
+
+      const orderParams: PlaceOrderParams = {
+        variety: 'NORMAL',
+        tradingsymbol: leg.tradingsymbol,
+        symboltoken: leg.symboltoken,
+        transactiontype: leg.action,
+        exchange: leg.exchange,
+        ordertype: 'MARKET',
+        producttype: 'CARRYFORWARD',
+        duration: 'DAY',
+        quantity: leg.quantity,
+      };
+
+      try {
+        orderid = await brokerClient.placeOrder(orderParams);
+        logger.info(`Placed market fallback order ${orderid} for ${leg.tradingsymbol}. Polling for completeness...`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`Error executing market fallback order: ${msg}`);
+        return null;
+      }
+    }
 
     try {
-      const orderid = await brokerClient.placeOrder(orderParams);
-      logger.info(`Placed order ${orderid} for ${leg.tradingsymbol}. Polling for completeness...`);
-
       const isComplete = await this.pollOrderStatus(orderid);
       if (!isComplete) {
         return null;
       }
 
-      // Fetch filled price from order book
       const orderBook = await brokerClient.getOrderBook();
       const filledOrder = orderBook.find((o) => o.orderid === orderid);
       const filledPrice = filledOrder?.averageprice || filledOrder?.price || ltp;
@@ -316,7 +369,7 @@ export class ExecutionManager implements IExecutionManager {
     }
   }
 
-  async executeExit(underlying: string, week: string, isPaper: boolean): Promise<boolean> {
+  async executeExit(underlying: string, week: string, isPaper: boolean, isStoploss = false): Promise<boolean> {
     const pos = positionsStore.readPosition(underlying, week, isPaper);
     if (!pos || pos.status !== 'open') {
       logger.warn(`No open positions found to exit for ${underlying} week ${week}.`);
@@ -324,20 +377,16 @@ export class ExecutionManager implements IExecutionManager {
     }
 
     const modeStr = isPaper ? 'PAPER' : 'LIVE';
-    logger.info(`Starting exit unwind for ${underlying} in ${modeStr} mode...`);
+    logger.info(`Starting exit unwind for ${underlying} in ${modeStr} mode (isStoploss: ${isStoploss})...`);
 
-    // In exit unwind, we close SHORT legs first (buy to cover) before closing LONG legs
-    // Short legs are SELL orders in the entry basket. We must BUY them to close.
-    // Long legs are BUY orders in the entry basket. We must SELL them to close.
     const shortLegs = pos.orders.filter((o) => o.transactiontype === 'SELL');
     const longLegs = pos.orders.filter((o) => o.transactiontype === 'BUY');
 
     const closedOrders: OrderRecord[] = [];
     let exitSuccess = true;
 
-    // Step 1: Buy back short legs first to avoid margin spikes
     for (const leg of shortLegs) {
-      const order = await this.placeExitLeg(leg, 'BUY', isPaper);
+      const order = await this.placeExitLeg(leg, 'BUY', isPaper, isStoploss);
       if (!order) {
         logger.error(`Failed to close short leg ${leg.tradingsymbol}`);
         exitSuccess = false;
@@ -346,9 +395,8 @@ export class ExecutionManager implements IExecutionManager {
       }
     }
 
-    // Step 2: Sell long legs
     for (const leg of longLegs) {
-      const order = await this.placeExitLeg(leg, 'SELL', isPaper);
+      const order = await this.placeExitLeg(leg, 'SELL', isPaper, isStoploss);
       if (!order) {
         logger.error(`Failed to close long leg ${leg.tradingsymbol}`);
         exitSuccess = false;
@@ -357,10 +405,6 @@ export class ExecutionManager implements IExecutionManager {
       }
     }
 
-    // Calculate PnL
-    // PnL = (Sell price - Buy price) * Qty
-    // For legs that were entered as BUY, PnL = (exit sell price - entry buy price) * Qty
-    // For legs that were entered as SELL, PnL = (entry sell price - exit buy price) * Qty
     let totalPnl = 0;
     for (const entryLeg of pos.orders) {
       const exitLeg = closedOrders.find(
@@ -381,7 +425,6 @@ export class ExecutionManager implements IExecutionManager {
     pos.realizedPnl = totalPnl;
     positionsStore.writePosition(underlying, week, isPaper, pos);
 
-    // Disconnect/cleanup SmartStream after exit
     smartStream.disconnect();
 
     await notifier.send(
@@ -394,6 +437,7 @@ export class ExecutionManager implements IExecutionManager {
     entryOrder: OrderRecord,
     exitAction: 'BUY' | 'SELL',
     isPaper: boolean,
+    isStoploss = false,
   ): Promise<OrderRecord | null> {
     const ltp = await brokerClient.getLtp(
       entryOrder.exchange,
@@ -417,20 +461,45 @@ export class ExecutionManager implements IExecutionManager {
       };
     }
 
-    const orderParams: PlaceOrderParams = {
-      variety: 'NORMAL',
-      tradingsymbol: entryOrder.tradingsymbol,
-      symboltoken: entryOrder.symboltoken,
-      transactiontype: exitAction,
-      exchange: entryOrder.exchange,
-      ordertype: 'MARKET',
-      producttype: 'CARRYFORWARD',
-      duration: 'DAY',
-      quantity: entryOrder.quantity,
-    };
+    const maxSlippagePct = isStoploss ? 0.015 : 0.03;
+    const maxAttempts = isStoploss ? 2 : 4;
+
+    let orderid = await this.placeLimitOrderWithReprice(
+      entryOrder,
+      exitAction,
+      maxSlippagePct,
+      3000,
+      maxAttempts,
+    );
+
+    if (!orderid) {
+      await notifier.send(
+        `⚠️ ${entryOrder.tradingsymbol} unfilled at capped slippage — sweeping at MARKET. Check fill quality manually.`
+      );
+      logger.warn(`Limit reprice exhausted for exit leg ${entryOrder.tradingsymbol}. Sweeping at MARKET.`);
+
+      const orderParams: PlaceOrderParams = {
+        variety: 'NORMAL',
+        tradingsymbol: entryOrder.tradingsymbol,
+        symboltoken: entryOrder.symboltoken,
+        transactiontype: exitAction,
+        exchange: entryOrder.exchange,
+        ordertype: 'MARKET',
+        producttype: 'CARRYFORWARD',
+        duration: 'DAY',
+        quantity: entryOrder.quantity,
+      };
+
+      try {
+        orderid = await brokerClient.placeOrder(orderParams);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`Error executing exit fallback market order: ${msg}`);
+        return null;
+      }
+    }
 
     try {
-      const orderid = await brokerClient.placeOrder(orderParams);
       const isComplete = await this.pollOrderStatus(orderid);
       if (!isComplete) return null;
 
@@ -450,7 +519,7 @@ export class ExecutionManager implements IExecutionManager {
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      logger.error(`Error executing exit order: ${msg}`);
+      logger.error(`Error executing exit order check: ${msg}`);
       return null;
     }
   }
@@ -512,7 +581,7 @@ export class ExecutionManager implements IExecutionManager {
         `🚨 STOPLOSS BREACHED [${isPaper ? 'PAPER' : 'LIVE'}] for ${underlying}: P&L is ₹${currentPnl.toLocaleString()}. Unwinding positions...`,
       );
 
-      const success = await this.executeExit(underlying, week, isPaper);
+      const success = await this.executeExit(underlying, week, isPaper, true);
       if (success) {
         // Set skip state for rest of week
         positionsStore.setWeeklySkipState(underlying, week, isPaper, true);
