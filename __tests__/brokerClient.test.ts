@@ -232,6 +232,8 @@ describe('BrokerClient', () => {
       errorcode: '999',
     });
 
-    await expect(client.getMarketData('NFO', 'token123')).rejects.toThrow('Market quote check failed');
+    await expect(client.getMarketData('NFO', 'token123')).rejects.toThrow(
+      'Market quote check failed',
+    );
   });
 });

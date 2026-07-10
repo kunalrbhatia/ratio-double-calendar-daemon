@@ -36,7 +36,7 @@ async function bootstrap() {
     const { smartStream } = await import('./execution/smartStream');
     const { positionsStore } = await import('./positions/positionsStore');
 
-    async function manageWebSocketConnection() {
+    const manageWebSocketConnection = async () => {
       const isPaper = flagWatcher.isPaperMode();
       const liveDir = path.resolve(process.cwd(), 'data', 'live');
 
@@ -45,7 +45,9 @@ async function bootstrap() {
         ? fs.readdirSync(liveDir).filter((f) => f.endsWith('.json'))
         : [];
       if (liveFiles.length === 0) {
-        logger.info('No position files exist in data/live/. Skipping WebSocket connection entirely.');
+        logger.info(
+          'No position files exist in data/live/. Skipping WebSocket connection entirely.',
+        );
         if (smartStream.getIsConnected()) {
           smartStream.disconnect();
         }
@@ -60,7 +62,7 @@ async function bootstrap() {
         day >= 1 &&
         day <= 5 &&
         minutesSinceMidnight >= 555 && // 09:15 IST
-        minutesSinceMidnight <= 930;  // 15:30 IST
+        minutesSinceMidnight <= 930; // 15:30 IST
 
       if (!isMarketHours) {
         if (smartStream.getIsConnected()) {
@@ -106,7 +108,7 @@ async function bootstrap() {
           );
         }
       }
-    }
+    };
 
     // Call on startup
     await manageWebSocketConnection();

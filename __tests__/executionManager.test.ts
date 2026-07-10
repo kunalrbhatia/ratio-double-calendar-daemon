@@ -81,7 +81,7 @@ describe('ExecutionManager', () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     (brokerClient.getLtp as jest.Mock).mockResolvedValue(100);
 
-    let placedOrders: any[] = [];
+    const placedOrders: any[] = [];
     (brokerClient.placeOrder as jest.Mock).mockImplementation(async (params) => {
       const orderid = `ORD-${params.symboltoken}`;
       placedOrders.push({
@@ -113,7 +113,7 @@ describe('ExecutionManager', () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     (brokerClient.getLtp as jest.Mock).mockResolvedValue(100);
 
-    let placedOrders: any[] = [];
+    const placedOrders: any[] = [];
     (brokerClient.placeOrder as jest.Mock).mockImplementation(async (params) => {
       const orderid = 'BUY-ORD-ID';
       placedOrders.push({
@@ -142,7 +142,7 @@ describe('ExecutionManager', () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     (brokerClient.getLtp as jest.Mock).mockResolvedValue(100);
 
-    let placedOrders: any[] = [];
+    const placedOrders: any[] = [];
     (brokerClient.placeOrder as jest.Mock).mockImplementation(async (params) => {
       const orderid = params.transactiontype === 'BUY' ? 'BUY-ORD-ID' : 'SELL-ORD-ID';
       placedOrders.push({
@@ -379,7 +379,7 @@ describe('ExecutionManager', () => {
 
   test('performs liquidity check and strike shift for Nifty CE', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
-    
+
     // First token (T1_CE_BUY) has poor liquidity: ltp=100, bid/ask=250/255 -> spread=5, midpoint=252.5. Diff to LTP is 152.5%
     // Shifted token (T1_CE_SHIFTED) has good liquidity: ltp=100, bid=99.5, ask=100.5
     (brokerClient.getMarketData as jest.Mock)

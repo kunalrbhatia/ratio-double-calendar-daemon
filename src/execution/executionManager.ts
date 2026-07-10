@@ -100,7 +100,8 @@ export class ExecutionManager implements IExecutionManager {
       let currentToken = leg.symboltoken;
       let currentSymbol = leg.tradingsymbol;
 
-      while (true) {
+      const isSearchingLiquidity = true;
+      while (isSearchingLiquidity) {
         try {
           const marketData = await brokerClient.getMarketData(leg.exchange, currentToken);
           const { ltp, bid, ask } = marketData;
@@ -108,8 +109,7 @@ export class ExecutionManager implements IExecutionManager {
           const spread = ask - bid;
           const midpoint = (bid + ask) / 2;
           const isPoorLiquidity =
-            ltp > 5 &&
-            (spread / ltp > 0.1 || Math.abs(ltp - midpoint) / ltp > 0.1);
+            ltp > 5 && (spread / ltp > 0.1 || Math.abs(ltp - midpoint) / ltp > 0.1);
 
           if (!isPoorLiquidity) {
             leg.symboltoken = currentToken;
