@@ -268,7 +268,7 @@ describe('SmartStreamClient', () => {
     smartStream.subscribe(['token123']); // should check ws/isConnected and do nothing
   });
 
-  test('ping interval is started on open and cleared on close', async () => {
+  test('heartbeat interval re-subscribes on open and clears on close', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     (sessionManager.getJwtToken as jest.Mock).mockReturnValue('mockJwt');
     (sessionManager.getFeedToken as jest.Mock).mockReturnValue('mockFeed');
@@ -276,10 +276,8 @@ describe('SmartStreamClient', () => {
     const callback = jest.fn();
     await smartStream.connect(callback);
 
-    mockWsInstance.ping = jest.fn();
-
-    // Set a dummy interval to cover the branch where pingInterval already exists on open
-    (smartStream as any).pingInterval = setInterval(() => {}, 1000);
+    // Set a dummy interval to cover the branch where heartbeatInterval already exists on open
+    (smartStream as any).heartbeatInterval = setInterval(() => {}, 1000);
 
     // Simulate WS Open to start interval
     const openCallback = mockWsInstance.on.mock.calls.find((c: any) => c[0] === 'open')[1];
@@ -287,17 +285,20 @@ describe('SmartStreamClient', () => {
 
     expect(smartStream.getIsConnected()).toBe(true);
 
-    // Advance timer to trigger ping
-    jest.advanceTimersByTime(30000);
-    expect(mockWsInstance.ping).toHaveBeenCalled();
+    // Subscribe a token so the heartbeat has something to re-subscribe
+    smartStream.subscribe(['SOME_TOKEN']);
+
+    // Advance timer to trigger heartbeat (re-subscribe)
+    jest.advanceTimersByTime(45000);
+    expect(mockWsInstance.send).toHaveBeenCalled();
 
     // Close the socket to clear interval
     const closeCallback = mockWsInstance.on.mock.calls.find((c: any) => c[0] === 'close')[1];
     closeCallback();
 
-    mockWsInstance.ping.mockClear();
-    jest.advanceTimersByTime(30000);
-    expect(mockWsInstance.ping).not.toHaveBeenCalled();
+    mockWsInstance.send.mockClear();
+    jest.advanceTimersByTime(45000);
+    expect(mockWsInstance.send).not.toHaveBeenCalled();
   });
 
   test('covers auth failure retry pathway', async () => {
@@ -305,8 +306,8 @@ describe('SmartStreamClient', () => {
     (sessionManager.refreshSession as jest.Mock).mockRejectedValue(new Error('auth failed'));
     (sessionManager.login as jest.Mock).mockRejectedValue(new Error('login failed'));
 
-    // Set a dummy interval to cover the branch where pingInterval exists during auth failure
-    (smartStream as any).pingInterval = setInterval(() => {}, 1000);
+    // Set a dummy interval to cover the branch where heartbeatInterval exists during auth failure
+    (smartStream as any).heartbeatInterval = setInterval(() => {}, 1000);
 
     await smartStream.connect(jest.fn());
     expect(WebSocket).not.toHaveBeenCalled();
@@ -320,7 +321,7 @@ describe('SmartStreamClient', () => {
     (sessionManager.refreshSession as jest.Mock).mockRejectedValue('auth failed string');
     (sessionManager.login as jest.Mock).mockRejectedValue('login failed string');
 
-    (smartStream as any).pingInterval = setInterval(() => {}, 1000);
+    (smartStream as any).heartbeatInterval = setInterval(() => {}, 1000);
 
     await smartStream.connect(jest.fn());
     expect(WebSocket).not.toHaveBeenCalled();

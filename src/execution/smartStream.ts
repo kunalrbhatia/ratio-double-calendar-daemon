@@ -16,21 +16,21 @@ class SmartStreamClient {
   private ws: WebSocket | null = null;
   private isConnected = false;
   private mockInterval: NodeJS.Timeout | null = null;
-  private pingInterval: NodeJS.Timeout | null = null;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
   private callback: TickCallback | null = null;
   private subscribedTokens: Set<string> = new Set();
   private ltpCache: Map<string, number> = new Map();
 
-  public getCachedLtp(token: string): number | null {
+  getCachedLtp(token: string): number | null {
     return this.ltpCache.get(token) || null;
   }
 
-  public getIsConnected(): boolean {
+  getIsConnected(): boolean {
     return this.isConnected;
   }
 
-  public async connect(callback: TickCallback) {
-    this.callback = (tick) => {
+  async connect(callback: TickCallback): Promise<void> {
+    this.callback = (tick: TickData) => {
       this.ltpCache.set(tick.token, tick.ltp);
       callback(tick);
     };
@@ -42,28 +42,23 @@ class SmartStreamClient {
       return;
     }
 
+    // Refresh session before connecting
     try {
       logger.info('Refreshing session before connecting/reconnecting SmartStream WebSocket...');
       try {
         await sessionManager.refreshSession();
-      } catch (refreshErr) {
-        logger.warn(
-          `Session refresh failed: ${
-            refreshErr instanceof Error ? refreshErr.message : refreshErr
-          }. Attempting full login...`,
-        );
+      } catch (refreshErr: any) {
+        logger.warn(`Session refresh failed: ${refreshErr.message}. Attempting full login...`);
         await sessionManager.login();
       }
     } catch (authError: any) {
       logger.error(
-        `Failed to refresh session or login during SmartStream connect: ${
-          authError?.message || authError
-        }`,
+        `Failed to refresh session or login during SmartStream connect: ${authError?.message || authError}`,
       );
       this.isConnected = false;
-      if (this.pingInterval) {
-        clearInterval(this.pingInterval);
-        this.pingInterval = null;
+      if (this.heartbeatInterval) {
+        clearInterval(this.heartbeatInterval);
+        this.heartbeatInterval = null;
       }
       setTimeout(() => {
         this.connect(callback);
@@ -85,8 +80,8 @@ class SmartStreamClient {
       }
 
       const url = 'wss://smartapisocket.angelone.in/smart-stream';
-      const wsHeaders = {
-        Authorization: jwtToken,
+      const wsHeaders: Record<string, string> = {
+        Authorization: 'Bearer ' + jwtToken,
         'x-api-key': env.API_KEY,
         'x-client-code': env.CLIENT_CODE,
         'x-feed-token': feedToken,
@@ -101,14 +96,20 @@ class SmartStreamClient {
         logger.info('SmartStream WebSocket connection established successfully.');
         this.isConnected = true;
 
-        if (this.pingInterval) {
-          clearInterval(this.pingInterval);
+        // Clear any existing heartbeat
+        if (this.heartbeatInterval) {
+          clearInterval(this.heartbeatInterval);
         }
-        this.pingInterval = setInterval(() => {
-          if (this.ws && this.isConnected) {
-            this.ws.ping();
+
+        // Heartbeat: re-subscribe every 45s to keep the connection alive.
+        // Angel One's SmartStream drops idle WebSockets after ~120s.
+        // Standard ws.ping() frames are not responded to, so we re-subscribe instead.
+        this.heartbeatInterval = setInterval(() => {
+          if (this.ws && this.isConnected && this.subscribedTokens.size > 0) {
+            logger.info('SmartStream heartbeat: re-subscribing to tokens...');
+            this.subscribe(Array.from(this.subscribedTokens));
           }
-        }, 30000);
+        }, 45000);
 
         // Re-subscribe if we had previous tokens
         if (this.subscribedTokens.size > 0) {
@@ -146,9 +147,9 @@ class SmartStreamClient {
       this.ws.on('close', () => {
         logger.warn('SmartStream WebSocket connection closed. Attempting reconnect in 5s...');
         this.isConnected = false;
-        if (this.pingInterval) {
-          clearInterval(this.pingInterval);
-          this.pingInterval = null;
+        if (this.heartbeatInterval) {
+          clearInterval(this.heartbeatInterval);
+          this.heartbeatInterval = null;
         }
         setTimeout(() => {
           this.connect(callback);
@@ -159,7 +160,7 @@ class SmartStreamClient {
     }
   }
 
-  public subscribe(tokens: string[]) {
+  subscribe(tokens: string[]): void {
     tokens.forEach((t) => this.subscribedTokens.add(t));
 
     if (flagWatcher.isPaperMode()) {
@@ -172,12 +173,10 @@ class SmartStreamClient {
         action: 1, // 1 = Subscribe
         params: {
           mode: 1, // 1 = LTP
-          tokenList: [
-            {
-              exchangeType: 2, // 2 = NFO (Options)
-              tokens,
-            },
-          ],
+          tokenList: tokens.map((t) => ({
+            exchangeType: 2, // 2 = NFO (Options)
+            tokens: [t],
+          })),
         },
       };
       this.ws.send(JSON.stringify(payload));
@@ -185,11 +184,11 @@ class SmartStreamClient {
     }
   }
 
-  public disconnect() {
+  disconnect(): void {
     this.stopMockGenerator();
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = null;
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
     if (this.ws) {
       this.ws.removeAllListeners();
@@ -202,15 +201,15 @@ class SmartStreamClient {
     logger.info('SmartStream WebSocket disconnected.');
   }
 
-  private startMockGenerator() {
+  private startMockGenerator(): void {
     this.stopMockGenerator();
-
     this.mockInterval = setInterval(() => {
       if (!this.callback) return;
 
       const currentWeek = positionsStore.getCurrentWeekString();
-      const openOrders: any[] = [];
+      const openOrders: Array<{ symboltoken: string; price: number }> = [];
       const seenTokens = new Set<string>();
+
       for (const underlying of ['NIFTY', 'SENSEX']) {
         const positions = positionsStore.readPosition(underlying, currentWeek, true);
         if (positions && positions.status === 'open') {
@@ -236,7 +235,6 @@ class SmartStreamClient {
           const currentPrice = this.ltpCache.get(order.symboltoken) || order.price;
           const change = (Math.random() - 0.53) * 1.5;
           const nextPrice = Math.max(0.05, currentPrice + change);
-
           this.callback({
             token: order.symboltoken,
             ltp: parseFloat(nextPrice.toFixed(2)),
@@ -246,7 +244,7 @@ class SmartStreamClient {
     }, 1500);
   }
 
-  private stopMockGenerator() {
+  private stopMockGenerator(): void {
     if (this.mockInterval) {
       clearInterval(this.mockInterval);
       this.mockInterval = null;

@@ -25,8 +25,8 @@ The strategy consists of a 6-leg options basket matching specific delta targets:
 
 | Action | Qty (Lots) | Expiry | Type | Target Delta |
 | :--- | :---: | :---: | :---: | :---: |
-| **SELL** | 3 | $T_0$ (Current) | Call | $\sim 0.20$ |
-| **SELL** | 3 | $T_0$ (Current) | Put | $\sim 0.20$ |
+| **SELL** | 3 | $T_0$ (Current) | Call | $\sim 0.15$ |
+| **SELL** | 3 | $T_0$ (Current) | Put | $\sim 0.15$ |
 | **BUY** | 1 | $T_2$ (Week After Next) | Call | $\sim 0.30$ |
 | **BUY** | 1 | $T_2$ (Week After Next) | Put | $\sim 0.30$ |
 | **BUY** | 2 | $T_2$ (Week After Next) | Call | $\sim 0.20$ |
@@ -52,7 +52,8 @@ The core logic of the Ratio Double Calendar configuration focuses on extracting 
 
 *   **Runtime & Environment:** Node.js (18+), compiled via `tsc`, orchestrated by `pm2`.
 *   **Package Manager:** `pnpm`.
-*   **Broker Integration:** **Angel One SmartAPI** via direct REST calls using Node's built-in `fetch` wrapper.
+*   **Broker Integration:** **Angel One SmartAPI** via direct REST calls and **SmartStream WebSocket** for real-time LTP streaming.
+*   **SmartStream WebSocket:** Real-time P&L monitoring via `wss://smartapisocket.angelone.in/smart-stream`. Uses a re-subscribe heartbeat every 45s to keep the connection alive (standard `ws.ping()` frames are not supported by the SmartStream server). Auto-reconnects with session refresh on disconnect.
 *   **Validation:** **Zod** schemas validate all boundaries (`.env` configurations, API responses, instrument cache, and `positions.json` state).
 *   **Time & Dates:** **Day.js** (with UTC and Timezone plugins configured for IST) for schedules, expiry tracking, and age cleanup.
 *   **Data Shaping:** **lodash** for grouping, sorting, and structural operations.
@@ -74,6 +75,9 @@ The core logic of the Ratio Double Calendar configuration focuses on extracting 
 │   ├── instruments/            # Instrument scrip master parser & cache mapping
 │   ├── strategy/               # VIX filters, delta matching, & basket builder
 │   ├── execution/              # Margin-benefit execution sequencing
+│   │   ├── brokerClient.ts      # SmartAPI REST client
+│   │   ├── executionManager.ts  # Order sequencing, P&L monitoring, entry/exit
+│   │   └── smartStream.ts       # SmartStream WebSocket client (real-time LTP feed)
 │   ├── risk/                   # Margin calculator & 1% mark-to-market loss monitor
 │   ├── scheduler/              # node-cron scheduler (IST execution window)
 │   ├── http/                   # fetch-based HTTP client wrapper (retry, timeouts)
