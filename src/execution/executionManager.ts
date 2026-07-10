@@ -9,7 +9,12 @@ import smartStream from './smartStream';
 
 export interface IExecutionManager {
   executeEntry(underlying: string, basket: StrategyLeg[]): Promise<boolean>;
-  executeExit(underlying: string, week: string, isPaper: boolean, isStoploss?: boolean): Promise<boolean>;
+  executeExit(
+    underlying: string,
+    week: string,
+    isPaper: boolean,
+    isStoploss?: boolean,
+  ): Promise<boolean>;
   monitorPnl(underlying: string, week: string, isPaper: boolean): Promise<void>;
 }
 
@@ -126,7 +131,7 @@ export class ExecutionManager implements IExecutionManager {
         const limitPrice = Math.round(targetPrice / 0.05) * 0.05;
 
         logger.info(
-          `[Reprice Attempt ${attempt + 1}/${maxAttempts}] Placing LIMIT ${transactiontype} order for ${leg.tradingsymbol} @ ₹${limitPrice.toFixed(2)} (LTP: ₹${ltp}, Bid: ₹${bid}, Ask: ₹${ask})`
+          `[Reprice Attempt ${attempt + 1}/${maxAttempts}] Placing LIMIT ${transactiontype} order for ${leg.tradingsymbol} @ ₹${limitPrice.toFixed(2)} (LTP: ₹${ltp}, Bid: ₹${bid}, Ask: ₹${ask})`,
         );
 
         const orderParams: PlaceOrderParams = {
@@ -175,7 +180,10 @@ export class ExecutionManager implements IExecutionManager {
   }
 
   private async pollOrderStatusWithInterval(orderid: string, durationMs: number): Promise<boolean> {
-    const attempts = Math.min(this.maxPollAttempts, Math.max(1, Math.floor(durationMs / this.pollIntervalMs)));
+    const attempts = Math.min(
+      this.maxPollAttempts,
+      Math.max(1, Math.floor(durationMs / this.pollIntervalMs)),
+    );
     for (let attempt = 0; attempt < attempts; attempt++) {
       await new Promise((r) => setTimeout(r, this.pollIntervalMs));
       try {
@@ -253,19 +261,15 @@ export class ExecutionManager implements IExecutionManager {
       };
     }
 
-    let orderid = await this.placeLimitOrderWithReprice(
-      leg,
-      leg.action,
-      0.03,
-      3000,
-      4,
-    );
+    let orderid = await this.placeLimitOrderWithReprice(leg, leg.action, 0.03, 3000, 4);
 
     if (!orderid) {
       await notifier.send(
-        `⚠️ ${leg.tradingsymbol} unfilled at capped slippage — sweeping at MARKET. Check fill quality manually.`
+        `⚠️ ${leg.tradingsymbol} unfilled at capped slippage — sweeping at MARKET. Check fill quality manually.`,
       );
-      logger.warn(`Limit reprice exhausted for entry leg ${leg.tradingsymbol}. Sweeping at MARKET.`);
+      logger.warn(
+        `Limit reprice exhausted for entry leg ${leg.tradingsymbol}. Sweeping at MARKET.`,
+      );
 
       const orderParams: PlaceOrderParams = {
         variety: 'NORMAL',
@@ -281,7 +285,9 @@ export class ExecutionManager implements IExecutionManager {
 
       try {
         orderid = await brokerClient.placeOrder(orderParams);
-        logger.info(`Placed market fallback order ${orderid} for ${leg.tradingsymbol}. Polling for completeness...`);
+        logger.info(
+          `Placed market fallback order ${orderid} for ${leg.tradingsymbol}. Polling for completeness...`,
+        );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         logger.error(`Error executing market fallback order: ${msg}`);
@@ -369,7 +375,12 @@ export class ExecutionManager implements IExecutionManager {
     }
   }
 
-  async executeExit(underlying: string, week: string, isPaper: boolean, isStoploss = false): Promise<boolean> {
+  async executeExit(
+    underlying: string,
+    week: string,
+    isPaper: boolean,
+    isStoploss = false,
+  ): Promise<boolean> {
     const pos = positionsStore.readPosition(underlying, week, isPaper);
     if (!pos || pos.status !== 'open') {
       logger.warn(`No open positions found to exit for ${underlying} week ${week}.`);
@@ -377,7 +388,9 @@ export class ExecutionManager implements IExecutionManager {
     }
 
     const modeStr = isPaper ? 'PAPER' : 'LIVE';
-    logger.info(`Starting exit unwind for ${underlying} in ${modeStr} mode (isStoploss: ${isStoploss})...`);
+    logger.info(
+      `Starting exit unwind for ${underlying} in ${modeStr} mode (isStoploss: ${isStoploss})...`,
+    );
 
     const shortLegs = pos.orders.filter((o) => o.transactiontype === 'SELL');
     const longLegs = pos.orders.filter((o) => o.transactiontype === 'BUY');
@@ -474,9 +487,11 @@ export class ExecutionManager implements IExecutionManager {
 
     if (!orderid) {
       await notifier.send(
-        `⚠️ ${entryOrder.tradingsymbol} unfilled at capped slippage — sweeping at MARKET. Check fill quality manually.`
+        `⚠️ ${entryOrder.tradingsymbol} unfilled at capped slippage — sweeping at MARKET. Check fill quality manually.`,
       );
-      logger.warn(`Limit reprice exhausted for exit leg ${entryOrder.tradingsymbol}. Sweeping at MARKET.`);
+      logger.warn(
+        `Limit reprice exhausted for exit leg ${entryOrder.tradingsymbol}. Sweeping at MARKET.`,
+      );
 
       const orderParams: PlaceOrderParams = {
         variety: 'NORMAL',

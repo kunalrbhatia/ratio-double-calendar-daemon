@@ -375,6 +375,8 @@ describe('BrokerClient', () => {
       errorcode: '123',
     });
 
-    await expect(client.cancelOrder('ORD12345', 'NORMAL')).rejects.toThrow('Order cancellation failed');
+    await expect(client.cancelOrder('ORD12345', 'NORMAL')).rejects.toThrow(
+      'Order cancellation failed',
+    );
   });
 });

@@ -40,7 +40,9 @@ export interface IBrokerClient {
   getMarketDataBatch(
     exchange: string,
     symboltokens: string[],
-  ): Promise<Map<string, { ltp: number; bid: number; ask: number; bidQty: number; askQty: number }>>;
+  ): Promise<
+    Map<string, { ltp: number; bid: number; ask: number; bidQty: number; askQty: number }>
+  >;
   placeOrder(params: PlaceOrderParams): Promise<string>;
   cancelOrder(orderid: string, variety: string): Promise<void>;
   getOrderBook(): Promise<OrderBookItem[]>;
@@ -139,8 +141,13 @@ export class BrokerClient implements IBrokerClient {
   async getMarketDataBatch(
     exchange: string,
     symboltokens: string[],
-  ): Promise<Map<string, { ltp: number; bid: number; ask: number; bidQty: number; askQty: number }>> {
-    const resultMap = new Map<string, { ltp: number; bid: number; ask: number; bidQty: number; askQty: number }>();
+  ): Promise<
+    Map<string, { ltp: number; bid: number; ask: number; bidQty: number; askQty: number }>
+  > {
+    const resultMap = new Map<
+      string,
+      { ltp: number; bid: number; ask: number; bidQty: number; askQty: number }
+    >();
     if (symboltokens.length === 0) {
       return resultMap;
     }

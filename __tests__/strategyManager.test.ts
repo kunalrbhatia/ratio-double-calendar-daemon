@@ -14,19 +14,21 @@ describe('StrategyManager', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     manager = new StrategyManager();
-    (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(async (exchange: string, tokens: string[]) => {
-      const map = new Map();
-      for (const token of tokens) {
-        map.set(token, {
-          ltp: 100,
-          bid: 99.5,
-          ask: 100.5,
-          bidQty: 1000,
-          askQty: 1000,
-        });
-      }
-      return map;
-    });
+    (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(
+      async (exchange: string, tokens: string[]) => {
+        const map = new Map();
+        for (const token of tokens) {
+          map.set(token, {
+            ltp: 100,
+            bid: 99.5,
+            ask: 100.5,
+            bidQty: 1000,
+            askQty: 1000,
+          });
+        }
+        return map;
+      },
+    );
   });
 
   test('checkVix passes when VIX is between 10 and 13.5', async () => {
@@ -151,19 +153,21 @@ describe('StrategyManager', () => {
       },
     );
 
-    (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(async (exchange: string, tokens: string[]) => {
-      const map = new Map();
-      for (const token of tokens) {
-        map.set(token, {
-          ltp: 100,
-          bid: 99.5,
-          ask: 100.5,
-          bidQty: 0,
-          askQty: 0,
-        });
-      }
-      return map;
-    });
+    (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(
+      async (exchange: string, tokens: string[]) => {
+        const map = new Map();
+        for (const token of tokens) {
+          map.set(token, {
+            ltp: 100,
+            bid: 99.5,
+            ask: 100.5,
+            bidQty: 0,
+            askQty: 0,
+          });
+        }
+        return map;
+      },
+    );
 
     const basket = await manager.buildBasket('NIFTY');
     expect(basket).not.toBeNull();
@@ -176,11 +180,47 @@ describe('StrategyManager', () => {
     const maxSpreadPct = 0.08;
     const inst = { lotsize: 50 } as any;
 
-    expect((manager as any).isLiquid({ ltp: 0, bid: 99.5, ask: 100.5, bidQty: 100, askQty: 100, inst }, minLotsDepth, maxSpreadPct)).toBe(false);
-    expect((manager as any).isLiquid({ ltp: 100, bid: 90, ask: 110, bidQty: 100, askQty: 100, inst }, minLotsDepth, maxSpreadPct)).toBe(false);
-    expect((manager as any).isLiquid({ ltp: 100, bid: 110, ask: 110, bidQty: 100, askQty: 100, inst }, minLotsDepth, maxSpreadPct)).toBe(false);
-    expect((manager as any).isLiquid({ ltp: 100, bid: 99.5, ask: 100.5, bidQty: 50, askQty: 100, inst }, minLotsDepth, maxSpreadPct)).toBe(false);
-    expect((manager as any).isLiquid({ ltp: 100, bid: 99.5, ask: 100.5, bidQty: 100, askQty: 50, inst }, minLotsDepth, maxSpreadPct)).toBe(false);
-    expect((manager as any).isLiquid({ ltp: 100, bid: 99.5, ask: 100.5, bidQty: 100, askQty: 100, inst }, minLotsDepth, maxSpreadPct)).toBe(true);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 0, bid: 99.5, ask: 100.5, bidQty: 100, askQty: 100, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(false);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 100, bid: 90, ask: 110, bidQty: 100, askQty: 100, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(false);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 100, bid: 110, ask: 110, bidQty: 100, askQty: 100, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(false);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 100, bid: 99.5, ask: 100.5, bidQty: 50, askQty: 100, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(false);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 100, bid: 99.5, ask: 100.5, bidQty: 100, askQty: 50, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(false);
+    expect(
+      (manager as any).isLiquid(
+        { ltp: 100, bid: 99.5, ask: 100.5, bidQty: 100, askQty: 100, inst },
+        minLotsDepth,
+        maxSpreadPct,
+      ),
+    ).toBe(true);
   });
 });

@@ -4,8 +4,6 @@ import flagWatcher from '../src/flags/flagWatcher';
 import positionsStore from '../src/positions/positionsStore';
 import notifier from '../src/notify/notifier';
 import { StrategyLeg } from '../src/strategy/strategyManager';
-import { InstrumentCacheEntry } from '../src/schemas/smartApi';
-import { instrumentManager } from '../src/instruments/instrumentManager';
 
 jest.mock('../src/execution/brokerClient');
 jest.mock('../src/flags/flagWatcher');

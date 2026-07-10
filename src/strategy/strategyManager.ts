@@ -95,11 +95,7 @@ export class StrategyManager implements IStrategyManager {
     return candidates;
   }
 
-  private isLiquid(
-    candidate: LiquidCandidate,
-    minLotsDepth = 2,
-    maxSpreadPct = 0.08,
-  ): boolean {
+  private isLiquid(candidate: LiquidCandidate, minLotsDepth = 2, maxSpreadPct = 0.08): boolean {
     const { ltp, bid, ask, bidQty, askQty, inst } = candidate;
     if (ltp <= 0) return false;
     if ((ask - bid) / ltp > maxSpreadPct) return false;
@@ -215,7 +211,12 @@ export class StrategyManager implements IStrategyManager {
       const daysToExpiry = Math.max(0.01, expDate.diff(now, 'day', true));
       const t = daysToExpiry / 365;
 
-      const candidates = await this.getLiquidCandidates(underlying, def.expiry, def.type, candidateStrikes);
+      const candidates = await this.getLiquidCandidates(
+        underlying,
+        def.expiry,
+        def.type,
+        candidateStrikes,
+      );
 
       for (const candidate of candidates) {
         const delta = calculateDelta(underlyingLtp, candidate.strike, t, iv, 0.07, def.type);
@@ -233,10 +234,10 @@ export class StrategyManager implements IStrategyManager {
         }, liquidOnes[0]);
       } else {
         logger.warn(
-          `No liquid strikes found for ${underlying} ${def.type} ${def.expiry} near target delta ${def.targetDelta}. Falling back to theoretical best.`
+          `No liquid strikes found for ${underlying} ${def.type} ${def.expiry} near target delta ${def.targetDelta}. Falling back to theoretical best.`,
         );
         await notifier.send(
-          `⚠️ No liquid strikes found for ${underlying} ${def.type} ${def.expiry} near target delta ${def.targetDelta}. Falling back to theoretical best — review before going live.`
+          `⚠️ No liquid strikes found for ${underlying} ${def.type} ${def.expiry} near target delta ${def.targetDelta}. Falling back to theoretical best — review before going live.`,
         );
 
         if (candidates.length > 0) {
