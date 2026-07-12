@@ -3,12 +3,22 @@ import smartStream from '../src/execution/smartStream';
 import flagWatcher from '../src/flags/flagWatcher';
 import sessionManager from '../src/auth/session';
 import positionsStore from '../src/positions/positionsStore';
+import env from '../src/schemas/env';
 
 jest.mock('ws');
 jest.mock('../src/flags/flagWatcher');
 jest.mock('../src/auth/session');
 jest.mock('../src/positions/positionsStore');
 jest.mock('../src/logging/logger');
+jest.mock('../src/schemas/env', () => ({
+  __esModule: true,
+  default: {
+    SENSEX_EXPIRY_ENABLED: true,
+  },
+  env: {
+    SENSEX_EXPIRY_ENABLED: true,
+  },
+}));
 
 describe('SmartStreamClient', () => {
   let mockWsInstance: any;
@@ -72,6 +82,36 @@ describe('SmartStreamClient', () => {
     jest.advanceTimersByTime(1500);
 
     expect(callback).toHaveBeenCalled();
+  });
+
+  test('connect in Paper Mode starts mock generator with SENSEX disabled', async () => {
+    env.SENSEX_EXPIRY_ENABLED = false;
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
+    (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W28');
+    (positionsStore.readPosition as jest.Mock).mockImplementation((underlying) => {
+      if (underlying === 'NIFTY') {
+        return {
+          status: 'open',
+          orders: [{ symboltoken: 'nifty123', price: 150 }],
+        };
+      }
+      return {
+        status: 'open',
+        orders: [{ symboltoken: 'sensex123', price: 150 }],
+      };
+    });
+
+    const callback = jest.fn();
+    await smartStream.connect(callback);
+
+    smartStream.subscribe(['nifty123', 'sensex123']);
+
+    // Fast-forward mock interval
+    jest.advanceTimersByTime(1500);
+
+    expect(callback).toHaveBeenCalled();
+    expect(positionsStore.readPosition).toHaveBeenCalledWith('NIFTY', '2026-W28', true);
+    expect(positionsStore.readPosition).not.toHaveBeenCalledWith('SENSEX', '2026-W28', true);
   });
 
   test('connect in Live Mode starts real WebSocket and subscribes', async () => {

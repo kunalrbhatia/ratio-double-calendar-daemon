@@ -77,7 +77,8 @@ async function bootstrap() {
       const subscribeTokens: string[] = [];
       let hasOpenPosition = false;
 
-      for (const underlying of ['NIFTY', 'SENSEX']) {
+      const underlyings = env.SENSEX_EXPIRY_ENABLED ? ['NIFTY', 'SENSEX'] : ['NIFTY'];
+      for (const underlying of underlyings) {
         const currentPosition = positionsStore.readPosition(underlying, currentWeek, isPaper);
         if (currentPosition && currentPosition.status === 'open') {
           hasOpenPosition = true;

@@ -1,0 +1,18 @@
+### Description
+
+Adds an environment variable `SENSEX_EXPIRY_ENABLED` to allow users to enable or disable SENSEX weekly expiry trading actions.
+
+### Changes
+
+- Modified `src/schemas/env.ts` to add and parse the `SENSEX_EXPIRY_ENABLED` variable with a default of `true`, using custom preprocess handling to properly parse string booleans.
+- Modified `src/scheduler/cronScheduler.ts` to conditionalize the SENSEX trading tick invocation using the `SENSEX_EXPIRY_ENABLED` flag.
+- Modified `src/execution/smartStream.ts` and `src/index.ts` to dynamically include `SENSEX` in underlyings checking and socket token subscription only if enabled.
+- Updated `.env.example`, `.env`, and `README.md` to document the new configuration option.
+- Added comprehensive unit tests in `__tests__/envSchema.test.ts`, `__tests__/cronScheduler.test.ts`, and `__tests__/smartStream.test.ts`.
+
+### Verification
+
+- Formatting checks pass.
+- Linting checks pass.
+- Running `pnpm test` successfully executes all 124 tests with 100% code coverage.
+- TypeScript compiles successfully.

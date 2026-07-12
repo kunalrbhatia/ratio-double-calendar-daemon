@@ -11,6 +11,7 @@ import positionsStore from '../positions/positionsStore';
 import flagWatcher from '../flags/flagWatcher';
 import fs from 'fs';
 import path from 'path';
+import env from '../schemas/env';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -115,7 +116,9 @@ export class CronScheduler {
     await this.processUnderlyingTick('NIFTY', 3, 2, now, minutesSinceMidnight, isPaper);
 
     // Run SENSEX trading tick (Entry: Fri, Exit: Thu)
-    await this.processUnderlyingTick('SENSEX', 5, 4, now, minutesSinceMidnight, isPaper);
+    if (env.SENSEX_EXPIRY_ENABLED) {
+      await this.processUnderlyingTick('SENSEX', 5, 4, now, minutesSinceMidnight, isPaper);
+    }
   }
 
   async processUnderlyingTick(
