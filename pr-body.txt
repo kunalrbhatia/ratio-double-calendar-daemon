@@ -1,0 +1,15 @@
+### Description
+
+This PR implements caching of the raw OpenAPI scrip master JSON file locally to avoid unnecessary network downloads, and removes noisy error logs during out-of-market instrument lookups.
+
+### Changes
+
+- Updated `src/instruments/instrumentManager.ts` to write `OpenAPIScripMaster.json` to the `data` directory.
+- Added logic in `src/instruments/instrumentManager.ts` to load the raw scrip master from the local file if it exists and is from today.
+- Silenced expected lookup warnings by removing `logger.error` in `getInstrument` when an option strike is not found.
+
+### Verification
+
+- Ran `pnpm test` and all 124 tests passed with 100% code coverage.
+- Ran `pnpm verify` successfully.
+- Generated basket using `pnpm generate-basket`.

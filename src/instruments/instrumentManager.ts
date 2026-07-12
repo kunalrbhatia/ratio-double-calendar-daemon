@@ -24,9 +24,11 @@ export interface IInstrumentManager {
 export class InstrumentManager implements IInstrumentManager {
   private cache: InstrumentCache = {};
   private cacheFilePath: string;
+  private rawScripMasterFilePath: string;
 
   constructor() {
     this.cacheFilePath = path.resolve(process.cwd(), 'data', 'instruments-cache.json');
+    this.rawScripMasterFilePath = path.resolve(process.cwd(), 'data', 'OpenAPIScripMaster.json');
     const dataDir = path.dirname(this.cacheFilePath);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
@@ -54,18 +56,53 @@ export class InstrumentManager implements IInstrumentManager {
       }
     }
 
-    await this.downloadAndParseScripMaster();
+    await this.downloadAndParseScripMaster(forceDownload);
   }
 
-  private async downloadAndParseScripMaster(): Promise<void> {
-    logger.info('Downloading OpenAPIScripMaster from Angel Broking...');
-    const url =
-      'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json';
+  private async downloadAndParseScripMaster(forceDownload = false): Promise<void> {
+    let data: unknown[] | null = null;
+
+    // Check if raw local copy exists and is from today
+    if (!forceDownload && fs.existsSync(this.rawScripMasterFilePath)) {
+      const stats = fs.statSync(this.rawScripMasterFilePath);
+      const isToday = dayjs(stats.mtime).isSame(dayjs(), 'day');
+      if (isToday) {
+        try {
+          logger.info('Loading raw scrip master from local file...');
+          const content = fs.readFileSync(this.rawScripMasterFilePath, 'utf-8');
+          data = JSON.parse(content) as unknown[];
+          logger.info(
+            `Loaded raw scrip master from file. Total records: ${data.length}. Parsing...`,
+          );
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          logger.warn(`Failed to parse local raw scrip master: ${msg}. Will download...`);
+        }
+      }
+    }
+
+    if (!data) {
+      logger.info('Downloading OpenAPIScripMaster from Angel Broking...');
+      const url =
+        'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json';
+
+      try {
+        data = await httpClient.request<unknown[]>(url);
+        logger.info(
+          `Downloaded raw scrip master. Total records: ${data.length}. Saving to disk and parsing...`,
+        );
+        fs.writeFileSync(this.rawScripMasterFilePath, JSON.stringify(data), 'utf-8');
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Error downloading scrip master: ${msg}`);
+        throw error;
+      }
+    }
 
     try {
-      const data = await httpClient.request<unknown[]>(url);
-      logger.info(`Downloaded raw scrip master. Total records: ${data.length}. Parsing...`);
-
+      if (!data) {
+        throw new Error('No scrip master data available to parse');
+      }
       const newCache: InstrumentCache = {};
 
       for (const row of data) {
@@ -156,7 +193,6 @@ export class InstrumentManager implements IInstrumentManager {
     const key = `${underlying.toUpperCase()}_${expiry.toUpperCase()}_${strike}_${optionType}`;
     const entry = this.cache[key];
     if (!entry) {
-      logger.error(`Instrument not found in cache for key: ${key}`);
       return null;
     }
     return entry;
