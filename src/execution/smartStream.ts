@@ -210,7 +210,8 @@ class SmartStreamClient {
       const openOrders: Array<{ symboltoken: string; price: number }> = [];
       const seenTokens = new Set<string>();
 
-      for (const underlying of ['NIFTY', 'SENSEX']) {
+      const underlyings = env.SENSEX_EXPIRY_ENABLED ? ['NIFTY', 'SENSEX'] : ['NIFTY'];
+      for (const underlying of underlyings) {
         const positions = positionsStore.readPosition(underlying, currentWeek, true);
         if (positions && positions.status === 'open') {
           for (const order of positions.orders) {

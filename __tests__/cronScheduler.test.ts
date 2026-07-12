@@ -10,6 +10,7 @@ import executionManager from '../src/execution/executionManager';
 import positionsStore from '../src/positions/positionsStore';
 import flagWatcher from '../src/flags/flagWatcher';
 import fs from 'fs';
+import env from '../src/schemas/env';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -21,6 +22,15 @@ jest.mock('../src/strategy/strategyManager');
 jest.mock('../src/execution/executionManager');
 jest.mock('../src/positions/positionsStore');
 jest.mock('../src/flags/flagWatcher');
+jest.mock('../src/schemas/env', () => ({
+  __esModule: true,
+  default: {
+    SENSEX_EXPIRY_ENABLED: true,
+  },
+  env: {
+    SENSEX_EXPIRY_ENABLED: true,
+  },
+}));
 jest.mock('fs');
 
 describe('CronScheduler', () => {
@@ -163,6 +173,45 @@ describe('CronScheduler', () => {
     await scheduler.handleTradingTick();
 
     expect(executionManager.executeExit).toHaveBeenCalledWith('NIFTY', '2026-W28', true);
+  });
+
+  test('handleTradingTick attempts entry on Friday morning for SENSEX when SENSEX_EXPIRY_ENABLED is true', async () => {
+    // Friday 10:00 AM IST
+    jest.setSystemTime(new Date('2026-07-03T10:00:00+05:30'));
+    env.SENSEX_EXPIRY_ENABLED = true;
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+    (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W27');
+    (positionsStore.readPosition as jest.Mock).mockReturnValue(null); // No position yet
+
+    (strategyManager.checkVix as jest.Mock).mockResolvedValue({ passed: true, vix: 12 });
+    (strategyManager.buildBasket as jest.Mock).mockResolvedValue([]);
+
+    await scheduler.handleTradingTick();
+
+    expect(sessionManager.login).toHaveBeenCalled();
+    expect(instrumentManager.loadInstruments).toHaveBeenCalled();
+    expect(executionManager.executeEntry).toHaveBeenCalledWith('SENSEX', []);
+  });
+
+  test('handleTradingTick skips entry on Friday morning for SENSEX when SENSEX_EXPIRY_ENABLED is false', async () => {
+    // Friday 10:00 AM IST
+    jest.setSystemTime(new Date('2026-07-03T10:00:00+05:30'));
+    env.SENSEX_EXPIRY_ENABLED = false;
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+    (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W27');
+    (positionsStore.readPosition as jest.Mock).mockReturnValue(null); // No position yet
+
+    (strategyManager.checkVix as jest.Mock).mockResolvedValue({ passed: true, vix: 12 });
+    (strategyManager.buildBasket as jest.Mock).mockResolvedValue([]);
+
+    await scheduler.handleTradingTick();
+
+    // SENSEX should not be entered
+    expect(executionManager.executeEntry).not.toHaveBeenCalledWith('SENSEX', expect.any(Array));
   });
 
   test('runDailyCleanup works correctly', () => {

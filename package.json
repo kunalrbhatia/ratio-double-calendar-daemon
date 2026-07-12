@@ -13,7 +13,8 @@
     "test": "jest --coverage",
     "lint": "eslint . --ext .ts",
     "format:check": "prettier --check \"src/**/*.ts\" \"__tests__/**/*.ts\"",
-    "format": "prettier --write \"src/**/*.ts\" \"__tests__/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\" \"__tests__/**/*.ts\"",
+    "verify": "pnpm format:check && pnpm lint && pnpm test && pnpm build"
   },
   "keywords": [],
   "author": "",
