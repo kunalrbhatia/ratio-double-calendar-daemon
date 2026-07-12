@@ -6,6 +6,9 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       watch: false,
+      cron_restart: '20 8 * * *',
+      max_memory_restart: '512M',
+      autorestart: true,
       env: {
         NODE_ENV: 'development',
       },
