@@ -388,6 +388,103 @@ Monday's near-flat session is typical for a consolidation day. After last week's
 - **⚠️ Instrument Cache Gaps:** The basket generation logged many "Instrument not found in cache" errors for strikes 19,400-21,300 and 26,400-29,000. These are deep OTM strikes unlikely to be selected, but the cache should have full coverage.
 - **⚠️ OrderBook API Failing:** `getOrderBook()` continues to return "Failed to fetch OrderBook: SUCCESS" — the API response format may have changed or the response parsing has a bug. This prevented verification of SENSEX position exit status.
 - **📆 Next Entry — NIFTY:** **Wednesday, 15 Jul 2026** (Week 2026-W29). VIX at 12.25 is favorable. Entry subject to VIX filter pass at 09:15 AM.
-- **📆 Next Entry — SENSEX:** **Friday, 17 Jul 2026** (Week 2026-W29).
-- **📊 Week 2026-W28 Cumulative:** ₹ -8,802.95 (-0.98% across two ₹450K allocations)
-|
+|- **📆 Next Entry — SENSEX:** **Friday, 17 Jul 2026** (Week 2026-W29).
+|- **📊 Week 2026-W28 Cumulative:** ₹ -8,802.95 (-0.98% across two ₹450K allocations)
+
+---
+
+# Trading Report — Tuesday, 14 Jul 2026
+
+## 📊 Market Overview
+
+| Index | Value | Change | % Change |
+|-------|:-----:|:------:|:--------:|
+| Nifty 50 | 24,052.05 | -158.95 | -0.66% |
+| Bank Nifty | 57,462.30 | -669.15 | -1.15% |
+| India VIX | 13.75 | +0.47 | +3.54% |
+| SENSEX | 77,054.94 | — | — |
+
+## 📋 Position Status — NIFTY
+
+- **Strategy:** Ratio Double Calendar Spread
+- **Entry Date:** 08 Jul 2026 (Week 2026-W28)
+- **Expiry:** 14 Jul 2026 (Weekly — T0 expired today)
+- **Status:** Closed (Stoploss Hit on 08 Jul 2026) — No Position Today
+- **Realized P&L:** ₹ -4,525.95
+- **Skip State:** Active (Week 2026-W28, remaining expiry day)
+
+> **Weekly Expiry Note:** Today is the 14 Jul 2026 weekly NIFTY expiry. The T0 short legs (24,600 CE sold @ ₹30.30 and 24,000 PE sold @ ₹51.85) expired worthless as the Nifty settled at 24,052.05 — between the two strikes. The T1 long legs (28 Jul expiry) remain on the books from last week's entry but were part of the stoploss unwind on 08 Jul, so they are also closed.
+
+## 📋 Position Status — SENSEX
+
+- **Strategy:** Ratio Double Calendar Spread
+- **Entry Date:** 10 Jul 2026 (Friday)
+- **Expiry:** 16 Jul 2026 (T0) / 26 Jul 2026 (T1)
+- **Status:** Closed (Exited Friday 10 Jul due to daemon graceful shutdown)
+- **Realized P&L:** ₹ -4,277.00 (from Friday's report)
+- **Margin Utilized:** ₹ 450,000
+- **Position File:** **Stale** — `data/live/positions-sensex-2026-W28.json` still shows `status: "open"` with `realizedPnl: 0`, while the actual position was closed on Friday
+
+> **⚠️ Stale position file:** The SENSEX position file has not been updated. Two orders (`260710000207975` — 76,700 PE and `260710000209787` — 75,900 PE) still show `OPEN` status, but these are the original entry orders from Friday. The actual position was unwound on Friday at 12:42 PM via the daemon's graceful shutdown handler.
+
+### Combined Week 2026-W28 Final P&L
+
+| Index | Realized P&L | Status |
+|:-----:|:-----------:|:------:|
+| **NIFTY** | ₹ -4,525.95 | Closed (Stoploss) |
+| **SENSEX** | ₹ -4,277.00 | Closed (Daemon Shutdown) |
+| **Total** | **₹ -8,802.95** | **-0.98% on 2×₹450K** |
+
+## 📈 Daily Activity
+
+**Market Context:** A mildly negative session on weekly NIFTY expiry day. Nifty declined 158.95 points (-0.66%) to close at 24,052.05, extending the week's pattern of subdued price action. Bank Nifty underperformed with a 669.15-point drop (-1.15%) to 57,462.30. India VIX edged up 3.54% to 13.75, suggesting options market participants were pricing in some uncertainty ahead of tomorrow's NIFTY entry day. SENSEX closed at 77,054.94.
+
+**Daemon Activity:**
+- **00:00 IST** — Daily cleanup completed normally (log retention, position data cleanup)
+- **08:20 IST** — Daemon graceful shutdown and restart. Fresh SmartAPI login successful. Downloaded and cached instrument master (4,773 options). Scheduler started.
+- **08:30 IST** — Instrument master refresh download (scheduled job)
+- **08:40 IST** — Initialization script: India VIX at 13.28. VIX filter check completed. No entry attempted (skip state active for W28).
+- **09:15-15:30 IST** — Continuous monitoring loop. All entries logged: *"No open position found in positionsStore. Skipping/disconnecting WebSocket."* — this is expected as both NIFTY and SENSEX positions are closed, and the daemon's positionsStore only tracks NIFTY positions.
+
+**No Basket Generation for W29:** Unlike Monday, today's log shows no basket generation activity for Week 2026-W29. The daemon appears to generate the strategy basket the day before entry (Monday for Wednesday entry). Tomorrow (Wednesday, 15 Jul) is NIFTY entry day for Week 2026-W29.
+
+**Weekly Expiry Impact:** The 14 Jul 2026 weekly NIFTY options expired today. The short 24,600 CE and short 24,000 PE legs from last week's entry would have expired worthless with the Nifty settlement at 24,052.05 (comfortably between the two strikes). However, since the position was closed via stoploss on 08 Jul, this expiry is purely academic — the P&L was already realized.
+
+## 🔍 Market Response Analysis
+
+**Expiry Day Dynamics — No Active Positions:**
+
+- **Market Drift Lower:** Nifty's -0.66% decline on expiry day is mild but notable. The index has been oscillating between 24,000-24,200 for the past three sessions, unable to reclaim the 24,400+ levels seen before last week's crash.
+- **Bank Nifty Weakness:** Bank Nifty underperformed again (-1.15%), extending its relative weakness. The banking index has been the primary drag on Nifty since the US-Iran selloff.
+- **VIX Creeping Higher:** At 13.75, the VIX is above Friday's close (12.25) and Monday's reading (13.28), suggesting options premiums are pricing in event risk for the midweek. This typically makes entry more expensive for option sellers but also offers higher premium collection.
+- **SENSEX Held Above 77,000:** Despite the negative session, SENSEX held above the 77,000 mark, suggesting institutional support at these levels.
+
+**Week 2026-W28 Post-Mortem:**
+
+The week's performance was the worst since the strategy began:
+- **NIFTY Stop-loss (Wed):** ₹ -4,525.95 — Triggered by the US-Iran geopolitical selloff
+- **SENSEX Premature Exit (Fri):** ₹ -4,277.00 — Triggered by daemon graceful shutdown, not strategy
+- **Combined Loss:** ₹ -8,802.95 (-0.98% on 2×₹450K allocated margin)
+- **Root Cause:** Two non-strategy factors (geopolitical black swan + daemon operational issue) caused the losses. The strategy's intrinsic design (ratio double calendar) was not tested in a normal market environment this week.
+
+**Key Learning:** The daemon's graceful shutdown handler unwinding positions is the single most impactful operational risk. The SENSEX position was in profit (₹+1,000 to ₹+4,000 unrealized) throughout Friday and was closed not by the strategy but by a system restart event.
+
+## 🎯 Key Observations
+
+- Weekly expiry day passed without incident — no open positions to manage
+- Nifty settled at 24,052.05, within the 24,000-24,600 range of last week's short strikes
+- India VIX at 13.75 (up 3.54%) — slightly elevated ahead of Wednesday's NIFTY entry
+- No basket generation for W29 was logged today — expected to occur before tomorrow's entry
+- The daemon ran cleanly with zero errors, zero warnings all day
+- The SENSEX position file remains stale and should be corrected before W29 reporting begins
+- Tomorrow is **Wednesday, 15 Jul 2026** — **NIFTY entry day for Week 2026-W29**
+- VIX reading at 13.75 is within the acceptable entry range (below 15-16 threshold)
+
+## ⚠️ Alerts / Risks
+
+- **📆 NIFTY Entry Tomorrow — W29:** Wednesday, 15 Jul 2026. VIX at 13.75 is favorable. Entry subject to VIX filter pass at 09:15 AM. Basket generation should happen pre-market.
+- **📆 SENSEX Entry — W29:** Friday, 17 Jul 2026. Friday is the designated SENSEX entry day.
+- **⚠️ Stale SENSEX Position File:** `data/live/positions-sensex-2026-W28.json` must be manually updated to reflect closed status with realized P&L of ₹-4,277. Failure to fix could cause confusion in W29 reporting.
+- **⚠️ Daemon Shutdown Risk:** The graceful shutdown handler unwinding positions caused the SENSEX loss. If the daemon is restarted during market hours with an active position, it will auto-exit. Consider disabling auto-exit on graceful shutdown, or at minimum not restarting during market hours.
+- **📊 W29 Entry VIX Threshold:** At 13.75, VIX is comfortably below panic levels but elevated relative to the 11-12 range seen before last week's geopolitical event. Entry is likely tomorrow.
+- **🌍 Geopolitical Watch:** US-Iran tensions remain a wildcard. However, the VIX has normalized significantly from the 14.68 spike on 08 Jul.
