@@ -1,72 +1,71 @@
-# Ratio Double Calendar Spread Trading Daemon
+# Double Calendar Spread Trading Daemon
 
-A production-grade, testable, self-hosted automated options trading pipeline built with **TypeScript (Node.js)** for executing and managing a **Ratio Double Calendar Spread** strategy via the **Angel One SmartAPI**. The daemon runs as a persistent process managed by `pm2` on an Oracle Cloud VM.
+A production-grade, testable, self-hosted automated options trading pipeline built with **TypeScript (Node.js)** for executing and managing a **Double Calendar Spread** strategy via the **Angel One SmartAPI**. The daemon runs as a persistent process managed by `pm2` on an Oracle Cloud VM.
 
 ---
 
 ## 📋 Strategy Overview
 
-The daemon automates a **Ratio Double Calendar Spread** on Indian indices (**NIFTY** and **SENSEX**):
+The daemon automates a **Double Calendar Spread** on Indian indices (**NIFTY** and **SENSEX**):
 
-*   **NIFTY Schedule:**
-    *   **Entry Window:** Basket construction and order execution happen on **Wednesdays** (after 09:30 AM IST).
-    *   **Hold & Monitor:** Wednesday through **Tuesday**.
-    *   **Exit Window:** Tuesday at 15:15 PM IST.
-*   **SENSEX Schedule:**
-    *   **Entry Window:** Basket construction and order execution happen on **Fridays** (after 09:30 AM IST).
-    *   **Hold & Monitor:** Friday through **Thursday**.
-    *   **Exit Window:** Thursday at 15:15 PM IST.
-*   **VIX Entry Filter:** Entry for either index is only allowed if **India VIX is between 10 and 13.5** at the time of entry.
-*   **Liquidity Screening:** Candidates are filtered dynamically using real-time quotes to ensure active market depth, preventing orders on illiquid option strikes. If no liquid strikes match, it falls back to the theoretical best strike and alerts the operator.
-*   **Exit Rules:** Positions are unwound on stoploss breach (1% of utilized margin, any day), profit target reach (2% of utilized margin, any day), or naturally closed at the scheduled exit window. There is no other exit trigger.
+- **NIFTY Schedule:**
+  - **Entry Window:** Basket construction and order execution happen on **Wednesdays** (after 09:30 AM IST).
+  - **Hold & Monitor:** Wednesday through **Tuesday**.
+  - **Exit Window:** Tuesday at 15:15 PM IST.
+- **SENSEX Schedule:**
+  - **Entry Window:** Basket construction and order execution happen on **Fridays** (after 09:30 AM IST).
+  - **Hold & Monitor:** Friday through **Thursday**.
+  - **Exit Window:** Thursday at 15:15 PM IST.
+- **VIX Entry Filter:** Entry for either index is only allowed if **India VIX is between 10 and 13.5** at the time of entry.
+- **Liquidity Screening:** Candidates are filtered dynamically using real-time quotes to ensure active market depth, preventing orders on illiquid option strikes. If no liquid strikes match, it falls back to the theoretical best strike and alerts the operator.
+- **Exit Rules:** Positions are unwound on stoploss breach (1.1% of utilized margin, any day), profit target reach (1.5% of utilized margin, any day), or naturally closed at the scheduled exit window. There is no other exit trigger.
 
 ### Leg Structure & Target Deltas
 
-The strategy consists of a 6-leg options basket matching specific delta targets:
+The strategy consists of a 4-leg options basket matching specific delta and LTP targets:
 
-| Action | Qty (Lots) | Expiry | Type | Target Delta |
-| :--- | :---: | :---: | :---: | :---: |
-| **SELL** | 3 | $T_0$ (Current) | Call | $\sim 0.15$ |
-| **SELL** | 3 | $T_0$ (Current) | Put | $\sim 0.15$ |
-| **BUY** | 1 | $T_2$ (Week After Next) | Call | $\sim 0.30$ |
-| **BUY** | 1 | $T_2$ (Week After Next) | Put | $\sim 0.30$ |
-| **BUY** | 2 | $T_2$ (Week After Next) | Call | $\sim 0.20$ |
-| **BUY** | 2 | $T_2$ (Week After Next) | Put | $\sim 0.20$ |
+| Action   | Qty (Lots) |      Expiry       | Type |                           Target                            |
+| :------- | :--------: | :---------------: | :--: | :---------------------------------------------------------: |
+| **SELL** |     3      |  $T_0$ (Current)  | Call | $\sim 0.15$ Delta (range $[0.10, 0.15]$, closest to $0.15$) |
+| **SELL** |     3      |  $T_0$ (Current)  | Put  | $\sim 0.15$ Delta (range $[0.10, 0.15]$, closest to $0.15$) |
+| **BUY**  |     3      | $T_1$ (Next Week) | Call | LTP-matched to $T_0$ Short CE (Absolute closest LTP match)  |
+| **BUY**  |     3      | $T_1$ (Next Week) | Put  | LTP-matched to $T_0$ Short PE (Absolute closest LTP match)  |
 
 ### 💧 Liquidity Screening Criteria
+
 To prevent execution on illiquid strikes (reducing transaction costs and bid-ask slippage), options are screened in real-time. A strike is considered liquid only if it meets all of the following conditions:
+
 1.  **Positive LTP:** The Last Traded Price must be greater than zero.
 2.  **Tight Bid/Ask Spread:** The relative spread `(Ask - Bid) / LTP` must be within **8%**.
 3.  **LTP-Midpoint Alignment:** The distance between the LTP and the bid-ask midpoint `|LTP - (Ask + Bid) / 2| / LTP` must be within **8%**.
 4.  **Sufficient Depth:** The order book must have at least `2 * lotsize` bid/ask quantity at the best quote level (e.g. 100 contracts for NIFTY).
 
-### 💡 Strategy Rationale: Selling T0 vs. Buying T2
+### 💡 Strategy Rationale: Selling T0 vs. Buying T1
 
-The core logic of the Ratio Double Calendar configuration focuses on extracting maximum premium via theta (time decay) while structuring a robust hedge using long-term option legs:
+The core logic of the Double Calendar configuration focuses on extracting maximum premium via theta (time decay) while structuring a robust hedge using adjacent weekly option legs:
 
 1. **Why Sell Two Options (Call & Put) of the Current Expiry ($T_0$)?**
    - **Theta Decay Maximization:** Current weekly expiry options ($T_0$) exhibit the fastest, exponential time decay (theta) as they approach their expiration date. By selling both the Call and the Put (creating a short strangle), we collect time premium aggressively from both sides.
-   - **Neutral/Range-bound Profile:** Selling the two options at a low delta ($\sim 0.20$) sets up a wide, high-probability profit zone that benefits if the market remains relatively range-bound.
+   - **Neutral/Range-bound Profile:** Selling the two options at a low delta ($\sim 0.15$) sets up a wide, high-probability profit zone that benefits if the market remains relatively range-bound.
 
-2. **Why Buy Four Options (Call & Put at two strikes) of the $T_2$ Expiry (Week After Next)?**
-   - **Slower Decay Hedge:** The further expiry ($T_2$) options decay much slower than $T_0$ options. This mismatch in decay rates creates the calendar advantage.
-   - **Multi-layered Protection:** We buy four options (two on the Call side, two on the Put side) at different strikes to build a dynamic, multi-layered risk mitigation profile:
-     - **Inner Hedge ($1$ Lot Call/Put at $\sim 0.30$ Delta):** These are closer to the money, offering higher delta sensitivity. They act as immediate protection against rapid breakouts or trend movements.
-     - **Outer Hedge ($2$ Lots Call/Put at $\sim 0.20$ Delta):** These are further out-of-the-money but are bought in a higher ratio ($2:1$ relative to the inner hedge). This provides protection against extreme tail-risk. If a major breakout occurs, the rapid delta/gamma expansion on the outer long options offsets the losses from the short options, capping the downside.
-     - **Vega Expansion Benefit:** In the event of a market panic or sharp volatility expansion, the $T_2$ long options benefit significantly from rising implied volatility (positive vega), protecting the portfolio from margin spikes.
+2. **Why Buy Two Options (Call & Put) of the $T_1$ Expiry (Next Week)?**
+   - **Slower Decay Hedge:** The adjacent weekly expiry ($T_1$) options decay slower than $T_0$ options. This mismatch in decay rates creates the calendar advantage.
+   - **Premium Matching & Risk Control:** We buy options whose premium matches the short $T_0$ legs (absolute closest LTP). This allows us to cap our maximum loss per spread and hedge tail risk with minimal premium drag.
+   - **Volatility Skew Handling:** Delta calculations use a hybrid IV model. Put options use strike-specific implied volatility to capture the real downside volatility smile (capped at $1.5 \times \text{VIX IV}$), while call options leverage the ATM CE IV to avoid the noisy/inflated far-OTM call IV.
+
 ---
 
 ## 🛠️ Tech Stack & Conventions
 
-*   **Runtime & Environment:** Node.js (18+), compiled via `tsc`, orchestrated by `pm2`.
-*   **Package Manager:** `pnpm`.
-*   **Broker Integration:** **Angel One SmartAPI** via direct REST calls and **SmartStream WebSocket** for real-time LTP streaming.
-*   **SmartStream WebSocket:** Real-time P&L monitoring via `wss://smartapisocket.angelone.in/smart-stream`. Uses a re-subscribe heartbeat every 45s to keep the connection alive (standard `ws.ping()` frames are not supported by the SmartStream server). Auto-reconnects with session refresh on disconnect.
-*   **Validation:** **Zod** schemas validate all boundaries (`.env` configurations, API responses, instrument cache, and `positions.json` state).
-*   **Time & Dates:** **Day.js** (with UTC and Timezone plugins configured for IST) for schedules, expiry tracking, and age cleanup.
-*   **Data Shaping:** **lodash** for grouping, sorting, and structural operations.
-*   **Testing:** **Jest** (`ts-jest`) with **100% test coverage** (branches, functions, lines, statements) enforced in CI.
-*   **Linting & Formatting:** **ESLint** (with `@typescript-eslint`) and **Prettier**.
+- **Runtime & Environment:** Node.js (18+), compiled via `tsc`, orchestrated by `pm2`.
+- **Package Manager:** `pnpm`.
+- **Broker Integration:** **Angel One SmartAPI** via direct REST calls and **SmartStream WebSocket** for real-time LTP streaming.
+- **SmartStream WebSocket:** Real-time P&L monitoring via `wss://smartapisocket.angelone.in/smart-stream`. Uses a re-subscribe heartbeat every 45s to keep the connection alive (standard `ws.ping()` frames are not supported by the SmartStream server). Auto-reconnects with session refresh on disconnect.
+- **Validation:** **Zod** schemas validate all boundaries (`.env` configurations, API responses, instrument cache, and `positions.json` state).
+- **Time & Dates:** **Day.js** (with UTC and Timezone plugins configured for IST) for schedules, expiry tracking, and age cleanup.
+- **Data Shaping:** **lodash** for grouping, sorting, and structural operations.
+- **Testing:** **Jest** (`ts-jest`) with **100% test coverage** (branches, functions, lines, statements) enforced in CI.
+- **Linting & Formatting:** **ESLint** (with `@typescript-eslint`) and **Prettier**.
 
 ---
 
@@ -127,24 +126,29 @@ SENSEX_EXPIRY_ENABLED=true             # Enable or disable SENSEX weekly expiry 
 ## 🚀 Execution & Risk Controls
 
 ### 1. Execution Sequencing (Margin-Benefit Rule)
-To optimize margin utilization and avoid transient order blocks, orders are sequenced as follows:
-*   **Entry:** Buy legs are placed and verified `COMPLETE` one-by-one before any Sell leg is placed.
-*   **Exit:** Sell legs are closed (buy-to-cover) and verified `COMPLETE` before any Buy leg is unwound.
-*   **Failure Recovery:** If any buy leg fails to complete, the entry sequence is aborted, alerts are sent, and the daemon does not proceed to sells.
 
-### 2. Risk Management & Profit Targets (1% Stoploss / 2% Profit Exit)
-*   **Margin Base:** During entry, the daemon computes the required margin using the Angel One margin calculator API.
-*   **Monitoring:** The daemon polls LTP/WebSockets to monitor cumulative mark-to-market P&L.
-*   **Stoploss:** If cumulative losses exceed **1% of the weekly utilized margin**, all legs are unwound.
-*   **Profit Target:** If cumulative profits reach or exceed **2% of the weekly utilized margin**, all legs are unwound immediately to lock in gains.
-*   **Cool-off:** Once stopped out or exited for profit, the daemon persists a skip-state to prevent re-entering for the rest of that trading week.
+To optimize margin utilization and avoid transient order blocks, orders are sequenced as follows:
+
+- **Entry:** Buy legs are placed and verified `COMPLETE` one-by-one before any Sell leg is placed.
+- **Exit:** Sell legs are closed (buy-to-cover) and verified `COMPLETE` before any Buy leg is unwound.
+- **Failure Recovery:** If any buy leg fails to complete, the entry sequence is aborted, alerts are sent, and the daemon does not proceed to sells.
+
+### 2. Risk Management & Profit Targets (1.1% Stoploss / 1.5% Profit Exit)
+
+- **Margin Base:** During entry, the daemon computes the required margin using the Angel One margin calculator API.
+- **Monitoring:** The daemon polls LTP/WebSockets to monitor cumulative mark-to-market P&L.
+- **Stoploss:** If cumulative losses exceed **1.1% of the weekly utilized margin**, all legs are unwound.
+- **Profit Target:** If cumulative profits reach or exceed **1.5% of the weekly utilized margin**, all legs are unwound immediately to lock in gains.
+- **Weekly Lockout:** Upon stoploss or profit target hits, the daemon generates a `done-for-this-week` lockout file. When this lockout is active, all ticks and stream monitoring are suspended. The lockout is automatically cleared via cron job every Tuesday at 16:00 IST.
 
 ### 3. Limit Order Repricing Walk with Market Fallback
+
 To avoid poor fills and ensure execution reliability without leaving un-executed orders hanging:
-*   **LIMIT Repricing Walk:** Orders are first placed as `LIMIT` orders. If unfilled, the daemon automatically cancels and reprices the order closer to the market over multiple attempts (starting passive and walking towards aggressive).
-    - **Normal Entry/Exit:** Reprices up to **4 attempts** with a maximum slippage threshold of **3%** of LTP.
-    - **Stoploss Exit:** Reprices up to **2 attempts** with a tighter slippage threshold of **1.5%** of LTP to ensure faster emergency exit.
-*   **MARKET Sweep Fallback:** If the walk runs out of attempts without filling, the daemon cancels the remaining limit order and submits a `MARKET` order to sweep the book immediately, firing a warning notification to Telegram/Slack.
+
+- **LIMIT Repricing Walk:** Orders are first placed as `LIMIT` orders. If unfilled, the daemon automatically cancels and reprices the order closer to the market over multiple attempts (starting passive and walking towards aggressive).
+  - **Normal Entry/Exit:** Reprices up to **4 attempts** with a maximum slippage threshold of **3%** of LTP.
+  - **Stoploss Exit:** Reprices up to **2 attempts** with a tighter slippage threshold of **1.5%** of LTP to ensure faster emergency exit.
+- **MARKET Sweep Fallback:** If the walk runs out of attempts without filling, the daemon cancels the remaining limit order and submits a `MARKET` order to sweep the book immediately, firing a warning notification to Telegram/Slack.
 
 ---
 
@@ -152,12 +156,12 @@ To avoid poor fills and ensure execution reliability without leaving un-executed
 
 The daemon watches specific files in the repository root in real-time to adjust its operational mode without requiring a process restart:
 
-*   **`.paper` (Paper Trading Mode):**
-    *   **Present:** Runs strategy logic, checks VIX, matches deltas, and monitors simulated positions in `data/paper/positions-{underlying}-<week>.json` without sending real orders to Angel One.
-    *   **Absent:** Live trading is active; real orders are submitted to the market. Live state is logged in `data/live/positions-{underlying}-<week>.json`.
-*   **`.kill` (Emergency Stop / Pause):**
-    *   **Present:** Immediately pauses all execution actions (no new entries, no exits, no adjustments). It continues monitoring and logging in read-only mode.
-    *   **Absent:** Resumes normal automated operations.
+- **`.paper` (Paper Trading Mode):**
+  - **Present:** Runs strategy logic, checks VIX, matches deltas, and monitors simulated positions in `data/paper/positions-{underlying}-<week>.json` without sending real orders to Angel One.
+  - **Absent:** Live trading is active; real orders are submitted to the market. Live state is logged in `data/live/positions-{underlying}-<week>.json`.
+- **`.kill` (Emergency Stop / Pause):**
+  - **Present:** Immediately pauses all execution actions (no new entries, no exits, no adjustments). It continues monitoring and logging in read-only mode.
+  - **Absent:** Resumes normal automated operations.
 
 ---
 
@@ -166,34 +170,43 @@ The daemon watches specific files in the repository root in real-time to adjust 
 The daemon generates multiple levels of telemetry and reporting to ensure transparent tracking, auditability, and immediate alerting:
 
 ### 1. Position State Reports (`data/`)
+
 The primary trading reports are stored under `data/live/` (for production) and `data/paper/` (for paper trading) as week-wise JSON files (`positions-{underlying}-YYYY-WXX.json`):
-*   **Status Indicators:** Records the state of the trading week (e.g., `open`, `skipped`, or `closed`).
-*   **Margin Tracking:** Captures the initial margin requirement computed by the Angel One margin calculator API.
-*   **Order Audits:** Lists every executed order with detailed fill attributes including `orderId`, `status`, `averagePrice`, `transactionType`, `quantity`, and execution timestamps.
-*   **Performance Metrics:** Tracks the cumulative and final realized P&L of the 6-leg basket.
+
+- **Status Indicators:** Records the state of the trading week (e.g., `open`, `skipped`, or `closed`).
+- **Margin Tracking:** Captures the initial margin requirement computed by the Angel One margin calculator API.
+- **Order Audits:** Lists every executed order with detailed fill attributes including `orderId`, `status`, `averagePrice`, `transactionType`, `quantity`, and execution timestamps.
+- **Performance Metrics:** Tracks the cumulative and final realized P&L of the 6-leg basket.
 
 ### 2. Operational & Execution Logs (`logs/`)
+
 Daily rotating logs are saved to `logs/YYYY-MM-DD.log` to track execution details:
-*   **Tick Logs:** Detailed trace records of every minute-by-minute evaluation tick, including LTP values, delta checks, and active P&L calculations.
-*   **System Lifecycle:** Audits bootstrap configurations, API logins, and daily scriptmaster updates.
-*   **Error Reporting:** Captures stack traces, API response schemas validation errors, and network retry attempts.
+
+- **Tick Logs:** Detailed trace records of every minute-by-minute evaluation tick, including LTP values, delta checks, and active P&L calculations.
+- **System Lifecycle:** Audits bootstrap configurations, API logins, and daily scriptmaster updates.
+- **Error Reporting:** Captures stack traces, API response schemas validation errors, and network retry attempts.
 
 ### 3. Push Reports & Alerts (Telegram & Slack)
+
 Real-time push reports are broadcast instantly to connected Telegram and Slack channels:
-*   **Transaction Alerts:** Broadcasts when orders are placed, filled, or rejected.
-*   **Daily Status Updates:** Sends India VIX check outcomes at morning initialization (08:40 AM IST) and whether entry was skipped.
-*   **Risk Metrics:** Reports MTM alerts, trailing drawdowns, and stoploss breach details.
-*   **Control Toggles:** Alerts when operational control flags (`.paper` or `.kill`) are modified.
+
+- **Transaction Alerts:** Broadcasts when orders are placed, filled, or rejected.
+- **Daily Status Updates:** Sends India VIX check outcomes at morning initialization (08:40 AM IST) and whether entry was skipped.
+- **Risk Metrics:** Reports MTM alerts, trailing drawdowns, and stoploss breach details.
+- **Control Toggles:** Alerts when operational control flags (`.paper` or `.kill`) are modified.
 
 ### 4. Housekeeping & Data Retention
-*   **Daily Cleanup:** A cron job runs daily at midnight to delete log files and position JSON reports older than **1 month** (excluding the current week's logs and position data) to optimize VM storage.
+
+- **Daily Cleanup:** A cron job runs daily at midnight to delete log files and position JSON reports older than **1 month** (excluding the current week's logs and position data) to optimize VM storage.
 
 ---
 
 ## 🔄 CI/CD Pipelines
 
 ### CI Workflow
+
 On pull request or push to any branch:
+
 1.  **Prettier Check:** Verifies code formatting.
 2.  **Linting:** Performs static analysis via ESLint.
 3.  **Typecheck:** Validates types using `tsc --noEmit`.
@@ -205,13 +218,17 @@ On pull request or push to any branch:
 Runs automatically upon successful completion of the CI workflow on the `master` branch. It SSHs into the Oracle Cloud VM and performs the deployment steps.
 
 #### Repository Secrets Setup
+
 To enable the CD pipeline, ensure the following GitHub repository secrets are set:
-*   `ORACLE_HOST`: The VM's IP address or hostname.
-*   `ORACLE_USER`: The SSH connection user (e.g., `ubuntu`).
-*   `ORACLE_SSH_KEY`: The private SSH key used to log in.
+
+- `ORACLE_HOST`: The VM's IP address or hostname.
+- `ORACLE_USER`: The SSH connection user (e.g., `ubuntu`).
+- `ORACLE_SSH_KEY`: The private SSH key used to log in.
 
 #### Automated Deployment Steps on the VM
+
 Once connected via SSH, the deploy workflow executes the following commands:
+
 1.  **Configure Environment**: Appends the NVM Node binary path to `PATH`:
     ```bash
     export PATH=$PATH:/home/ubuntu/.nvm/versions/node/v24.16.0/bin
@@ -239,10 +256,12 @@ Once connected via SSH, the deploy workflow executes the following commands:
 ## 🛠️ Utility Scripts
 
 ### Generate Option Basket
+
 Constructs the liquidity-screened option basket for a given underlying index and saves it to a JSON file.
+
 ```bash
 pnpm generate-basket [underlying]
 ```
+
 - **Arguments:** `underlying` (optional, defaults to `NIFTY`). Case-insensitive. E.g., `pnpm generate-basket SENSEX`.
 - **Output:** Saves the constructed basket to `data/basket-<underlying>.json` (e.g. `data/basket-nifty.json`).
-
