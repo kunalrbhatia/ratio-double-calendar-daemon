@@ -335,6 +335,13 @@ describe('StrategyManager', () => {
         optionType: 'CE',
         impliedVolatility: 15,
       },
+      {
+        name: 'NIFTY',
+        expiry: todayStr,
+        strikePrice: 19000,
+        optionType: 'PE',
+        impliedVolatility: 16,
+      },
     ]);
 
     (instrumentManager.getInstrument as jest.Mock).mockImplementation(
@@ -422,7 +429,7 @@ describe('StrategyManager', () => {
     expect(basket).toBeNull();
   });
 
-  test('buildBasket returns null when CE hedge matching/widening fails', async () => {
+  test('buildBasket returns null when CE hedge matching fails', async () => {
     const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
     (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
       todayStr,
@@ -435,14 +442,14 @@ describe('StrategyManager', () => {
       return type === 'CE' ? 0.12 : -0.12;
     });
 
-    // Mock T1 CE quotes to have very expensive LTPs so widening fails (e.g. 500 LTP)
+    // Mock T1 CE quotes to have LTP 0 (meaning no valid liquid candidates)
     (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(
       async (exchange: string, tokens: string[]) => {
         const map = new Map();
         for (const token of tokens) {
           const isT1Ce = token.includes('16JUL2026') && token.includes('CE');
           map.set(token, {
-            ltp: isT1Ce ? 500 : 100,
+            ltp: isT1Ce ? 0 : 100,
             bid: 99.5,
             ask: 100.5,
             bidQty: 1000,
@@ -457,7 +464,7 @@ describe('StrategyManager', () => {
     expect(basket).toBeNull();
   });
 
-  test('buildBasket returns null when PE hedge matching/widening fails', async () => {
+  test('buildBasket returns null when PE hedge matching fails', async () => {
     const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
     (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
       todayStr,
@@ -470,14 +477,14 @@ describe('StrategyManager', () => {
       return type === 'CE' ? 0.12 : -0.12;
     });
 
-    // Mock T1 PE quotes to have very expensive LTPs so widening fails
+    // Mock T1 PE quotes to have LTP 0
     (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(
       async (exchange: string, tokens: string[]) => {
         const map = new Map();
         for (const token of tokens) {
           const isT1Pe = token.includes('16JUL2026') && token.includes('PE');
           map.set(token, {
-            ltp: isT1Pe ? 500 : 100,
+            ltp: isT1Pe ? 0 : 100,
             bid: 99.5,
             ask: 100.5,
             bidQty: 1000,
@@ -492,7 +499,7 @@ describe('StrategyManager', () => {
     expect(basket).toBeNull();
   });
 
-  test('buildBasket widens search upward only to find T1 hedges when band fails', async () => {
+  test('buildBasket resolves T1 hedges to the closest LTP', async () => {
     const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
     (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
       todayStr,
@@ -505,9 +512,7 @@ describe('StrategyManager', () => {
       return type === 'CE' ? 0.12 : -0.12;
     });
 
-    // Short T0 LTP is 100. Target band is 95-105.
-    // Let's set T1 CE LTPs to be:
-    // One strike is 108 (which is in fallback range 105-110).
+    // Short T0 LTP is 100. Let's make strike 18900 CE and 19100 PE have ltp 108, which is the closest to 100.
     (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(
       async (exchange: string, tokens: string[]) => {
         const map = new Map();
@@ -516,11 +521,9 @@ describe('StrategyManager', () => {
           const isT1Pe = token.includes('16JUL2026') && token.includes('PE');
           let ltp = 100;
           if (isT1Ce) {
-            // For CE, lower strikes have higher premium. Let's make strike 18900 CE have ltp 108
             ltp = token.includes('18900') ? 108 : 5;
           }
           if (isT1Pe) {
-            // For PE, higher strikes have higher premium. Let's make strike 19100 PE have ltp 108
             ltp = token.includes('19100') ? 108 : 5;
           }
           map.set(token, {
