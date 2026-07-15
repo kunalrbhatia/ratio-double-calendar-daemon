@@ -229,7 +229,9 @@ export class StrategyManager implements IStrategyManager {
         candidate.delta = Math.abs(delta);
       }
 
-      const liquidOnes = skipLiquidityCheck ? candidates : candidates.filter((c) => this.isLiquid(c));
+      const liquidOnes = skipLiquidityCheck
+        ? candidates
+        : candidates.filter((c) => this.isLiquid(c));
 
       let chosen: LiquidCandidate | undefined;
       if (liquidOnes.length > 0) {

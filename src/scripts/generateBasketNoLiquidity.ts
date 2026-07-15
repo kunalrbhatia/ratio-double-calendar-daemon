@@ -43,7 +43,10 @@ async function main() {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const outputFile = path.resolve(outputDir, `basket-${underlying.toLowerCase()}-no-liquidity.json`);
+    const outputFile = path.resolve(
+      outputDir,
+      `basket-${underlying.toLowerCase()}-no-liquidity.json`,
+    );
     fs.writeFileSync(outputFile, JSON.stringify(basket, null, 2), 'utf-8');
 
     logger.info(`===================================================`);
