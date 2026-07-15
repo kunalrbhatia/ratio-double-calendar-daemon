@@ -1,0 +1,15 @@
+### Description
+
+Adds an option to bypass liquidity checks when generating strategy baskets, specifically defaulting to `true` for NIFTY expiries, and adds `ltp` reporting to option legs.
+
+### Changes
+
+- Modified `src/strategy/strategyManager.ts` to add optional `ltp` property to `StrategyLeg` interface and optional `skipLiquidityCheck` parameter to `buildBasket`.
+- Updated `src/scheduler/cronScheduler.ts` to skip liquidity checks when calling `buildBasket` for `NIFTY`.
+- Updated `src/scripts/generateBasketNoLiquidity.ts` to pass the `skipLiquidityCheck` flag directly to `buildBasket`.
+- Added test coverage in `__tests__/strategyManager.test.ts` and `__tests__/smartStream.test.ts` to cover the new behaviors and maintain 100% branch coverage.
+
+### Verification
+
+- Run `npm run test` successfully with 100% statement, function, and branch coverage.
+- Generated basket manually for NIFTY using `npx ts-node src/scripts/generateBasketNoLiquidity.ts` and confirmed the `ltp` values are populated correctly.

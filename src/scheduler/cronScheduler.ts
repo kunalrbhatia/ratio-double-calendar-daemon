@@ -187,8 +187,8 @@ export class CronScheduler {
       return;
     }
 
-    // Build the basket
-    const basket = await strategyManager.buildBasket(underlying);
+    // Build the basket (skip liquidity checks for NIFTY)
+    const basket = await strategyManager.buildBasket(underlying, underlying === 'NIFTY');
     if (!basket) {
       logger.error(`Failed to construct ${underlying} basket. Skipping entry.`);
       return;

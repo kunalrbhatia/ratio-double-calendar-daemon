@@ -18,6 +18,7 @@ export interface StrategyLeg {
   lotsize: number;
   targetDelta: number;
   actualDelta: number;
+  ltp?: number;
 }
 
 export interface LiquidCandidate {
@@ -33,7 +34,7 @@ export interface LiquidCandidate {
 
 export interface IStrategyManager {
   checkVix(): Promise<{ passed: boolean; vix: number }>;
-  buildBasket(underlying: string): Promise<StrategyLeg[] | null>;
+  buildBasket(underlying: string, skipLiquidityCheck?: boolean): Promise<StrategyLeg[] | null>;
 }
 
 export class StrategyManager implements IStrategyManager {
@@ -110,7 +111,7 @@ export class StrategyManager implements IStrategyManager {
     return true;
   }
 
-  async buildBasket(underlying: string): Promise<StrategyLeg[] | null> {
+  async buildBasket(underlying: string, skipLiquidityCheck = false): Promise<StrategyLeg[] | null> {
     logger.info(`Building strategy basket for ${underlying}...`);
 
     // 1. Resolve Expiry_T0, Expiry_T1 and Expiry_T2
@@ -228,7 +229,7 @@ export class StrategyManager implements IStrategyManager {
         candidate.delta = Math.abs(delta);
       }
 
-      const liquidOnes = candidates.filter((c) => this.isLiquid(c));
+      const liquidOnes = skipLiquidityCheck ? candidates : candidates.filter((c) => this.isLiquid(c));
 
       let chosen: LiquidCandidate | undefined;
       if (liquidOnes.length > 0) {
@@ -273,13 +274,14 @@ export class StrategyManager implements IStrategyManager {
         lotsize: chosen.inst.lotsize,
         targetDelta: def.targetDelta,
         actualDelta: chosen.delta!,
+        ltp: chosen.ltp,
       });
     }
 
     logger.info('Successfully constructed strategy basket:');
     basket.forEach((leg) => {
       logger.info(
-        `- ${leg.action} ${leg.quantity} (${leg.quantity / leg.lotsize} lots) ${leg.tradingsymbol} (Strike: ${leg.strike}, Delta: ${leg.actualDelta.toFixed(3)})`,
+        `- ${leg.action} ${leg.quantity} (${leg.quantity / leg.lotsize} lots) ${leg.tradingsymbol} (Strike: ${leg.strike}, Delta: ${leg.actualDelta.toFixed(3)}, LTP: ${leg.ltp})`,
       );
     });
 

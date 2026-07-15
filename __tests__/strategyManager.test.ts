@@ -223,4 +223,47 @@ describe('StrategyManager', () => {
       ),
     ).toBe(true);
   });
+
+  test('buildBasket skips liquidity checks when skipLiquidityCheck is true', async () => {
+    const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
+    (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
+      todayStr,
+      '16JUL2026',
+      '23JUL2026',
+    ]);
+
+    (brokerClient.getLtp as jest.Mock).mockResolvedValueOnce(19000).mockResolvedValueOnce(12.5);
+
+    (instrumentManager.getInstrument as jest.Mock).mockImplementation(
+      (underlying, expiry, strike, type) => {
+        return {
+          symboltoken: `${strike}-${type}`,
+          tradingsymbol: `NIFTY-${expiry}-${strike}-${type}`,
+          lotsize: 50,
+          exchange: 'NFO',
+        };
+      },
+    );
+
+    (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(
+      async (exchange: string, tokens: string[]) => {
+        const map = new Map();
+        for (const token of tokens) {
+          map.set(token, {
+            ltp: 100,
+            bid: 99.5,
+            ask: 100.5,
+            bidQty: 0,
+            askQty: 0,
+          });
+        }
+        return map;
+      },
+    );
+
+    const basket = await manager.buildBasket('NIFTY', true);
+    expect(basket).not.toBeNull();
+    expect(basket).toHaveLength(6);
+    expect(notifier.send).not.toHaveBeenCalled();
+  });
 });
