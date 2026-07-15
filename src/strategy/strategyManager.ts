@@ -151,18 +151,28 @@ export class StrategyManager implements IStrategyManager {
     const vix = await brokerClient.getLtp('NSE', 'INDIA VIX', vixToken);
     const vixIv = vix / 100; // e.g. 12% IV = 0.12
 
-    // Fetch live IVs for expiryT0 if possible
-    const ivMap = new Map<number, number>();
+    // Fetch live IV for expiryT0 if possible (using ATM strike closest to underlying LTP to filter out noise)
+    let liveIv = vixIv;
     try {
       const greeks = await brokerClient.getOptionGreeks(underlying, expiryT0);
-      for (const item of greeks) {
-        ivMap.set(Math.round(item.strikePrice), item.impliedVolatility / 100);
+      const atmStrike = Math.round(underlyingLtp / 100) * 100;
+      const atmGreek = greeks.find(
+        (item) => Math.round(item.strikePrice) === atmStrike && item.optionType === 'CE',
+      );
+      if (atmGreek) {
+        liveIv = atmGreek.impliedVolatility / 100;
+        logger.info(
+          `Loaded live option ATM Greek IV for ${underlying} expiry ${expiryT0}: ${(liveIv * 100).toFixed(2)}% (ATM Strike: ${atmStrike})`,
+        );
+      } else {
+        logger.info(
+          `No ATM strike greek found for ${underlying} expiry ${expiryT0}. Falling back to VIX.`,
+        );
       }
-      logger.info(`Loaded live option greeks IVs for ${underlying} expiry ${expiryT0}`);
     } catch (err: unknown) {
       /* istanbul ignore next */
       logger.warn(
-        `Failed to fetch option greeks / IV map for ${underlying} on ${expiryT0}. Falling back to VIX.`,
+        `Failed to fetch option greeks for ${underlying} on ${expiryT0}. Falling back to VIX.`,
       );
     }
 
@@ -192,8 +202,7 @@ export class StrategyManager implements IStrategyManager {
       candidateStrikes,
     );
     for (const c of t0CeCandidates) {
-      const iv = ivMap.get(c.strike) ?? vixIv;
-      c.delta = Math.abs(calculateDelta(underlyingLtp, c.strike, t0, iv, 0.07, 'CE'));
+      c.delta = Math.abs(calculateDelta(underlyingLtp, c.strike, t0, liveIv, 0.07, 'CE'));
     }
     const t0CeFiltered = t0CeCandidates.filter(
       (c) => c.delta! >= 0.1 && c.delta! <= 0.15 && (skipLiquidityCheck || this.isLiquid(c)),
@@ -222,8 +231,7 @@ export class StrategyManager implements IStrategyManager {
       candidateStrikes,
     );
     for (const c of t0PeCandidates) {
-      const iv = ivMap.get(c.strike) ?? vixIv;
-      c.delta = Math.abs(calculateDelta(underlyingLtp, c.strike, t0, iv, 0.07, 'PE'));
+      c.delta = Math.abs(calculateDelta(underlyingLtp, c.strike, t0, liveIv, 0.07, 'PE'));
     }
     const t0PeFiltered = t0PeCandidates.filter(
       (c) => c.delta! >= 0.1 && c.delta! <= 0.15 && (skipLiquidityCheck || this.isLiquid(c)),
@@ -343,15 +351,9 @@ export class StrategyManager implements IStrategyManager {
     }
 
     // Calculate delta for hedges to store in basket metadata
-    const ceHedgeIv = ivMap.get(hedgeCe.strike) ?? vixIv;
-    hedgeCe.delta = Math.abs(
-      calculateDelta(underlyingLtp, hedgeCe.strike, t1, ceHedgeIv, 0.07, 'CE'),
-    );
+    hedgeCe.delta = Math.abs(calculateDelta(underlyingLtp, hedgeCe.strike, t1, liveIv, 0.07, 'CE'));
 
-    const peHedgeIv = ivMap.get(hedgePe.strike) ?? vixIv;
-    hedgePe.delta = Math.abs(
-      calculateDelta(underlyingLtp, hedgePe.strike, t1, peHedgeIv, 0.07, 'PE'),
-    );
+    hedgePe.delta = Math.abs(calculateDelta(underlyingLtp, hedgePe.strike, t1, liveIv, 0.07, 'PE'));
 
     const basket: StrategyLeg[] = [
       {

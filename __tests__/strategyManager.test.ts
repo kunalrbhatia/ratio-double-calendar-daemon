@@ -331,7 +331,42 @@ describe('StrategyManager', () => {
       {
         name: 'NIFTY',
         expiry: todayStr,
-        strikePrice: 19100,
+        strikePrice: 19000,
+        optionType: 'CE',
+        impliedVolatility: 15,
+      },
+    ]);
+
+    (instrumentManager.getInstrument as jest.Mock).mockImplementation(
+      (underlying, expiry, strike, type) => {
+        return {
+          symboltoken: `token-${expiry}-${strike}-${type}`,
+          tradingsymbol: `NIFTY-${expiry}-${strike}-${type}`,
+          lotsize: 50,
+          exchange: 'NFO',
+        };
+      },
+    );
+
+    const basket = await manager.buildBasket('NIFTY', true);
+    expect(basket).not.toBeNull();
+    expect(basket).toHaveLength(4);
+  });
+
+  test('buildBasket falls back to VIX when option greeks does not contain ATM strike', async () => {
+    const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
+    (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
+      todayStr,
+      '16JUL2026',
+      '23JUL2026',
+    ]);
+    (brokerClient.getLtp as jest.Mock).mockResolvedValueOnce(19000).mockResolvedValueOnce(12.5);
+
+    (brokerClient.getOptionGreeks as jest.Mock).mockResolvedValue([
+      {
+        name: 'NIFTY',
+        expiry: todayStr,
+        strikePrice: 22000,
         optionType: 'CE',
         impliedVolatility: 15,
       },
