@@ -164,6 +164,8 @@ export class StrategyManager implements IStrategyManager {
       candidateStrikes.push(strike);
     }
 
+    const hedgeExpiry = skipLiquidityCheck ? expiryT1 : expiryT2;
+
     // Define target legs
     const legDefinitions = [
       {
@@ -183,28 +185,28 @@ export class StrategyManager implements IStrategyManager {
       {
         action: 'BUY' as const,
         qtyMult: 1,
-        expiry: expiryT2,
+        expiry: hedgeExpiry,
         type: 'CE' as const,
         targetDelta: 0.3,
       },
       {
         action: 'BUY' as const,
         qtyMult: 1,
-        expiry: expiryT2,
+        expiry: hedgeExpiry,
         type: 'PE' as const,
         targetDelta: 0.3,
       },
       {
         action: 'BUY' as const,
         qtyMult: 2,
-        expiry: expiryT2,
+        expiry: hedgeExpiry,
         type: 'CE' as const,
         targetDelta: 0.2,
       },
       {
         action: 'BUY' as const,
         qtyMult: 2,
-        expiry: expiryT2,
+        expiry: hedgeExpiry,
         type: 'PE' as const,
         targetDelta: 0.2,
       },
