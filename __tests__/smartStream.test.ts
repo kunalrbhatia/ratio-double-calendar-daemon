@@ -66,6 +66,7 @@ describe('SmartStreamClient', () => {
     expect(mockTick.token).toBe('token123');
     expect(mockTick.ltp).toBeGreaterThan(0);
     expect(smartStream.getCachedLtp('token123')).toBe(mockTick.ltp);
+    expect(smartStream.getCachedLtp('nonexistent')).toBeNull();
   });
 
   test('connect in Paper Mode starts mock generator and handles empty positions', async () => {

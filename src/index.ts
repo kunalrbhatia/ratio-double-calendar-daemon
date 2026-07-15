@@ -38,6 +38,17 @@ async function bootstrap() {
 
     const manageWebSocketConnection = async () => {
       const isPaper = flagWatcher.isPaperMode();
+
+      if (flagWatcher.isKillSwitched() || flagWatcher.isDoneForThisWeek()) {
+        logger.info(
+          'Trading paused (kill switch or weekly lockout active). Disconnecting SmartStream WebSocket...',
+        );
+        if (smartStream.getIsConnected()) {
+          smartStream.disconnect();
+        }
+        return;
+      }
+
       const liveDir = path.resolve(process.cwd(), 'data', 'live');
 
       // "if no position file exists in data/live/, skip the WebSocket entirely."

@@ -43,6 +43,12 @@ export class CronScheduler {
     const scripMasterJob = cron.schedule('30 8 * * 1-5', async () => {
       /* istanbul ignore next */
       try {
+        if (flagWatcher.isKillSwitched() || flagWatcher.isDoneForThisWeek()) {
+          logger.info(
+            'Trading paused (kill switch or weekly lockout active). Skipping instrument master download.',
+          );
+          return;
+        }
         logger.info('Scheduled job: Downloading instrument master...');
         await sessionManager.login();
         await instrumentManager.loadInstruments(true);
@@ -57,6 +63,12 @@ export class CronScheduler {
     const initializationJob = cron.schedule('40 8 * * 1-5', async () => {
       /* istanbul ignore next */
       try {
+        if (flagWatcher.isKillSwitched() || flagWatcher.isDoneForThisWeek()) {
+          logger.info(
+            'Trading paused (kill switch or weekly lockout active). Skipping 08:40 AM IST initialization.',
+          );
+          return;
+        }
         logger.info('Scheduled job: Running 08:40 AM IST initialization script...');
         logger.info('Logging in to SmartAPI...');
         await sessionManager.login();
@@ -86,6 +98,25 @@ export class CronScheduler {
     });
     this.cronTasks.push(cleanupJob);
 
+    // Task 4: Weekly lockout flag auto-clear job at 16:00 IST on Tuesdays (cron: '0 16 * * 2')
+    const lockoutClearJob = cron.schedule('0 16 * * 2', () => {
+      /* istanbul ignore next */
+      try {
+        logger.info('Scheduled job: Auto-clearing weekly lockout flag done-for-this-week...');
+        const lockoutPath = path.resolve(process.cwd(), 'done-for-this-week');
+        if (fs.existsSync(lockoutPath)) {
+          fs.unlinkSync(lockoutPath);
+          logger.info('Successfully deleted done-for-this-week weekly lockout flag.');
+        } else {
+          logger.info('No done-for-this-week weekly lockout flag found to delete.');
+        }
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Error in weekly lockout flag auto-clear: ${msg}`);
+      }
+    });
+    this.cronTasks.push(lockoutClearJob);
+
     logger.info('Scheduler started successfully.');
   }
 
@@ -97,6 +128,7 @@ export class CronScheduler {
   async handleTradingTick() {
     const isPaper = flagWatcher.isPaperMode();
     const isKill = flagWatcher.isKillSwitched();
+    const isLockout = flagWatcher.isDoneForThisWeek();
 
     // Time-based checks in IST
     const now = dayjs().tz('Asia/Kolkata');
@@ -107,8 +139,8 @@ export class CronScheduler {
       return; // Outside market hours
     }
 
-    if (isKill) {
-      logger.info('Kill switch is ACTIVE. Trading actions paused.');
+    if (isKill || isLockout) {
+      logger.info('Trading paused (kill switch or weekly lockout active).');
       return;
     }
 
@@ -187,8 +219,8 @@ export class CronScheduler {
       return;
     }
 
-    // Build the basket
-    const basket = await strategyManager.buildBasket(underlying);
+    // Build the basket (skip liquidity checks for NIFTY)
+    const basket = await strategyManager.buildBasket(underlying, underlying === 'NIFTY');
     if (!basket) {
       logger.error(`Failed to construct ${underlying} basket. Skipping entry.`);
       return;

@@ -158,6 +158,27 @@ export const MarginCalculatorResponseSchema = z.object({
     .nullable(),
 });
 export type MarginCalculatorResponse = z.infer<typeof MarginCalculatorResponseSchema>;
+// Option Greeks response schemas
+export const OptionGreekItemSchema = z.object({
+  name: z.string(),
+  expiry: z.string(),
+  strikePrice: z.coerce.number(),
+  optionType: z.enum(['CE', 'PE']),
+  delta: z.coerce.number().optional().nullable(),
+  gamma: z.coerce.number().optional().nullable(),
+  theta: z.coerce.number().optional().nullable(),
+  vega: z.coerce.number().optional().nullable(),
+  impliedVolatility: z.coerce.number(),
+});
+export type OptionGreekItem = z.infer<typeof OptionGreekItemSchema>;
+
+export const SmartApiOptionGreeksResponseSchema = z.object({
+  status: z.boolean(),
+  message: z.string(),
+  errorcode: z.string(),
+  data: z.array(OptionGreekItemSchema).nullable().optional(),
+});
+export type SmartApiOptionGreeksResponse = z.infer<typeof SmartApiOptionGreeksResponseSchema>;
 
 // State Tracking Positions schema (week-wise)
 export const OrderRecordSchema = z.object({
