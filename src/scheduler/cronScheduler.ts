@@ -86,6 +86,31 @@ export class CronScheduler {
     });
     this.cronTasks.push(initializationJob);
 
+    // Task 2c: Daily margin utilization refresh at 09:20 AM IST (Mon-Fri)
+    const marginRefreshJob = cron.schedule('20 9 * * 1-5', async () => {
+      /* istanbul ignore next */
+      try {
+        if (flagWatcher.isKillSwitched() || flagWatcher.isDoneForThisWeek()) {
+          logger.info(
+            'Trading paused (kill switch or weekly lockout active). Skipping daily margin refresh.',
+          );
+          return;
+        }
+        logger.info('Scheduled job: Refreshing margin utilized for open positions...');
+        const isPaper = flagWatcher.isPaperMode();
+        const currentWeek = positionsStore.getCurrentWeekString();
+
+        await executionManager.updateMarginUtilized('NIFTY', currentWeek, isPaper);
+        if (env.SENSEX_EXPIRY_ENABLED) {
+          await executionManager.updateMarginUtilized('SENSEX', currentWeek, isPaper);
+        }
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Failed daily margin refresh: ${msg}`);
+      }
+    });
+    this.cronTasks.push(marginRefreshJob);
+
     // Task 3: Daily cleanup job at midnight
     const cleanupJob = cron.schedule('0 0 * * *', () => {
       /* istanbul ignore next */

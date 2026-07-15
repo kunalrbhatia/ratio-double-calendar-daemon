@@ -651,4 +651,102 @@ describe('ExecutionManager', () => {
     expect(result).not.toBeNull();
     expect(result?.orderid).toBe('ORD-MARKET');
   });
+
+  describe('updateMarginUtilized', () => {
+    test('does nothing if position not found', async () => {
+      (positionsStore.readPosition as jest.Mock).mockReturnValue(null);
+      await executionManager.updateMarginUtilized('NIFTY', '2026-W27', false);
+      expect(positionsStore.writePosition).not.toHaveBeenCalled();
+    });
+
+    test('does nothing if position status is not open', async () => {
+      (positionsStore.readPosition as jest.Mock).mockReturnValue({
+        status: 'closed',
+      });
+      await executionManager.updateMarginUtilized('NIFTY', '2026-W27', false);
+      expect(positionsStore.writePosition).not.toHaveBeenCalled();
+    });
+
+    test('updates marginUtilized in paper mode', async () => {
+      const openPosition = {
+        week: '2026-W27',
+        status: 'open',
+        marginUtilized: 0,
+        orders: [],
+        realizedPnl: 0,
+        skippedThisWeek: false,
+      };
+      (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
+
+      await executionManager.updateMarginUtilized('NIFTY', '2026-W27', true);
+
+      expect(openPosition.marginUtilized).toBe(450000);
+      expect(positionsStore.writePosition).toHaveBeenCalledWith(
+        'NIFTY',
+        '2026-W27',
+        true,
+        openPosition,
+      );
+    });
+
+    test('updates marginUtilized in live mode success', async () => {
+      const openPosition = {
+        week: '2026-W27',
+        status: 'open',
+        marginUtilized: 0,
+        orders: [
+          {
+            symboltoken: 'T1_CE_BUY',
+            tradingsymbol: 'NIFTY16JUL26C19100',
+            transactiontype: 'BUY',
+            quantity: 50,
+            exchange: 'NFO',
+            orderid: 'ORD-1',
+            status: 'COMPLETE',
+            price: 100,
+          },
+        ],
+        realizedPnl: 0,
+        skippedThisWeek: false,
+      };
+      (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
+      (brokerClient.getMarginUtilized as jest.Mock).mockResolvedValue(380000);
+
+      await executionManager.updateMarginUtilized('NIFTY', '2026-W27', false);
+
+      expect(brokerClient.getMarginUtilized).toHaveBeenCalledWith([
+        {
+          exchange: 'NFO',
+          symboltoken: 'T1_CE_BUY',
+          quantity: 50,
+          action: 'BUY',
+        },
+      ]);
+      expect(openPosition.marginUtilized).toBe(380000);
+      expect(positionsStore.writePosition).toHaveBeenCalledWith(
+        'NIFTY',
+        '2026-W27',
+        false,
+        openPosition,
+      );
+    });
+
+    test('handles marginUtilized fetch error in live mode gracefully', async () => {
+      const openPosition = {
+        week: '2026-W27',
+        status: 'open',
+        marginUtilized: 120000,
+        orders: [],
+        realizedPnl: 0,
+        skippedThisWeek: false,
+      };
+      (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
+      (brokerClient.getMarginUtilized as jest.Mock).mockRejectedValue(new Error('API failure'));
+
+      await executionManager.updateMarginUtilized('NIFTY', '2026-W27', false);
+
+      expect(openPosition.marginUtilized).toBe(120000); // unchanged
+      expect(positionsStore.writePosition).not.toHaveBeenCalled();
+    });
+  });
 });
