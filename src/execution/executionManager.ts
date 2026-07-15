@@ -20,6 +20,7 @@ export interface IExecutionManager {
     isStoploss?: boolean,
   ): Promise<boolean>;
   monitorPnl(underlying: string, week: string, isPaper: boolean): Promise<void>;
+  updateMarginUtilized(underlying: string, week: string, isPaper: boolean): Promise<void>;
 }
 
 export class ExecutionManager implements IExecutionManager {
@@ -668,6 +669,43 @@ export class ExecutionManager implements IExecutionManager {
         fs.writeFileSync(lockoutPath, 'lockout', 'utf-8');
         logger.info('Created weekly lockout flag done-for-this-week.');
       }
+    }
+  }
+
+  async updateMarginUtilized(underlying: string, week: string, isPaper: boolean): Promise<void> {
+    const position = positionsStore.readPosition(underlying, week, isPaper);
+    if (!position || position.status !== 'open') {
+      return;
+    }
+
+    logger.info(
+      `Updating margin utilized for ${underlying} (week: ${week}, isPaper: ${isPaper})...`,
+    );
+
+    let newMargin = 0;
+    if (isPaper) {
+      newMargin = 150000 * 3; // simulated margin
+    } else {
+      try {
+        const basket = position.orders.map((o) => ({
+          exchange: o.exchange,
+          symboltoken: o.symboltoken,
+          quantity: o.quantity,
+          action: o.transactiontype as 'BUY' | 'SELL',
+        }));
+        newMargin = await brokerClient.getMarginUtilized(basket);
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Failed to fetch updated margin utilized for ${underlying}: ${msg}`);
+      }
+    }
+
+    if (newMargin > 0) {
+      position.marginUtilized = newMargin;
+      positionsStore.writePosition(underlying, week, isPaper, position);
+      logger.info(
+        `Successfully updated margin utilized for ${underlying} to ₹${newMargin.toLocaleString()}`,
+      );
     }
   }
 }

@@ -136,6 +136,7 @@ To optimize margin utilization and avoid transient order blocks, orders are sequ
 ### 2. Risk Management & Profit Targets (1.1% Stoploss / 1.5% Profit Exit)
 
 - **Margin Base:** During entry, the daemon computes the required margin using the Angel One margin calculator API.
+- **Daily Margin Refresh:** Overnight changes in span or exposure margins can affect risk thresholds. The daemon automatically queries the broker API to refresh the stored `marginUtilized` daily at **09:20 AM IST** (Monday through Friday) for active open positions, ensuring risk thresholds remain accurate.
 - **Monitoring:** The daemon polls LTP/WebSockets to monitor cumulative mark-to-market P&L.
 - **Stoploss:** If cumulative losses exceed **1.1% of the weekly utilized margin**, all legs are unwound.
 - **Profit Target:** If cumulative profits reach or exceed **1.5% of the weekly utilized margin**, all legs are unwound immediately to lock in gains.

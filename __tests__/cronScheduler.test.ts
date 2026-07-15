@@ -55,7 +55,7 @@ describe('CronScheduler', () => {
 
   test('start and stop scheduled jobs', () => {
     scheduler.start();
-    expect(cron.schedule).toHaveBeenCalledTimes(5);
+    expect(cron.schedule).toHaveBeenCalledTimes(6);
 
     scheduler.stop();
   });
@@ -268,5 +268,87 @@ describe('CronScheduler', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(false);
     clearCallback();
     expect(fs.unlinkSync).not.toHaveBeenCalled();
+  });
+
+  test('margin refresh job does nothing if kill switch or lockout is active', async () => {
+    let refreshCallback: any;
+    (cron.schedule as jest.Mock).mockImplementation((expression, cb) => {
+      if (expression === '20 9 * * 1-5') {
+        refreshCallback = cb;
+      }
+      return { start: jest.fn(), stop: jest.fn() };
+    });
+
+    scheduler.start();
+    expect(refreshCallback).toBeDefined();
+
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(true);
+    await refreshCallback();
+    expect(executionManager.updateMarginUtilized).not.toHaveBeenCalled();
+
+    jest.clearAllMocks();
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+    (flagWatcher.isDoneForThisWeek as jest.Mock).mockReturnValue(true);
+    await refreshCallback();
+    expect(executionManager.updateMarginUtilized).not.toHaveBeenCalled();
+  });
+
+  test('margin refresh job updates NIFTY and SENSEX margins when active', async () => {
+    let refreshCallback: any;
+    (cron.schedule as jest.Mock).mockImplementation((expression, cb) => {
+      if (expression === '20 9 * * 1-5') {
+        refreshCallback = cb;
+      }
+      return { start: jest.fn(), stop: jest.fn() };
+    });
+
+    scheduler.start();
+    expect(refreshCallback).toBeDefined();
+
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+    (flagWatcher.isDoneForThisWeek as jest.Mock).mockReturnValue(false);
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W27');
+
+    env.SENSEX_EXPIRY_ENABLED = true;
+    await refreshCallback();
+
+    expect(executionManager.updateMarginUtilized).toHaveBeenCalledWith('NIFTY', '2026-W27', false);
+    expect(executionManager.updateMarginUtilized).toHaveBeenCalledWith('SENSEX', '2026-W27', false);
+
+    jest.clearAllMocks();
+    env.SENSEX_EXPIRY_ENABLED = false;
+    await refreshCallback();
+
+    expect(executionManager.updateMarginUtilized).toHaveBeenCalledWith('NIFTY', '2026-W27', false);
+    expect(executionManager.updateMarginUtilized).not.toHaveBeenCalledWith(
+      'SENSEX',
+      '2026-W27',
+      false,
+    );
+  });
+
+  test('margin refresh job catches errors and logs them', async () => {
+    let refreshCallback: any;
+    (cron.schedule as jest.Mock).mockImplementation((expression, cb) => {
+      if (expression === '20 9 * * 1-5') {
+        refreshCallback = cb;
+      }
+      return { start: jest.fn(), stop: jest.fn() };
+    });
+
+    scheduler.start();
+    expect(refreshCallback).toBeDefined();
+
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+    (flagWatcher.isDoneForThisWeek as jest.Mock).mockReturnValue(false);
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W27');
+
+    (executionManager.updateMarginUtilized as jest.Mock).mockRejectedValue(
+      new Error('Update failed'),
+    );
+
+    await expect(refreshCallback()).resolves.not.toThrow();
   });
 });
