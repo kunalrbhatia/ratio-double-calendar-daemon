@@ -32,4 +32,15 @@ describe('FlagWatcher', () => {
     (fs.existsSync as jest.Mock).mockReturnValueOnce(false);
     expect(flagWatcher.isKillSwitched()).toBe(false);
   });
+
+  test('isDoneForThisWeek returns true if done-for-this-week file exists', () => {
+    (fs.existsSync as jest.Mock).mockReturnValueOnce(true);
+    expect(flagWatcher.isDoneForThisWeek()).toBe(true);
+    expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week'));
+  });
+
+  test('isDoneForThisWeek returns false if done-for-this-week file does not exist', () => {
+    (fs.existsSync as jest.Mock).mockReturnValueOnce(false);
+    expect(flagWatcher.isDoneForThisWeek()).toBe(false);
+  });
 });

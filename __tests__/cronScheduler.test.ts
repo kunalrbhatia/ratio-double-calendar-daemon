@@ -46,6 +46,7 @@ describe('CronScheduler', () => {
       start: jest.fn(),
       stop: jest.fn(),
     });
+    (flagWatcher.isDoneForThisWeek as jest.Mock).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -54,7 +55,7 @@ describe('CronScheduler', () => {
 
   test('start and stop scheduled jobs', () => {
     scheduler.start();
-    expect(cron.schedule).toHaveBeenCalledTimes(4);
+    expect(cron.schedule).toHaveBeenCalledTimes(5);
 
     scheduler.stop();
   });
@@ -220,5 +221,52 @@ describe('CronScheduler', () => {
 
     scheduler.runDailyCleanup();
     expect(fs.unlinkSync).toHaveBeenCalled();
+  });
+
+  test('handleTradingTick does nothing if weekly lockout is active', async () => {
+    // Wednesday 10:00 AM IST
+    jest.setSystemTime(new Date('2026-07-01T10:00:00+05:30'));
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+    (flagWatcher.isDoneForThisWeek as jest.Mock).mockReturnValue(true);
+
+    await scheduler.handleTradingTick();
+
+    expect(positionsStore.getCurrentWeekString).not.toHaveBeenCalled();
+  });
+
+  test('weekly lockout clear job deletes done-for-this-week file', () => {
+    let clearCallback: any;
+    (cron.schedule as jest.Mock).mockImplementation((expression, cb) => {
+      if (expression === '0 16 * * 2') {
+        clearCallback = cb;
+      }
+      return { start: jest.fn(), stop: jest.fn() };
+    });
+
+    scheduler.start();
+    expect(clearCallback).toBeDefined();
+
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    clearCallback();
+    expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week'));
+  });
+
+  test('weekly lockout clear job does nothing if done-for-this-week file does not exist', () => {
+    let clearCallback: any;
+    (cron.schedule as jest.Mock).mockImplementation((expression, cb) => {
+      if (expression === '0 16 * * 2') {
+        clearCallback = cb;
+      }
+      return { start: jest.fn(), stop: jest.fn() };
+    });
+
+    scheduler.start();
+    expect(clearCallback).toBeDefined();
+
+    (fs.existsSync as jest.Mock).mockReturnValue(false);
+    clearCallback();
+    expect(fs.unlinkSync).not.toHaveBeenCalled();
   });
 });

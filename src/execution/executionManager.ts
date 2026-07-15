@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import logger from '../logging/logger';
 import notifier from '../notify/notifier';
 import flagWatcher from '../flags/flagWatcher';
@@ -618,16 +620,16 @@ export class ExecutionManager implements IExecutionManager {
 
     logger.info(`Current unrealized P&L for ${underlying}: ₹${currentPnl.toLocaleString()}`);
 
-    // If cumulative loss exceeds 1% of the margin utilized, exit immediately
-    const stoplossThreshold = -0.01 * pos.marginUtilized;
-    // If cumulative profit exceeds 2% of the margin utilized, exit immediately
-    const profitTargetThreshold = 0.02 * pos.marginUtilized;
+    // If cumulative loss exceeds 1.1% of the margin utilized, exit immediately
+    const stoplossThreshold = -0.011 * pos.marginUtilized;
+    // If cumulative profit exceeds 1.5% of the margin utilized, exit immediately
+    const profitTargetThreshold = 0.015 * pos.marginUtilized;
 
     logger.info(
-      `[${underlying}] Stoploss threshold: ₹${stoplossThreshold.toLocaleString()} (1% of ₹${pos.marginUtilized.toLocaleString()})`,
+      `[${underlying}] Stoploss threshold: ₹${stoplossThreshold.toLocaleString()} (1.1% of ₹${pos.marginUtilized.toLocaleString()})`,
     );
     logger.info(
-      `[${underlying}] Profit target threshold: ₹${profitTargetThreshold.toLocaleString()} (2% of ₹${pos.marginUtilized.toLocaleString()})`,
+      `[${underlying}] Profit target threshold: ₹${profitTargetThreshold.toLocaleString()} (1.5% of ₹${pos.marginUtilized.toLocaleString()})`,
     );
 
     if (currentPnl <= stoplossThreshold) {
@@ -643,6 +645,10 @@ export class ExecutionManager implements IExecutionManager {
         // Set skip state for rest of week
         positionsStore.setWeeklySkipState(underlying, week, isPaper, true);
         logger.info(`Set skip state for ${underlying} week ${week}.`);
+        // Write weekly lockout flag
+        const lockoutPath = path.resolve(process.cwd(), 'done-for-this-week');
+        fs.writeFileSync(lockoutPath, 'lockout', 'utf-8');
+        logger.info('Created weekly lockout flag done-for-this-week.');
       }
     } else if (currentPnl >= profitTargetThreshold) {
       logger.info(
@@ -657,6 +663,10 @@ export class ExecutionManager implements IExecutionManager {
         // Set skip state for rest of week
         positionsStore.setWeeklySkipState(underlying, week, isPaper, true);
         logger.info(`Set skip state for ${underlying} week ${week} after profit target exit.`);
+        // Write weekly lockout flag
+        const lockoutPath = path.resolve(process.cwd(), 'done-for-this-week');
+        fs.writeFileSync(lockoutPath, 'lockout', 'utf-8');
+        logger.info('Created weekly lockout flag done-for-this-week.');
       }
     }
   }

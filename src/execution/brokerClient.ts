@@ -8,6 +8,8 @@ import {
   MarginCalculatorResponseSchema,
   SmartApiQuoteResponseSchema,
   OrderBookItem,
+  OptionGreekItem,
+  SmartApiOptionGreeksResponseSchema,
 } from '../schemas/smartApi';
 import logger from '../logging/logger';
 
@@ -47,6 +49,7 @@ export interface IBrokerClient {
   cancelOrder(orderid: string, variety: string): Promise<void>;
   getOrderBook(): Promise<OrderBookItem[]>;
   getMarginUtilized(basket: MarginLeg[]): Promise<number>;
+  getOptionGreeks(name: string, expirydate: string): Promise<OptionGreekItem[]>;
 }
 
 export class BrokerClient implements IBrokerClient {
@@ -326,6 +329,33 @@ export class BrokerClient implements IBrokerClient {
       logger.error(`Error calculating batch margin: ${msg}. Returning fallback margin.`);
       // Return a reasonable fallback margin if API fails (e.g. 1.5 Lakhs per calendar pair * 3)
       return 450000;
+    }
+  }
+
+  async getOptionGreeks(name: string, expirydate: string): Promise<OptionGreekItem[]> {
+    const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/marketData/v1/optionGreek';
+    const payload = {
+      name,
+      expirydate,
+    };
+
+    try {
+      const response = await httpClient.request<unknown>(url, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      const parsed = SmartApiOptionGreeksResponseSchema.parse(response);
+      if (!parsed.status) {
+        throw new Error(`Option Greeks check failed: ${parsed.message}`);
+      }
+      return parsed.data || [];
+    } catch (error: unknown) {
+      /* istanbul ignore next */
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Error getting option greeks for ${name} expiry ${expirydate}: ${msg}`);
+      throw error;
     }
   }
 }

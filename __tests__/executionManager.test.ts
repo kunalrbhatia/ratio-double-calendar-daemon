@@ -5,11 +5,14 @@ import positionsStore from '../src/positions/positionsStore';
 import notifier from '../src/notify/notifier';
 import { StrategyLeg } from '../src/strategy/strategyManager';
 
+import fs from 'fs';
+
 jest.mock('../src/execution/brokerClient');
 jest.mock('../src/flags/flagWatcher');
 jest.mock('../src/positions/positionsStore');
 jest.mock('../src/notify/notifier');
 jest.mock('../src/instruments/instrumentManager');
+jest.mock('fs');
 
 describe('ExecutionManager', () => {
   let executionManager: ExecutionManager;
@@ -310,6 +313,42 @@ describe('ExecutionManager', () => {
 
     expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true);
     expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
+    expect(fs.writeFileSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week'), 'lockout', 'utf-8');
+    executeExitSpy.mockRestore();
+  });
+
+  test('monitorPnl exits on stoploss breached', async () => {
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+
+    const openPosition = {
+      week: '2026-W27',
+      status: 'open' as const,
+      marginUtilized: 100000,
+      orders: [
+        {
+          symboltoken: 'T1_CE_BUY',
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          transactiontype: 'BUY' as const,
+          quantity: 50,
+          exchange: 'NFO',
+          orderid: 'O1',
+          status: 'COMPLETE',
+          price: 100,
+        },
+      ],
+      realizedPnl: 0,
+      skippedThisWeek: false,
+    };
+    (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
+    (brokerClient.getLtp as jest.Mock).mockResolvedValue(50);
+
+    const executeExitSpy = jest.spyOn(executionManager, 'executeExit').mockResolvedValue(true);
+
+    await executionManager.monitorPnl('NIFTY', '2026-W27', true);
+
+    expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
+    expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
+    expect(fs.writeFileSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week'), 'lockout', 'utf-8');
     executeExitSpy.mockRestore();
   });
 
@@ -349,6 +388,7 @@ describe('ExecutionManager', () => {
       true,
       true,
     );
+    expect(fs.writeFileSync).not.toHaveBeenCalledWith(expect.stringContaining('done-for-this-week'), 'lockout', 'utf-8');
     executeExitSpy.mockRestore();
   });
 

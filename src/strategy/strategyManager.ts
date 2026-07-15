@@ -149,13 +149,24 @@ export class StrategyManager implements IStrategyManager {
     // 3. Fetch VIX as proxy for IV
     const vixToken = instrumentManager.getVixToken();
     const vix = await brokerClient.getLtp('NSE', 'INDIA VIX', vixToken);
-    const iv = vix / 100; // e.g. 12% IV = 0.12
+    const vixIv = vix / 100; // e.g. 12% IV = 0.12
+
+    // Fetch live IVs for expiryT0 if possible
+    const ivMap = new Map<number, number>();
+    try {
+      const greeks = await brokerClient.getOptionGreeks(underlying, expiryT0);
+      for (const item of greeks) {
+        ivMap.set(Math.round(item.strikePrice), item.impliedVolatility / 100);
+      }
+      logger.info(`Loaded live option greeks IVs for ${underlying} expiry ${expiryT0}`);
+    } catch (err: unknown) {
+      /* istanbul ignore next */
+      logger.warn(
+        `Failed to fetch option greeks / IV map for ${underlying} on ${expiryT0}. Falling back to VIX.`,
+      );
+    }
 
     // 4. Find option strikes with closest deltas
-    // We search across strikes in the instrument manager.
-    // For standard NSE NIFTY/SENSEX, strikes are multiples of 50 or 100 around the underlying LTP.
-    // Let's generate a list of candidates or iterate through known strikes.
-    // A robust way is to scan the cache of instruments.
     const candidateStrikes: number[] = [];
     const minStrike = Math.round((underlyingLtp * 0.8) / 100) * 100;
     const maxStrike = Math.round((underlyingLtp * 1.2) / 100) * 100;
@@ -164,123 +175,242 @@ export class StrategyManager implements IStrategyManager {
       candidateStrikes.push(strike);
     }
 
-    const hedgeExpiry = skipLiquidityCheck ? expiryT1 : expiryT2;
+    // Days to T0 and T1 expiry
+    const t0ExpDate = dayjs(expiryT0, 'DDMMMYYYY').hour(15).minute(30);
+    const t0DaysToExpiry = Math.max(0.01, t0ExpDate.diff(now, 'day', true));
+    const t0 = t0DaysToExpiry / 365;
 
-    // Define target legs
-    const legDefinitions = [
-      {
-        action: 'SELL' as const,
-        qtyMult: 3,
-        expiry: expiryT0,
-        type: 'CE' as const,
-        targetDelta: 0.15,
-      },
-      {
-        action: 'SELL' as const,
-        qtyMult: 3,
-        expiry: expiryT0,
-        type: 'PE' as const,
-        targetDelta: 0.15,
-      },
-      {
-        action: 'BUY' as const,
-        qtyMult: 1,
-        expiry: hedgeExpiry,
-        type: 'CE' as const,
-        targetDelta: 0.3,
-      },
-      {
-        action: 'BUY' as const,
-        qtyMult: 1,
-        expiry: hedgeExpiry,
-        type: 'PE' as const,
-        targetDelta: 0.3,
-      },
-      {
-        action: 'BUY' as const,
-        qtyMult: 2,
-        expiry: hedgeExpiry,
-        type: 'CE' as const,
-        targetDelta: 0.2,
-      },
-      {
-        action: 'BUY' as const,
-        qtyMult: 2,
-        expiry: hedgeExpiry,
-        type: 'PE' as const,
-        targetDelta: 0.2,
-      },
-    ];
+    const t1ExpDate = dayjs(expiryT1, 'DDMMMYYYY').hour(15).minute(30);
+    const t1DaysToExpiry = Math.max(0.01, t1ExpDate.diff(now, 'day', true));
+    const t1 = t1DaysToExpiry / 365;
 
-    const basket: StrategyLeg[] = [];
-
-    for (const def of legDefinitions) {
-      const expDate = dayjs(def.expiry, 'DDMMMYYYY').hour(15).minute(30);
-      const daysToExpiry = Math.max(0.01, expDate.diff(now, 'day', true));
-      const t = daysToExpiry / 365;
-
-      const candidates = await this.getLiquidCandidates(
-        underlying,
-        def.expiry,
-        def.type,
-        candidateStrikes,
+    // A. Resolve Short CE Leg (T0)
+    const t0CeCandidates = await this.getLiquidCandidates(
+      underlying,
+      expiryT0,
+      'CE',
+      candidateStrikes,
+    );
+    for (const c of t0CeCandidates) {
+      const iv = ivMap.get(c.strike) ?? vixIv;
+      c.delta = Math.abs(calculateDelta(underlyingLtp, c.strike, t0, iv, 0.07, 'CE'));
+    }
+    const t0CeFiltered = t0CeCandidates.filter(
+      (c) => c.delta! >= 0.10 && c.delta! <= 0.15 && (skipLiquidityCheck || this.isLiquid(c)),
+    );
+    if (t0CeFiltered.length === 0) {
+      logger.error(`No qualifying T0 CE strikes in delta range 0.10-0.15 for ${underlying}.`);
+      await notifier.send(
+        `🚨 Basket generation failed: No qualifying T0 CE strikes in delta range 0.10-0.15 for ${underlying}.`,
       );
-
-      for (const candidate of candidates) {
-        const delta = calculateDelta(underlyingLtp, candidate.strike, t, iv, 0.07, def.type);
-        candidate.delta = Math.abs(delta);
+      return null;
+    }
+    const shortCe = t0CeFiltered.reduce((best, cur) => {
+      const curDiff = Math.abs(cur.delta! - 0.15);
+      const bestDiff = Math.abs(best.delta! - 0.15);
+      if (curDiff < bestDiff) {
+        return cur;
       }
+      return best;
+    }, t0CeFiltered[0]);
 
-      const liquidOnes = skipLiquidityCheck
-        ? candidates
-        : candidates.filter((c) => this.isLiquid(c));
+    // B. Resolve Short PE Leg (T0)
+    const t0PeCandidates = await this.getLiquidCandidates(
+      underlying,
+      expiryT0,
+      'PE',
+      candidateStrikes,
+    );
+    for (const c of t0PeCandidates) {
+      const iv = ivMap.get(c.strike) ?? vixIv;
+      c.delta = Math.abs(calculateDelta(underlyingLtp, c.strike, t0, iv, 0.07, 'PE'));
+    }
+    const t0PeFiltered = t0PeCandidates.filter(
+      (c) => c.delta! >= 0.10 && c.delta! <= 0.15 && (skipLiquidityCheck || this.isLiquid(c)),
+    );
+    if (t0PeFiltered.length === 0) {
+      logger.error(`No qualifying T0 PE strikes in delta range 0.10-0.15 for ${underlying}.`);
+      await notifier.send(
+        `🚨 Basket generation failed: No qualifying T0 PE strikes in delta range 0.10-0.15 for ${underlying}.`,
+      );
+      return null;
+    }
+    const shortPe = t0PeFiltered.reduce((best, cur) => {
+      const curDiff = Math.abs(cur.delta! - 0.15);
+      const bestDiff = Math.abs(best.delta! - 0.15);
+      if (curDiff < bestDiff) {
+        return cur;
+      }
+      return best;
+    }, t0PeFiltered[0]);
 
-      let chosen: LiquidCandidate | undefined;
-      if (liquidOnes.length > 0) {
-        chosen = liquidOnes.reduce((best, cur) => {
-          const curDiff = Math.abs(cur.delta! - def.targetDelta);
-          const bestDiff = Math.abs(best.delta! - def.targetDelta);
-          return curDiff < bestDiff ? cur : best;
-        }, liquidOnes[0]);
-      } else {
-        logger.warn(
-          `No liquid strikes found for ${underlying} ${def.type} ${def.expiry} near target delta ${def.targetDelta}. Falling back to theoretical best.`,
-        );
-        await notifier.send(
-          `⚠️ No liquid strikes found for ${underlying} ${def.type} ${def.expiry} near target delta ${def.targetDelta}. Falling back to theoretical best — review before going live.`,
-        );
+    // C. Resolve T1 CE Hedge Leg
+    const t1CeCandidates = await this.getLiquidCandidates(
+      underlying,
+      expiryT1,
+      'CE',
+      candidateStrikes,
+    );
+    const validT1Ce = t1CeCandidates.filter(
+      (c) => c.ltp > 0 && (skipLiquidityCheck || this.isLiquid(c)),
+    );
+    validT1Ce.sort((a, b) => b.strike - a.strike); // Ascending premium (CE lower strike has higher premium)
 
-        if (candidates.length > 0) {
-          chosen = candidates.reduce((best, cur) => {
-            const curDiff = Math.abs(cur.delta! - def.targetDelta);
-            const bestDiff = Math.abs(best.delta! - def.targetDelta);
-            return curDiff < bestDiff ? cur : best;
-          }, candidates[0]);
+    const t1CeInBand = validT1Ce.filter(
+      (c) => c.ltp >= shortCe.ltp * 0.95 && c.ltp <= shortCe.ltp * 1.05,
+    );
+    let hedgeCe: LiquidCandidate | undefined;
+    if (t1CeInBand.length > 0) {
+      hedgeCe = t1CeInBand.reduce((best, cur) => {
+        const curDiff = Math.abs(cur.ltp - shortCe.ltp);
+        const bestDiff = Math.abs(best.ltp - shortCe.ltp);
+        if (curDiff < bestDiff) {
+          return cur;
+        }
+        return best;
+      }, t1CeInBand[0]);
+    } else {
+      // Fallback: Widen search upward only (higher premium)
+      const startIndex = validT1Ce.findIndex((c) => c.ltp > shortCe.ltp * 1.05);
+      if (startIndex !== -1) {
+        const searchLimit = Math.min(validT1Ce.length, startIndex + 10);
+        for (let i = startIndex; i < searchLimit; i++) {
+          const candidate = validT1Ce[i];
+          if (candidate.ltp <= shortCe.ltp * 1.10) {
+            hedgeCe = candidate;
+            break;
+          }
         }
       }
-
-      if (!chosen || !chosen.inst) {
-        logger.error(
-          `Could not resolve strike for ${def.type} with target delta ${def.targetDelta} on expiry ${def.expiry}`,
-        );
-        return null;
-      }
-
-      basket.push({
-        action: def.action,
-        quantity: chosen.inst.lotsize * def.qtyMult,
-        expiry: def.expiry,
-        strike: chosen.strike,
-        type: def.type,
-        symboltoken: chosen.inst.symboltoken,
-        tradingsymbol: chosen.inst.tradingsymbol,
-        exchange: chosen.inst.exchange,
-        lotsize: chosen.inst.lotsize,
-        targetDelta: def.targetDelta,
-        actualDelta: chosen.delta!,
-        ltp: chosen.ltp,
-      });
     }
+    if (!hedgeCe) {
+      logger.error(
+        `No valid T1 CE hedge strike found for ${underlying} matching T0 LTP ₹${shortCe.ltp.toFixed(2)}.`,
+      );
+      await notifier.send(
+        `🚨 Basket generation failed: No valid T1 CE hedge strike found for ${underlying}.`,
+      );
+      return null;
+    }
+
+    // D. Resolve T1 PE Hedge Leg
+    const t1PeCandidates = await this.getLiquidCandidates(
+      underlying,
+      expiryT1,
+      'PE',
+      candidateStrikes,
+    );
+    const validT1Pe = t1PeCandidates.filter(
+      (c) => c.ltp > 0 && (skipLiquidityCheck || this.isLiquid(c)),
+    );
+    validT1Pe.sort((a, b) => a.strike - b.strike); // Ascending premium (PE higher strike has higher premium)
+
+    const t1PeInBand = validT1Pe.filter(
+      (c) => c.ltp >= shortPe.ltp * 0.95 && c.ltp <= shortPe.ltp * 1.05,
+    );
+    let hedgePe: LiquidCandidate | undefined;
+    if (t1PeInBand.length > 0) {
+      hedgePe = t1PeInBand.reduce((best, cur) => {
+        const curDiff = Math.abs(cur.ltp - shortPe.ltp);
+        const bestDiff = Math.abs(best.ltp - shortPe.ltp);
+        if (curDiff < bestDiff) {
+          return cur;
+        }
+        return best;
+      }, t1PeInBand[0]);
+    } else {
+      // Fallback: Widen search upward only (higher premium)
+      const startIndex = validT1Pe.findIndex((c) => c.ltp > shortPe.ltp * 1.05);
+      if (startIndex !== -1) {
+        const searchLimit = Math.min(validT1Pe.length, startIndex + 10);
+        for (let i = startIndex; i < searchLimit; i++) {
+          const candidate = validT1Pe[i];
+          if (candidate.ltp <= shortPe.ltp * 1.10) {
+            hedgePe = candidate;
+            break;
+          }
+        }
+      }
+    }
+    if (!hedgePe) {
+      logger.error(
+        `No valid T1 PE hedge strike found for ${underlying} matching T0 LTP ₹${shortPe.ltp.toFixed(2)}.`,
+      );
+      await notifier.send(
+        `🚨 Basket generation failed: No valid T1 PE hedge strike found for ${underlying}.`,
+      );
+      return null;
+    }
+
+    // Calculate delta for hedges to store in basket metadata
+    const ceHedgeIv = ivMap.get(hedgeCe.strike) ?? vixIv;
+    hedgeCe.delta = Math.abs(
+      calculateDelta(underlyingLtp, hedgeCe.strike, t1, ceHedgeIv, 0.07, 'CE'),
+    );
+
+    const peHedgeIv = ivMap.get(hedgePe.strike) ?? vixIv;
+    hedgePe.delta = Math.abs(
+      calculateDelta(underlyingLtp, hedgePe.strike, t1, peHedgeIv, 0.07, 'PE'),
+    );
+
+    const basket: StrategyLeg[] = [
+      {
+        action: 'SELL',
+        quantity: shortCe.inst.lotsize * 3,
+        expiry: expiryT0,
+        strike: shortCe.strike,
+        type: 'CE',
+        symboltoken: shortCe.inst.symboltoken,
+        tradingsymbol: shortCe.inst.tradingsymbol,
+        exchange: shortCe.inst.exchange,
+        lotsize: shortCe.inst.lotsize,
+        targetDelta: 0.15,
+        actualDelta: shortCe.delta!,
+        ltp: shortCe.ltp,
+      },
+      {
+        action: 'SELL',
+        quantity: shortPe.inst.lotsize * 3,
+        expiry: expiryT0,
+        strike: shortPe.strike,
+        type: 'PE',
+        symboltoken: shortPe.inst.symboltoken,
+        tradingsymbol: shortPe.inst.tradingsymbol,
+        exchange: shortPe.inst.exchange,
+        lotsize: shortPe.inst.lotsize,
+        targetDelta: 0.15,
+        actualDelta: shortPe.delta!,
+        ltp: shortPe.ltp,
+      },
+      {
+        action: 'BUY',
+        quantity: hedgeCe.inst.lotsize * 3,
+        expiry: expiryT1,
+        strike: hedgeCe.strike,
+        type: 'CE',
+        symboltoken: hedgeCe.inst.symboltoken,
+        tradingsymbol: hedgeCe.inst.tradingsymbol,
+        exchange: hedgeCe.inst.exchange,
+        lotsize: hedgeCe.inst.lotsize,
+        targetDelta: hedgeCe.delta!,
+        actualDelta: hedgeCe.delta!,
+        ltp: hedgeCe.ltp,
+      },
+      {
+        action: 'BUY',
+        quantity: hedgePe.inst.lotsize * 3,
+        expiry: expiryT1,
+        strike: hedgePe.strike,
+        type: 'PE',
+        symboltoken: hedgePe.inst.symboltoken,
+        tradingsymbol: hedgePe.inst.tradingsymbol,
+        exchange: hedgePe.inst.exchange,
+        lotsize: hedgePe.inst.lotsize,
+        targetDelta: hedgePe.delta!,
+        actualDelta: hedgePe.delta!,
+        ltp: hedgePe.ltp,
+      },
+    ];
 
     logger.info('Successfully constructed strategy basket:');
     basket.forEach((leg) => {

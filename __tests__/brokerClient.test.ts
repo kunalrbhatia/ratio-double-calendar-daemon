@@ -379,4 +379,56 @@ describe('BrokerClient', () => {
       'Order cancellation failed',
     );
   });
+
+  test('getOptionGreeks returns list of option greeks', async () => {
+    const mockGreeksRes = {
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: [
+        {
+          name: 'NIFTY',
+          expiry: '21JUL2026',
+          strikePrice: '24600.000000',
+          optionType: 'CE',
+          delta: '0.150000',
+          gamma: '0.002800',
+          theta: '-4.091800',
+          vega: '2.296700',
+          impliedVolatility: '16.330000',
+          tradeVolume: '24048.00',
+        },
+      ],
+    };
+    (httpClient.request as jest.Mock).mockResolvedValueOnce(mockGreeksRes);
+
+    const res = await client.getOptionGreeks('NIFTY', '21JUL2026');
+    expect(res).toHaveLength(1);
+    expect(res[0].impliedVolatility).toBe(16.33);
+  });
+
+  test('getOptionGreeks returns empty list when data is absent', async () => {
+    const mockGreeksRes = {
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: null,
+    };
+    (httpClient.request as jest.Mock).mockResolvedValueOnce(mockGreeksRes);
+
+    const res = await client.getOptionGreeks('NIFTY', '21JUL2026');
+    expect(res).toEqual([]);
+  });
+
+  test('getOptionGreeks throws on status false', async () => {
+    (httpClient.request as jest.Mock).mockResolvedValueOnce({
+      status: false,
+      message: 'No Data Available',
+      errorcode: 'AB9019',
+    });
+
+    await expect(client.getOptionGreeks('NIFTY', '21JUL2026')).rejects.toThrow(
+      'Option Greeks check failed',
+    );
+  });
 });
