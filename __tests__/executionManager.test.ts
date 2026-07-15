@@ -313,7 +313,11 @@ describe('ExecutionManager', () => {
 
     expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true);
     expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
-    expect(fs.writeFileSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week'), 'lockout', 'utf-8');
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('done-for-this-week'),
+      'lockout',
+      'utf-8',
+    );
     executeExitSpy.mockRestore();
   });
 
@@ -348,7 +352,11 @@ describe('ExecutionManager', () => {
 
     expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
     expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
-    expect(fs.writeFileSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week'), 'lockout', 'utf-8');
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('done-for-this-week'),
+      'lockout',
+      'utf-8',
+    );
     executeExitSpy.mockRestore();
   });
 
@@ -388,7 +396,11 @@ describe('ExecutionManager', () => {
       true,
       true,
     );
-    expect(fs.writeFileSync).not.toHaveBeenCalledWith(expect.stringContaining('done-for-this-week'), 'lockout', 'utf-8');
+    expect(fs.writeFileSync).not.toHaveBeenCalledWith(
+      expect.stringContaining('done-for-this-week'),
+      'lockout',
+      'utf-8',
+    );
     executeExitSpy.mockRestore();
   });
 

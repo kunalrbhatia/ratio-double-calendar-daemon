@@ -196,7 +196,7 @@ export class StrategyManager implements IStrategyManager {
       c.delta = Math.abs(calculateDelta(underlyingLtp, c.strike, t0, iv, 0.07, 'CE'));
     }
     const t0CeFiltered = t0CeCandidates.filter(
-      (c) => c.delta! >= 0.10 && c.delta! <= 0.15 && (skipLiquidityCheck || this.isLiquid(c)),
+      (c) => c.delta! >= 0.1 && c.delta! <= 0.15 && (skipLiquidityCheck || this.isLiquid(c)),
     );
     if (t0CeFiltered.length === 0) {
       logger.error(`No qualifying T0 CE strikes in delta range 0.10-0.15 for ${underlying}.`);
@@ -226,7 +226,7 @@ export class StrategyManager implements IStrategyManager {
       c.delta = Math.abs(calculateDelta(underlyingLtp, c.strike, t0, iv, 0.07, 'PE'));
     }
     const t0PeFiltered = t0PeCandidates.filter(
-      (c) => c.delta! >= 0.10 && c.delta! <= 0.15 && (skipLiquidityCheck || this.isLiquid(c)),
+      (c) => c.delta! >= 0.1 && c.delta! <= 0.15 && (skipLiquidityCheck || this.isLiquid(c)),
     );
     if (t0PeFiltered.length === 0) {
       logger.error(`No qualifying T0 PE strikes in delta range 0.10-0.15 for ${underlying}.`);
@@ -276,7 +276,7 @@ export class StrategyManager implements IStrategyManager {
         const searchLimit = Math.min(validT1Ce.length, startIndex + 10);
         for (let i = startIndex; i < searchLimit; i++) {
           const candidate = validT1Ce[i];
-          if (candidate.ltp <= shortCe.ltp * 1.10) {
+          if (candidate.ltp <= shortCe.ltp * 1.1) {
             hedgeCe = candidate;
             break;
           }
@@ -325,7 +325,7 @@ export class StrategyManager implements IStrategyManager {
         const searchLimit = Math.min(validT1Pe.length, startIndex + 10);
         for (let i = startIndex; i < searchLimit; i++) {
           const candidate = validT1Pe[i];
-          if (candidate.ltp <= shortPe.ltp * 1.10) {
+          if (candidate.ltp <= shortPe.ltp * 1.1) {
             hedgePe = candidate;
             break;
           }
