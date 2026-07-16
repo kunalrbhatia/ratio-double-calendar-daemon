@@ -18,7 +18,20 @@ describe('Environment Schema Validation', () => {
     expect(parsed.PORT).toBe(3000);
     expect(parsed.NODE_ENV).toBe('production');
     expect(parsed.TELEGRAM_ENABLED).toBe(true);
+    expect(parsed.USE_TELEGRAM).toBe(true);
+    expect(parsed.SLACK_ENABLED).toBe(false);
+    expect(parsed.USE_SLACK).toBe(true);
     expect(parsed.SENSEX_EXPIRY_ENABLED).toBe(false);
+
+    // Explicit false and true tests
+    const explicitEnv = {
+      ...validEnv,
+      USE_TELEGRAM: 'false',
+      USE_SLACK: 'true',
+    };
+    const parsedExplicit = envSchema.parse(explicitEnv);
+    expect(parsedExplicit.USE_TELEGRAM).toBe(false);
+    expect(parsedExplicit.USE_SLACK).toBe(true);
   });
 
   test('validates SENSEX_EXPIRY_ENABLED preprocessor branches', () => {

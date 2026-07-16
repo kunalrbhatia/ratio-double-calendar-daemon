@@ -8,6 +8,14 @@ if (process.env.NODE_ENV !== 'test') {
   dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 }
 
+const booleanCoerce = (defaultValue: boolean) =>
+  z
+    .preprocess((val) => {
+      if (val === undefined || val === '') return defaultValue;
+      return val === 'true' || val === '1' || val === true || val === 1;
+    }, z.boolean())
+    .default(defaultValue);
+
 export const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -17,17 +25,13 @@ export const envSchema = z.object({
   CLIENT_TOTP_PIN: z.string().min(1, 'CLIENT_TOTP_PIN is required'),
   TELEGRAM_BOT_TOKEN: z.string().optional().default(''),
   TELEGRAM_CHAT_ID: z.string().optional().default(''),
-  TELEGRAM_ENABLED: z.coerce.boolean().default(false),
-  SLACK_ENABLED: z.coerce.boolean().default(false),
+  TELEGRAM_ENABLED: booleanCoerce(false),
+  USE_TELEGRAM: booleanCoerce(true),
+  SLACK_ENABLED: booleanCoerce(false),
+  USE_SLACK: booleanCoerce(true),
   SLACK_WEBHOOK_URL: z.string().optional().default(''),
   SLACK_SIGNING_SECRET: z.string().optional().default(''),
-  SENSEX_EXPIRY_ENABLED: z
-    .preprocess(
-      (val) =>
-        val === undefined || val === '' ? true : val === 'true' || val === '1' || val === true,
-      z.boolean(),
-    )
-    .default(true),
+  SENSEX_EXPIRY_ENABLED: booleanCoerce(true),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -50,7 +54,9 @@ try {
       TELEGRAM_BOT_TOKEN: '',
       TELEGRAM_CHAT_ID: '',
       TELEGRAM_ENABLED: false,
+      USE_TELEGRAM: false,
       SLACK_ENABLED: false,
+      USE_SLACK: false,
       SLACK_WEBHOOK_URL: '',
       SLACK_SIGNING_SECRET: '',
       SENSEX_EXPIRY_ENABLED: true,
