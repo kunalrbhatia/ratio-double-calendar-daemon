@@ -15,7 +15,12 @@ export class Notifier implements INotifier {
 
     const promises: Promise<void>[] = [];
 
-    if (env.USE_TELEGRAM && env.TELEGRAM_ENABLED && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
+    if (
+      env.USE_TELEGRAM &&
+      env.TELEGRAM_ENABLED &&
+      env.TELEGRAM_BOT_TOKEN &&
+      env.TELEGRAM_CHAT_ID
+    ) {
       promises.push(this.sendTelegram(message));
     }
 

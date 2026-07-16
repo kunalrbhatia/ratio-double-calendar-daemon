@@ -10,13 +10,10 @@ if (process.env.NODE_ENV !== 'test') {
 
 const booleanCoerce = (defaultValue: boolean) =>
   z
-    .preprocess(
-      (val) => {
-        if (val === undefined || val === '') return defaultValue;
-        return val === 'true' || val === '1' || val === true || val === 1;
-      },
-      z.boolean(),
-    )
+    .preprocess((val) => {
+      if (val === undefined || val === '') return defaultValue;
+      return val === 'true' || val === '1' || val === true || val === 1;
+    }, z.boolean())
     .default(defaultValue);
 
 export const envSchema = z.object({
