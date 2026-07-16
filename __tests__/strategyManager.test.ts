@@ -542,4 +542,65 @@ describe('StrategyManager', () => {
     expect(basket).not.toBeNull();
     expect(basket).toHaveLength(4);
   });
+
+  test('buildBasket hits reduction branches where curDiff < bestDiff', async () => {
+    const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
+    (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
+      todayStr,
+      '16JUL2026',
+      '23JUL2026',
+    ]);
+    (brokerClient.getLtp as jest.Mock).mockResolvedValueOnce(19000).mockResolvedValueOnce(12.5);
+
+    (instrumentManager.getInstrument as jest.Mock).mockImplementation(
+      (symbol: string, expiry: string, strike: number, type: string) => {
+        return {
+          symbol: `${symbol}_${expiry}_${strike}_${type}`,
+          expiry,
+          strike,
+          type,
+          symboltoken: `${expiry}_${strike}_${type}`,
+          lotsize: 75,
+          exchange: 'NFO',
+        };
+      },
+    );
+
+    (calculateDelta as jest.Mock).mockImplementation((_s, k, _t, _v, _r, type) => {
+      if (type === 'CE') {
+        return k === 18800 ? 0.14 : 0.11;
+      } else {
+        return k === 19200 ? 0.14 : 0.11;
+      }
+    });
+
+    (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(
+      async (exchange: string, tokens: string[]) => {
+        const map = new Map();
+        for (const token of tokens) {
+          if (!token) continue;
+          const isT1Ce = token.includes('16JUL2026') && token.includes('CE');
+          const isT1Pe = token.includes('16JUL2026') && token.includes('PE');
+          let ltp = 100;
+          if (isT1Ce) {
+            ltp = token.includes('18800') ? 95 : 5;
+          }
+          if (isT1Pe) {
+            ltp = token.includes('19200') ? 95 : 5;
+          }
+          map.set(token, {
+            ltp,
+            bid: 99.5,
+            ask: 100.5,
+            bidQty: 1000,
+            askQty: 1000,
+          });
+        }
+        return map;
+      },
+    );
+
+    const basket = await manager.buildBasket('NIFTY', true);
+    expect(basket).not.toBeNull();
+  });
 });

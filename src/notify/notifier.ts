@@ -7,15 +7,19 @@ export interface INotifier {
 
 export class Notifier implements INotifier {
   async send(message: string): Promise<void> {
+    if (!env.USE_TELEGRAM && !env.USE_SLACK) {
+      return;
+    }
+
     logger.info(`Notification: ${message}`);
 
     const promises: Promise<void>[] = [];
 
-    if (env.TELEGRAM_ENABLED && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
+    if (env.USE_TELEGRAM && env.TELEGRAM_ENABLED && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
       promises.push(this.sendTelegram(message));
     }
 
-    if (env.SLACK_ENABLED && env.SLACK_WEBHOOK_URL) {
+    if (env.USE_SLACK && env.SLACK_ENABLED && env.SLACK_WEBHOOK_URL) {
       promises.push(this.sendSlack(message));
     }
 

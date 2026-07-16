@@ -5,9 +5,11 @@ jest.mock('../src/schemas/env', () => ({
   __esModule: true,
   default: {
     TELEGRAM_ENABLED: true,
+    USE_TELEGRAM: true,
     TELEGRAM_BOT_TOKEN: 'mock_bot_token',
     TELEGRAM_CHAT_ID: 'mock_chat_id',
     SLACK_ENABLED: true,
+    USE_SLACK: true,
     SLACK_WEBHOOK_URL: 'https://mock_slack_webhook',
   },
 }));
@@ -20,6 +22,8 @@ describe('Notifier', () => {
     notifier = new Notifier();
     mockFetch = jest.fn();
     global.fetch = mockFetch;
+    env.USE_TELEGRAM = true;
+    env.USE_SLACK = true;
   });
 
   test('sends telegram and slack notifications when both are enabled', async () => {
@@ -45,6 +49,14 @@ describe('Notifier', () => {
   test('does not send if disabled', async () => {
     env.TELEGRAM_ENABLED = false;
     env.SLACK_ENABLED = false;
+
+    await notifier.send('Hidden message');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  test('does not send or log if USE_TELEGRAM and USE_SLACK are false', async () => {
+    env.USE_TELEGRAM = false;
+    env.USE_SLACK = false;
 
     await notifier.send('Hidden message');
     expect(mockFetch).not.toHaveBeenCalled();
