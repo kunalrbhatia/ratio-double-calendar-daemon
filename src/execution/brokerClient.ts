@@ -321,8 +321,8 @@ export class BrokerClient implements IBrokerClient {
         throw new Error(`Margin calculation failed: ${parsed.message}`);
       }
 
-      // Return marginUtilized if present, or totalMargin as fallback
-      return parsed.data.marginUtilized ?? parsed.data.totalMargin;
+      // Return marginUtilized if present, or totalMarginRequired as fallback
+      return parsed.data.marginUtilized ?? parsed.data.totalMarginRequired;
     } catch (error: unknown) {
       /* istanbul ignore next */
       const msg = error instanceof Error ? error.message : String(error);
