@@ -4,6 +4,7 @@ import sessionManager from '../auth/session';
 import logger from '../logging/logger';
 import flagWatcher from '../flags/flagWatcher';
 import positionsStore from '../positions/positionsStore';
+import instrumentManager from '../instruments/instrumentManager';
 
 export interface TickData {
   token: string;
@@ -169,18 +170,38 @@ class SmartStreamClient {
     }
 
     if (this.ws && this.isConnected) {
-      const payload = {
-        action: 1, // 1 = Subscribe
-        params: {
-          mode: 1, // 1 = LTP
-          tokenList: tokens.map((t) => ({
-            exchangeType: 2, // 2 = NFO (Options)
-            tokens: [t],
-          })),
-        },
-      };
-      this.ws.send(JSON.stringify(payload));
-      logger.info(`Subscribed to SmartStream tokens: ${tokens.join(', ')}`);
+      // Group tokens by exchangeType: NFO (2), BFO (4)
+      const bfoTokens: string[] = [];
+      const nfoTokens: string[] = [];
+
+      for (const t of tokens) {
+        const exchange = instrumentManager.getExchangeByToken(t);
+        if (exchange === 'BFO') {
+          bfoTokens.push(t);
+        } else {
+          nfoTokens.push(t);
+        }
+      }
+
+      const tokenList: Array<{ exchangeType: number; tokens: string[] }> = [];
+      if (nfoTokens.length > 0) {
+        tokenList.push({ exchangeType: 2, tokens: nfoTokens });
+      }
+      if (bfoTokens.length > 0) {
+        tokenList.push({ exchangeType: 4, tokens: bfoTokens });
+      }
+
+      if (tokenList.length > 0) {
+        const payload = {
+          action: 1, // 1 = Subscribe
+          params: {
+            mode: 1, // 1 = LTP
+            tokenList,
+          },
+        };
+        this.ws.send(JSON.stringify(payload));
+        logger.info(`Subscribed to SmartStream tokens: ${tokens.join(', ')}`);
+      }
     }
   }
 
