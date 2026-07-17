@@ -297,14 +297,14 @@ export class BrokerClient implements IBrokerClient {
     const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/margin/v1/batch';
 
     // Map basket legs to Angel batch margin structure
-    // Typically: { positions: [ { exchange, symboltoken, quantity, transactiontype, price, producttype } ] }
     const positions = basket.map((leg) => ({
       exchange: leg.exchange,
-      symboltoken: leg.symboltoken,
-      quantity: leg.quantity,
-      transactiontype: leg.action,
-      price: 0, // LTP or 0
-      producttype: 'CARRYFORWARD',
+      token: leg.symboltoken,
+      qty: leg.quantity,
+      price: 0,
+      productType: 'CARRYFORWARD',
+      tradeType: leg.action,
+      orderType: 'MARKET',
     }));
 
     const payload = { positions };
@@ -327,8 +327,14 @@ export class BrokerClient implements IBrokerClient {
       /* istanbul ignore next */
       const msg = error instanceof Error ? error.message : String(error);
       logger.error(`Error calculating batch margin: ${msg}. Returning fallback margin.`);
-      // Return a reasonable fallback margin if API fails (e.g. 1.5 Lakhs per calendar pair * 3)
-      return 450000;
+
+      // Return a reasonable fallback margin if API fails (scaled per index lots)
+      const isSensex = basket.some((leg) => leg.exchange === 'BFO');
+      const firstLeg = basket[0];
+      const defaultLotSize = isSensex ? 10 : 65;
+      const lots = firstLeg ? Math.ceil(firstLeg.quantity / defaultLotSize) : 1;
+      const marginPerLot = isSensex ? 120000 : 150000;
+      return marginPerLot * lots;
     }
   }
 

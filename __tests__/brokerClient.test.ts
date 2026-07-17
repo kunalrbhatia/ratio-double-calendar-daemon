@@ -165,7 +165,7 @@ describe('BrokerClient', () => {
     expect(margin).toBe(400000);
   });
 
-  test('getMarginUtilized throws on status false and uses fallback', async () => {
+  test('getMarginUtilized throws on status false and uses fallback for empty basket', async () => {
     (httpClient.request as jest.Mock).mockResolvedValueOnce({
       status: false,
       message: 'Calculations failed',
@@ -173,7 +173,33 @@ describe('BrokerClient', () => {
     });
 
     const margin = await client.getMarginUtilized([]);
+    expect(margin).toBe(150000);
+  });
+
+  test('getMarginUtilized throws on status false and uses fallback for NIFTY', async () => {
+    (httpClient.request as jest.Mock).mockResolvedValueOnce({
+      status: false,
+      message: 'Calculations failed',
+      errorcode: '333',
+    });
+
+    const margin = await client.getMarginUtilized([
+      { exchange: 'NFO', symboltoken: '123', quantity: 195, action: 'BUY' },
+    ]);
     expect(margin).toBe(450000);
+  });
+
+  test('getMarginUtilized throws on status false and uses fallback for SENSEX', async () => {
+    (httpClient.request as jest.Mock).mockResolvedValueOnce({
+      status: false,
+      message: 'Calculations failed',
+      errorcode: '333',
+    });
+
+    const margin = await client.getMarginUtilized([
+      { exchange: 'BFO', symboltoken: '123', quantity: 40, action: 'BUY' },
+    ]);
+    expect(margin).toBe(480000);
   });
 
   test('getMarketData returns ltp, bid, and ask', async () => {
