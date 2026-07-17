@@ -1,0 +1,12 @@
+### Description
+
+Fixes the issue where the `getOrderBook` API returns `status: true` and `"SUCCESS"` but with a `null/empty` body, which previously caused parsing failures ("Failed to fetch OrderBook: SUCCESS"). The parser now defaults to returning an empty array when the status is true but the data is `null/undefined`.
+
+### Changes
+
+- Modified the parsing logic of `getOrderBook` in `src/execution/brokerClient.ts` to return `parsed.data || []` on successful status.
+- Added unit tests in `__tests__/brokerClient.test.ts` to cover `null/empty` order book data payloads.
+
+### Verification
+
+- Ran `pnpm test` successfully. All test suites pass with 100% code coverage.

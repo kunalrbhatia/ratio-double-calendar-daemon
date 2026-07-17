@@ -130,6 +130,18 @@ describe('BrokerClient', () => {
     await expect(client.getOrderBook()).rejects.toThrow('Failed to fetch OrderBook');
   });
 
+  test('getOrderBook returns empty array when status is true but data is null', async () => {
+    (httpClient.request as jest.Mock).mockResolvedValueOnce({
+      status: true,
+      message: 'SUCCESS',
+      errorcode: '0000',
+      data: null,
+    });
+
+    const orders = await client.getOrderBook();
+    expect(orders).toEqual([]);
+  });
+
   test('getMarginUtilized calls batch endpoint and returns margin', async () => {
     const mockMarginRes = {
       status: true,
