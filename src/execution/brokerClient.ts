@@ -280,10 +280,10 @@ export class BrokerClient implements IBrokerClient {
       });
 
       const parsed = SmartApiOrderBookResponseSchema.parse(response);
-      if (!parsed.status || !parsed.data) {
+      if (!parsed.status) {
         throw new Error(`Failed to fetch OrderBook: ${parsed.message}`);
       }
-      return parsed.data;
+      return parsed.data || [];
     } catch (error: unknown) {
       /* istanbul ignore next */
       const msg = error instanceof Error ? error.message : String(error);
