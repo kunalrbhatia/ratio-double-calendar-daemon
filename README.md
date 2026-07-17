@@ -119,6 +119,7 @@ SLACK_ENABLED=false
 SLACK_WEBHOOK_URL=https://hooks.slack.com/...
 SLACK_SIGNING_SECRET=your_slack_signing_secret
 SENSEX_EXPIRY_ENABLED=true             # Enable or disable SENSEX weekly expiry trading (defaults to true)
+SKIP_LIQUIDITY_CHECK=true              # Skip option strike liquidity check for NIFTY and SENSEX (defaults to true)
 ```
 
 ---
