@@ -204,7 +204,7 @@ describe('SmartStreamClient', () => {
     messageCallback('not-a-buffer');
   });
 
-  test('subscribes to BFO tokens with exchangeType 4', async () => {
+  test('subscribes to BFO tokens with exchangeType 5', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     (sessionManager.getJwtToken as jest.Mock).mockReturnValue('mockJwt');
     (sessionManager.getFeedToken as jest.Mock).mockReturnValue('mockFeed');
@@ -228,7 +228,7 @@ describe('SmartStreamClient', () => {
     const tokenList = payload.params.tokenList;
 
     const nfoGroup = tokenList.find((g: any) => g.exchangeType === 2);
-    const bfoGroup = tokenList.find((g: any) => g.exchangeType === 4);
+    const bfoGroup = tokenList.find((g: any) => g.exchangeType === 5);
 
     expect(nfoGroup).toBeDefined();
     expect(nfoGroup.tokens).toContain('token123');
