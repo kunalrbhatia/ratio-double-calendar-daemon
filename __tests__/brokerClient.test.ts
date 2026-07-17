@@ -136,7 +136,7 @@ describe('BrokerClient', () => {
       message: 'SUCCESS',
       errorcode: '0000',
       data: {
-        totalMargin: 400000,
+        totalMarginRequired: 400000,
         marginUtilized: 380000,
       },
     };
@@ -148,13 +148,13 @@ describe('BrokerClient', () => {
     expect(margin).toBe(380000);
   });
 
-  test('getMarginUtilized falls back to totalMargin if marginUtilized is absent', async () => {
+  test('getMarginUtilized falls back to totalMarginRequired if marginUtilized is absent', async () => {
     const mockMarginRes = {
       status: true,
       message: 'SUCCESS',
       errorcode: '0000',
       data: {
-        totalMargin: 400000,
+        totalMarginRequired: 400000,
       },
     };
     (httpClient.request as jest.Mock).mockResolvedValueOnce(mockMarginRes);
