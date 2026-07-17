@@ -188,7 +188,7 @@ class SmartStreamClient {
         tokenList.push({ exchangeType: 2, tokens: nfoTokens });
       }
       if (bfoTokens.length > 0) {
-        tokenList.push({ exchangeType: 4, tokens: bfoTokens });
+        tokenList.push({ exchangeType: 5, tokens: bfoTokens });
       }
 
       if (tokenList.length > 0) {
