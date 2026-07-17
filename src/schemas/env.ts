@@ -16,6 +16,15 @@ const booleanCoerce = (defaultValue: boolean) =>
     }, z.boolean())
     .default(defaultValue);
 
+const numberCoerce = (defaultValue: number) =>
+  z
+    .preprocess((val) => {
+      if (val === undefined || val === '') return defaultValue;
+      const num = Number(val);
+      return isNaN(num) ? defaultValue : num;
+    }, z.number())
+    .default(defaultValue);
+
 export const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -33,6 +42,7 @@ export const envSchema = z.object({
   SLACK_SIGNING_SECRET: z.string().optional().default(''),
   SENSEX_EXPIRY_ENABLED: booleanCoerce(true),
   SKIP_LIQUIDITY_CHECK: booleanCoerce(true),
+  LOTS: numberCoerce(1),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -62,6 +72,7 @@ try {
       SLACK_SIGNING_SECRET: '',
       SENSEX_EXPIRY_ENABLED: true,
       SKIP_LIQUIDITY_CHECK: true,
+      LOTS: 1,
     };
   } else {
     console.error('❌ Invalid environment configuration:', error);
