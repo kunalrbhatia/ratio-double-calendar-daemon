@@ -32,6 +32,7 @@ export const envSchema = z.object({
   SLACK_WEBHOOK_URL: z.string().optional().default(''),
   SLACK_SIGNING_SECRET: z.string().optional().default(''),
   SENSEX_EXPIRY_ENABLED: booleanCoerce(true),
+  SKIP_LIQUIDITY_CHECK: booleanCoerce(true),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -60,6 +61,7 @@ try {
       SLACK_WEBHOOK_URL: '',
       SLACK_SIGNING_SECRET: '',
       SENSEX_EXPIRY_ENABLED: true,
+      SKIP_LIQUIDITY_CHECK: true,
     };
   } else {
     console.error('❌ Invalid environment configuration:', error);

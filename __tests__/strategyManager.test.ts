@@ -15,6 +15,8 @@ describe('StrategyManager', () => {
   let manager: StrategyManager;
 
   beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-07-15T12:00:00Z'));
     jest.clearAllMocks();
     manager = new StrategyManager();
     (brokerClient.getMarketDataBatch as jest.Mock).mockImplementation(
@@ -36,6 +38,10 @@ describe('StrategyManager', () => {
     (calculateDelta as jest.Mock).mockImplementation((_s, _k, _t, _v, _r, type) => {
       return type === 'CE' ? 0.12 : -0.12;
     });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   test('checkVix passes when VIX is between 10 and 13.5', async () => {

@@ -1,0 +1,15 @@
+### Description
+
+This PR changes the `buildBasket` call in `src/scheduler/cronScheduler.ts` to use a configurable environment variable `SKIP_LIQUIDITY_CHECK` instead of hardcoding `underlying === 'NIFTY'`. This allows disabling the liquidity filter for SENSEX as well, preventing poor hedge matching.
+
+### Changes
+
+- Added `SKIP_LIQUIDITY_CHECK` in `src/schemas/env.ts` with default `true`.
+- Added `SKIP_LIQUIDITY_CHECK` template to `.env.example` and `.env`.
+- Documented the new variable in `README.md`.
+- Updated `src/scheduler/cronScheduler.ts` to use `env.SKIP_LIQUIDITY_CHECK` instead of `underlying === 'NIFTY'`.
+- Fixed system date dependencies in `__tests__/strategyManager.test.ts` by mocking system time to `2026-07-15` during testing.
+
+### Verification
+
+- Ran `pnpm verify` successfully (all format checks, lint checks, tests, and build steps pass).
