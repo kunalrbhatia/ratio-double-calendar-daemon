@@ -338,4 +338,391 @@ The position gained ₹1,521 in P&L today despite Nifty being essentially flat (
 - **⚠️ VIX at Cycle Lows:** If VIX reverses from 12.88, expect a P&L drawdown of ₹200–500 temporarily. This is normal for calendar spreads. Do not exit early on VIX spikes unless stoploss is breached
 - **⚠️ Margin API Errors Continue:** The batch margin endpoint has been failing since the W28 cycle. This prevents accurate margin utilization tracking — the system uses a fallback of ₹450,000
 - **📆 NIFTY Exit:** Tuesday, 21 Jul 2026 (3 trading days remaining)
-- **📆 SENSEX Exit (Manual):** Requires manual order placement ASAP
+|- **📆 SENSEX Exit (Manual):** Requires manual order placement ASAP
+
+---
+
+## Friday, 17 Jul 2026
+
+## 📊 Market Overview
+
+| Index | Value | Change | % Change |
+|-------|:-----:|:------:|:--------:|
+| Nifty 50 | 24,334.30 | +261.55 | +1.09% |
+| Bank Nifty | 58,521.40 | +939.15 | +1.63% |
+| India VIX | 13.15 | +0.27 | +2.10% |
+| SENSEX | 78,151.45 | +964.58 | +1.25% |
+
+---
+
+## NIFTY Week 2026-W29 (Day 3)
+
+### 📋 Position Status
+
+- **Strategy:** Ratio Double Calendar Spread
+- **Entry Date:** 15 Jul 2026
+- **Expiry T0:** 21 Jul 2026 (Weekly — 4 days to expiry)
+- **Expiry T1:** 28 Jul 2026 (11 days to expiry)
+- **Status:** Open
+- **Exit (Scheduled):** Tuesday, 21 Jul 2026
+
+### Position Details — Unknown LTPs (P&L not recomputed)
+
+| Leg | Action | Strike | Type | Expiry | Qty | Entry Price |
+|:---:|:------:|:-----:|:----:|:------:|:---:|:-----------:|
+| T1-CE | BUY | 24,800 | CE | 28 Jul | 195 | 26.10 |
+| T1-PE | BUY | 23,200 | PE | 28 Jul | 195 | 32.75 |
+| T0-CE | SELL | 24,500 | CE | 21 Jul | 195 | 24.75 |
+| T0-PE | SELL | 23,600 | PE | 21 Jul | 195 | 35.05 |
+
+**NIFTY Position P&L Summary**
+
+| Metric | Day 1 (Wed) | Day 2 (Thu) | Day 3 (Fri) |
+|:-------|:-----------:|:-----------:|:-----------:|
+| Opening P&L | ₹0 (entry) | ₹702 | ₹3,032* |
+| Closing P&L | ₹702 | ₹2,223 | ₹312 |
+| Daily P&L Change | +₹702 | +₹1,521 | -₹1,911 |
+| Low of Day | ₹0 | ₹1,238 | ₹312 |
+| High of Day | ₹702 | ₹2,476 | ₹3,032 |
+| Cumulative Return on Margin | +0.16% | +0.49% | +0.07% |
+
+> *Opening P&L at 09:15 was ₹3,032 (higher than Thu close of ₹2,223 due to overnight theta/gap)
+> **⛔ Stoploss (1.1%):** ₹ -4,950 | **🎯 Profit Target (1.5%):** ₹ +6,750
+
+---
+
+## SENSEX Week 2026-W29 (Entry Day)
+
+### 📋 Position Status
+
+- **Strategy:** Ratio Double Calendar Spread
+- **Entry Date:** 17 Jul 2026 (Friday)
+- **Expiry T0:** 23 Jul 2026 (Thursday — 6 days to expiry)
+- **Expiry T1:** 30 Jul 2026 (13 days to expiry)
+- **Status:** Open (entry partial)
+- **Entry Time:** 13:55–13:56 IST
+- **Exit (Scheduled):** Thursday, 23 Jul 2026
+
+### Position Details
+
+| Leg | Action | Strike | Type | Expiry | Qty | Entry Price | Status |
+|:---:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:-----:|
+| T1-CE | BUY | 80,500 | CE | 30 Jul | 40 | 55.00 (market sweep) | **OPEN** |
+| T1-PE | BUY | 75,500 | PE | 30 Jul | 40 | 178.50 | COMPLETE |
+| T0-CE | SELL | 79,400 | CE | 23 Jul | 40 | 56.15 | COMPLETE |
+| T0-PE | SELL | 76,600 | PE | 23 Jul | 40 | 190.60 | COMPLETE |
+
+**SENSEX Position P&L Summary**
+
+| Metric | Value |
+|:-------|:-----:|
+| Entry Net Cost/Proceeds | (See note below) |
+| Current Unrealized P&L (15:30 IST) | ₹ -228 |
+| Margin Utilized | ₹ 450,000 (fallback) |
+| **⛔ Stoploss (1.1%)** | **₹ -4,950** |
+| **🎯 Profit Target (1.5%)** | **₹ +6,750** |
+
+> ⚠️ **Note:** The T1-CE buy leg (80,500 CE) was placed with a market sweep order after 4 limit reprice attempts failed. Order `260717000359265` is still showing **OPEN** status. This leg was SKIPPED by the duplicate prevention logic on the second entry attempt — the existing open market order was detected and not re-placed. The actual entry fill price is ₹55.00 (the sweep price) but the order completion status remains uncertain. The reported P&L of ₹-228 uses the LTP as the unrealized value and may be inaccurate until this leg fills or gets confirmed.
+
+---
+
+## 📈 Daily Activity
+
+### Market Context
+
+A **strong bullish session** for Indian equities. Nifty rallied +261 points (+1.09%) to close at 24,334.30 — the highest level in the week. Bank Nifty outperformed with a +939 point (+1.63%) surge to 58,521.40. SENSEX also rose +964 points (+1.25%) to 78,151.45. India VIX ticked up slightly to 13.15 (+2.10%) from yesterday's 12.88, reflecting slightly elevated options pricing as the market moved decisively upward.
+
+### Daemon Activity
+
+**01:28 IST — Night/Morning Basket Build (Script):**
+- The scheduled basket generation script ran at 01:28 attempting to build a NIFTY W30 entry basket
+- Option greeks endpoint returned "No Data Available" for 21JUL expiry (expected — greeks API is unavailable outside market hours)
+- VIX fallback used but failed to find qualifying T0 CE strikes in delta range 0.10-0.15
+- No NIFTY entry was placed — this was a routine overnight script execution, not an actual entry attempt
+
+**03 attempts to generate basket** (01:28, 01:28, 01:29) — all failed due to greeks API being unavailable overnight. This is normal behavior.
+
+**08:20 IST — PM2 Restart (Graceful Shutdown):**
+- Daemon shut down and restarted cleanly at 08:20 with fresh SmartAPI login
+- Scheduler started at 08:20:01
+- Environment: `development` (switched from yesterday's `production`)
+
+> ⚠️ **Note on env switch:** The PM2 restart changed the `NODE_ENV` from `production` (Thu) to `development` (Fri). This does not affect trading behavior — it only changes the Telegram notification text prefix. No functional impact.
+
+**08:30 IST — Instrument Master Download:**
+- Scheduled job downloaded fresh scrip master (164,228 records, 4,623 options cached)
+
+**08:40 IST — VIX Check:**
+- India VIX: 12.88 (unchanged from yesterday's close)
+- Entry filter cleared. Scheduler ready for SENSEX Friday entry.
+
+**09:01 IST — Session Load:**
+- Session refreshed and loaded from disk cache.
+
+**09:15 IST — Market Open / P&L Monitoring Start:**
+- **NIFTY P&L opened at ₹3,032.25** — significantly higher than yesterday's ₹2,223 close (+₹809 gap)
+- SmartStream WebSocket connected and subscribed to NIFTY position tokens (63971, 63904, 57360, 57324)
+- The ₹809 gap is due to overnight theta decay on T0 short options (4 days to expiry vs 5 yesterday)
+
+**09:15–13:00 — NIFTY P&L Monitoring (Morning Session):**
+
+| Time (IST) | NIFTY P&L | Notes |
+|:----------:|:---------:|:------|
+| 09:15 | ₹3,032 | Opening — highest of the day |
+| 09:16 | ₹2,233 | Sharp initial drop as Nifty opened higher |
+| 09:17–09:20 | ₹1,628–₹1,667 | Morning trough — Nifty continued rallying |
+| 09:21–09:35 | ₹1,852–₹2,058 | Partial recovery |
+| 09:35–09:55 | ₹1,657–₹1,511 | Decline as rally intensified |
+| 09:56 | **₹507** | **Lowest P&L of the day** — Nifty surged past short CE strike (24,500) |
+| 10:00–10:10 | ₹1,238–₹1,384 | Recovery |
+| 10:10–10:25 | ₹1,101–₹1,072 | Second trough |
+| 10:25–10:30 | ₹868 | Dip as rally continued |
+| 10:30–10:40 | ₹1,355–₹1,491 | Recovery as Nifty stabilized |
+| 10:40–11:00 | ₹1,452–₹1,862 | Steady recovery through mid-morning |
+| 11:00–11:30 | ₹1,784–₹1,979 | Built back above ₹1,900 |
+| 11:30–12:00 | ₹1,901–₹2,106 | Stabilized in ₹1,900–₹2,100 range |
+| 12:00–12:30 | ₹1,989–₹2,262 | Extended gains |
+| 12:30–13:00 | ₹2,145–₹2,252 | Holding above ₹2,100 |
+
+**09:20 IST — Margin Refresh Error (As Expected):**
+- Batch margin API returned HTTP 400 errors on all 3 retries
+- Fallback margin ₹450,000 used — this is the same issue that has persisted since W28
+
+**09:34 IST — First SENSEX Entry Attempt:**
+- Daemon triggered SENSEX W29 entry workflow at 09:34
+- Basket built with T0=23JUL2026 (Thursday), T1=30JUL2026
+- Underlying SENSEX LTP: 77,692.69
+- Option greeks API returned "No Data Available" — VIX fallback used (12.88)
+- Basket constructed but entry was not confirmed (no further log entries — likely failed before execution or was aborted)
+
+**09:36 IST — Second SENSEX Entry Attempt (SKIP LIQUIDITY CHECKS):**
+- Attempted again at 09:36 with liquidity checks disabled (`SKIP_LIQUIDITY_CHECK=true`)
+- Also failed to execute — likely due to market data rate limits
+
+**13:00–13:50 — NIFTY P&L Recovery (Afternoon Session):**
+
+| Time (IST) | NIFTY P&L | Notes |
+|:----------:|:---------:|:------|
+| 13:00–13:25 | ₹2,154–₹2,476 | Strong afternoon recovery |
+| 13:25–13:50 | ₹2,476–₹2,642 | Approaching ₹2,700 range |
+
+**13:34 IST — Third SENSEX Entry Attempt:**
+- Basket built again with T0=23JUL2026, T1=30JUL2026
+- Underlying SENSEX LTP: 77,937.31
+- Greeks still failing — VIX fallback
+- No execution log entries followed — likely aborted
+
+**13:50 IST — PM2 Restart (Graceful Shutdown):**
+- `Shutting down gracefully...` at 13:50:14
+- Immediately restarted at 13:50:15
+- NIFTY P&L at restart: ₹2,642 → post-restart P&L: ₹2,574 (normal market movement)
+- **Position remained intact** — no exit orders were placed
+- NODE_ENV switched to `production` after restart
+
+**13:50–13:55 — SENSEX W29 Entry Attempt #4 (Successful Fill):**
+- New P&L monitoring session began at 13:54 after restart
+- SmartStream subscribed to NIFTY tokens only (63971, 63904, 57360, 57324)
+
+At **13:55 IST**, the daemon triggered SENSEX entry:
+- Built basket: BUY 40 x 80500CE (Δ0.107) + BUY 40 x 75500PE (Δ0.087) + SELL 40 x 79400CE (Δ0.136) + SELL 40 x 76600PE (Δ0.149)
+- Underlying SENSEX at entry: ~77,837-77,849
+- **Limit reprice exhausted for 80500CE**: 4 reprice attempts on the limit order all failed (bid-ask spread was ₹55.15-₹55.85, ask side moved against the limit price)
+- **Market sweep fallback**: Order `260717000359265` placed at MARKET
+- **Order polling timed out**: The market sweep order's completion was not confirmed within the timeout window
+- **Entry sequence aborted**: The daemon stopped the entry flow
+- 403 errors on getOrderBook prevented order status cross-reference
+
+**13:56 IST — Fourth SENSEX Entry Attempt #5 (Duplicate Prevention):**
+- Immediate re-attempt at 13:56
+- **Duplicate prevention** detected existing open order for token 1137130 (80500CE) and **skipped** that leg
+- Remaining 3 legs placed successfully:
+  - BUY SENSEX26JUL75500PE x40 @ ₹178.50 (filled after 3 reprice attempts)
+  - SELL SENSEX2672379400CE x40 @ ₹56.15 (filled at ask)
+  - SELL SENSEX2672376600PE x40 @ ₹190.60 (filled at ask)
+- Margin batch API returned 400 errors (as expected — fallback ₹450,000)
+- SmartStream subscribed to all 4 SENSEX tokens (1137130, 1146071, 835776, 835442)
+
+**13:57–15:30 — SENSEX P&L Monitoring:**
+- SENSEX P&L oscillated between ₹-1,234 and ₹166 throughout the afternoon
+- The wide oscillation range is likely due to REST API rate limiting causing stale LTP values (SmartStream cache was consistently empty for SENSEX tokens)
+
+| Time (IST) | SENSEX P&L | Notes |
+|:----------:|:----------:|:------|
+| 13:57 | ₹78–₹110 | Opening P&L |
+| 14:08–14:11 | ₹-134–₹16 | First negative dip |
+| 14:13–14:17 | ₹166–₹-34 | Volatile — near breakeven |
+| 14:19–14:21 | ₹-548–₹-420 | Dip widened |
+| 14:22–14:28 | ₹-438–₹-190 | Recovery mid-afternoon |
+| 14:34–14:45 | ₹-250–₹-446 | Gradual decline |
+| 14:46–14:55 | ₹-548–₹-424 | Stabilized around -₹400 to -₹500 |
+| 14:56–15:10 | ₹-434–₹-694 | Widest negative range |
+| 15:11–15:20 | ₹-550–₹-312 | Partial recovery |
+| 15:21–15:25 | ₹-608–₹-844 | Late afternoon sell-off |
+| 15:26–15:30 | ₹-870–₹-228 | Sharp recovery in final minutes |
+| **15:30** | **₹-228** | **Market close** |
+
+**15:30 IST — Market Close:**
+- **NIFTY final P&L: ₹312** (+0.07% cumulative on margin) — compressed significantly from ₹3,032 opening
+- **SENSEX final P&L: ₹-228** (-0.05% on margin) — Day 1 in negative territory
+
+**15:31 IST — SmartStream Disconnected:**
+- WebSocket cleanly disconnected outside market hours
+
+**15:33 IST — Session Refreshed:**
+- Active session loaded from disk cache for any post-market operations
+
+### NIFTY P&L Performance Summary
+
+| Metric | Day 1 (Wed) | Day 2 (Thu) | Day 3 (Fri) |
+|:-------|:-----------:|:-----------:|:-----------:|
+| Opening P&L | ₹0 (entry) | ₹702 | ₹3,032 |
+| Closing P&L | ₹702 | ₹2,223 | ₹312 |
+| Daily P&L Change | +₹702 | +₹1,521 | -₹1,911 |
+| Low of Day | ₹0 | ₹1,238 | ₹507 |
+| High of Day | ₹702 | ₹2,476 | ₹3,032 |
+
+### SENSEX W28 Legacy Position
+
+The SENSEX W28 position (`data/live/positions-sensex-2026-W28.json`) still shows `status: "open"` with `realizedPnl: 0`. The T0 short options expired on Thursday 16 Jul — their credit (SELL 60 x 94.45 + SELL 60 x 134.63 = ₹13,745) was collected at expiry. The remaining T1 buy legs (26 Jul expiry) are still held:
+
+| Leg | Action | Strike | Type | Expiry | Qty | Entry Price | Order Status |
+|:---:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:-----------:|
+| T1-CE | BUY | 79,000 | CE | 26 Jul | 20 | 335.90 | COMPLETE |
+| T1-PE | BUY | 76,700 | PE | 26 Jul | 20 | 483.50 | **OPEN** |
+| Outer-CE | BUY | 79,700 | CE | 26 Jul | 40 | 191.43 | COMPLETE |
+| Outer-PE | BUY | 75,900 | PE | 26 Jul | 40 | 304.60 | **OPEN** |
+
+> ⚠️ **Manual intervention still required.** These long options (26 Jul expiry) have now decayed through 3 trading days since entry (10 Jul). With SENSEX trading at 78,151 today (+1.25% from Thursday), these deep OTM strikes are further from the money. The 79,000 CE (bought @ 335.90, now worth much less) and 75,900 PE (bought @ 304.60) are both losing value through theta decay.
+
+---
+
+## 🔍 Market Response Analysis
+
+### NIFTY — Significant P&L Compression on Strong Rally
+
+The NIFTY position experienced its most challenging day since entry, losing -₹1,911 in P&L as the market rallied +261 points (+1.09%):
+
+1. **Directional P&L Impact:** Nifty broke above the short CE strike (24,500) and closed at 24,334.30 — well above the previous two days' range:
+
+   - Entry (Wed, 15 Jul): Nifty at ~24,066
+   - Day 2 (Thu, 16 Jul): Nifty at ~24,073
+   - Day 3 (Fri, 17 Jul): Nifty at ~24,334 — a **+268 point rally from entry**
+
+2. **Short CE (24,500) Under Pressure:** With Nifty at 24,334, the short call at 24,500 is only ~166 points OTM. Its delta has increased significantly from the Δ0.122 at entry. This leg is now much more valuable (higher premium → negative for P&L):
+
+   - Entry price: ₹24.75 (collected)
+   - Estimated current price: ~₹65-85 (based on P&L impact)
+   - The short CE is the primary source of P&L compression today
+
+3. **Short PE (23,600) Benefit:** The rally pushed Nifty to 24,334 → 23,600 strike is now even further OTM. The short PE has lost nearly all its value, contributing positively to P&L:
+
+   - Entry price: ₹35.05 (collected)
+   - Estimated current price: ~₹2-5 (nearly worthless)
+
+4. **Long CE (24,800) Also Moved Against Us:** While the long call is a hedge, at 24,334 it's still 466 points OTM. Its value also increased somewhat but not enough to offset the short CE:
+   - Entry price: ₹26.10 (paid)
+   - Estimated current price: ~₹10-15
+
+5. **Long PE (23,200) Lost Value:** The rally made this deep OTM put even more worthless:
+   - Entry price: ₹32.75 (paid)
+   - Estimated current price: ~₹5-10
+
+6. **P&L Compression Pattern:** The position opened at ₹3,032 (morning gap from overnight theta decay), then saw a steady decline as the market rallied:
+
+   ```
+   ₹3,032 ┤
+          │    \
+   ₹2,500 ┤     \
+          │      \
+   ₹2,000 ┤       \
+          │        \     ~~ recovery attempt
+   ₹1,500 ┤         \   /   \
+          │          \ /     \
+   ₹1,000 ┤           X       \
+          │          / \       \
+     ₹507 ┤_________/   \_______\
+          │ 10:00         11:00-noon
+      ₹312 ┤ 15:30 close
+   ```
+
+   The intraday pattern shows an initial sharp drop (₹3,032 → ₹507) as the market rallied, a mid-day recovery to ₹2,100-2,300, and then a second decline in the afternoon session to close at ₹312.
+
+7. **Collapsed Hedge Vulnerability:** The 4-leg degenerate structure (195 × single CE strike + 195 × single PE strike, instead of the designed 65/130 inner/outer split) provides less tail protection. In a +1.09% up day, the single-strike long CE could not fully hedge the directional risk.
+
+### SENSEX — Entry Day with Execution Issues
+
+1. **Entry Delayed Until 13:55:** Multiple failed attempts at 09:34, 09:36, and 13:34 all failed before a successful partial fill at 13:55. The final successful attempt at 13:56 was only possible because the first attempt's market sweep order was still open on the exchange.
+
+2. **Market Sweep Liquidity Risk:** The 80,500 CE limit reprice failed 4 times (bid-ask spread of ₹55.15-₹55.85 on an option costing ₹55). The wide spread for a relatively close-to-ATM strike (80,500 strike vs SENSEX at ~77,837 — 3.3% OTM) is characteristic of BFO liquidity issues.
+
+3. **Duplicate Prevention Behavior:** The duplicate prevention system correctly detected the existing open order on the second attempt, but this meant the CE buy leg remained at an uncertain fill price (market sweep at ₹55.00) while all other legs were filled at their limit prices.
+
+4. **SENSEX Position at Risk from Day 1:** A closing P&L of ₹-228 on entry day is suboptimal. Typically, a calendar spread entered with a net credit shows positive P&L immediately. The negative P&L is likely due to:
+   - The market sweep CE buy leg being filled at a disadvantageous price
+   - SENSEX moving during the prolonged entry process (~2.5 hours from first attempt to final fill)
+   - SmartStream cache being empty for SENSEX tokens, meaning P&L calculated via REST API fallback with potential staleness
+
+5. **VIX at 13.15:** Slightly up from yesterday's 12.88. The SENSEX greeks API also failed (same as NIFTY — "No Data Available"), with the daemon falling back to VIX for strike selection. This means delta calculations are approximate rather than exact.
+
+### SENSEX W28 — Still Unresolved
+
+The SENSEX W28 buy legs continue to decay. With SENSEX rallying to 78,151 today:
+- 79,000 CE (bought @ 335.90): The underlying is now at 78,151 — 849 points below strike → worth approximately ₹15-25 (95%+ loss)
+- 76,700 PE (bought @ 483.50): The underlying at 78,151 is well above — worth about ₹5-10 (98%+ loss)
+- 79,700 CE (bought @ 191.43): Further OTM — worth ₹5-10
+- 75,900 PE (bought @ 304.60): Also deep OTM — worth ₹5-10
+
+The total cost of these buy legs was approximately ₹31,498 (335.90×20 + 483.50×20 + 191.43×40 + 304.60×40). Against this, the T0 short legs collected ₹13,745 at entry (94.45×60 + 134.63×60) plus whatever remained after the shorts expired worthless. The net position is a significant loss on the buy legs that could have been closed at better prices on Thursday.
+
+---
+
+## 🎯 Key Observations
+
+1. **NIFTY P&L Compressed Significantly on Rally:** The position lost ₹1,911 on a +1.09% Nifty rally. The 4-leg degenerate structure amplified the directional sensitivity vs. the designed 6-leg calendar. At ₹312 P&L, the position has given back most of the week's gains.
+
+2. **NIFTY P&L Trajectory Reversal:** After two strong positive days (+0.16%, +0.49%), Day 3 wiped out most gains (-0.42% on margin, net +0.07%). The cumulative return is now just ₹312 — dangerously close to zero.
+
+3. **NIFTY Breakout Risk:** Nifty closed at 24,334.30, up 1.09%. The short CE strike (24,500) is now just ~166 points above the close. If Nifty gaps up on Monday above 24,500, the short call goes in-the-money, significantly increasing risk.
+
+4. **SENSEX W29 Entered Successfully (Partial Fill):** Despite 4 failed attempts and significant rate limiting, the SENSEX W29 position was entered with 3 of 4 legs filled. One leg (80500CE) remains at OPEN status with a market sweep order.
+
+5. **SENSEX Entry Complexity:** The SENSEX entry required 5 separate attempts over ~4 hours (09:34 to 13:56), involving:
+   - 403 rate limiting on market quotes
+   - Limit reprice exhaustion with market sweep fallback
+   - Order polling timeout
+   - Duplicate prevention system interaction
+
+6. **SENSEX W28 Still Stranded:** Four buy legs (total cost ~₹31,498) remain open and decaying. These should be closed immediately before further theta erosion.
+
+7. **SmartStream Cache Empty for SENSEX:** The 45-second heartbeat re-subscription pattern is active, but the cache remains empty for SENSEX tokens. All SENSEX LTPs come from REST API fallback, which has rate limit issues.
+
+8. **Margin API Still Broken:** Batch margin endpoint returned 400 errors on all attempts today. Position monitoring continues with fallback ₹450,000.
+
+9. **Greek API Failure Persists:** The option greeks endpoint returned "No Data Available" for both NIFTY (21JUL) and SENSEX (23JUL) expiries. The VIX fallback is a reasonable approximation but less precise.
+
+10. **PM2 Restart Stability:** Two graceful shutdowns today (08:20, 13:50) — both <1 second gaps, no position exit triggered.
+
+---
+
+## ⚠️ Alerts / Risks
+
+- **🔴 CRITICAL — NIFTY Short CE at Risk:** Nifty closed at 24,334 — only 166 points below the 24,500 short CE strike. A gap-up on Monday could push the short call in-the-money. At that point, the position moves from theta-positive to delta-negative on the upside, with potentially unlimited risk on the call side.
+
+- **🔴 CRITICAL — SENSEX W28 Unwind Required:** The SENSEX W28 buy legs must be closed manually. Total cost ~₹31,498 with current value near zero. The SENSEX_W28_ENABLED environment may now be `true` (`.env.example` shows `SENSEX_EXPIRY_ENABLED=true`) — check the actual .env to confirm.
+
+- **🟡 SENSEX W29 Open Order:** Market sweep order `260717000359265` (80500CE) is still OPEN. It may fill on Monday at market open or could have already filled. Check the order book manually before Monday's trading.
+
+- **🟡 NIFTY Exit Day (Tuesday):** The scheduled exit is Tuesday, 21 Jul 2026 (2 trading days away). Current P&L of ₹312 is well below the profit target (₹6,750) and barely above breakeven. Realistically, hitting the profit target is unlikely unless Nifty returns to entry levels (~24,066-24,073) allowing theta to close the gap.
+
+- **🟡 VIX at 13.15:** Up from 12.88 yesterday. The bounce confirms VIX is not at a "floor" — it can move either way. A VIX spike would hurt NIFTY P&L temporarily (long options reprice faster than short options), but the effect is manageable at this P&L level.
+
+- **⚠️ Greek API Unavailable:** Both NIFTY and SENSEX greeks have been failing since at least 09:15 (and likely all week for NIFTY 21JUL). The VIX fallback provides approximate deltas but is not strike-specific. This affects basket construction precision.
+
+- **⚠️ Rate Limiting (403 Errors):** Market quote (getMarketQuote) and order book endpoints hit 403 rate limits consistently during the SENSEX entry sequence. This affected:
+  - Basket construction accuracy (market quotes failed)
+  - Order book cross-reference (could not confirm order status)
+  - Margin calculation (batch margin endpoint consistently fails)
+
+- **📆 NIFTY Exit:** Tuesday, 21 Jul 2026 (2 trading days remaining)
+- **📆 SENSEX T0 Expiry:** Thursday, 23 Jul 2026 (4 trading days — same week as exit day)
+- **📆 SENSEX Exit:** Thursday, 23 Jul 2026
