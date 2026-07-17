@@ -1,0 +1,14 @@
+### Description
+
+Fixes the issue where the `SmartStream` WebSocket LTP cache was empty for SENSEX tokens. SENSEX options (on `BFO` segment) were being subscribed to under `exchangeType: 2` (NFO), which caused the broker server to not send ticker feeds, forcing the daemon to fetch LTP values via REST API (causing rate limits).
+
+### Changes
+
+- Added `getExchangeByToken` to `src/instruments/instrumentManager.ts` to lookup exchange segment for a given token.
+- Updated `subscribe` in `src/execution/smartStream.ts` to group tokens by exchange type, mapping `BFO` to `4` and `NFO` to `2`.
+- Added unit tests in `__tests__/smartStream.test.ts` to cover `BFO` grouping and subscription payloads.
+
+### Verification
+
+- Ran `pnpm test` successfully. All 14 test suites and 155 tests passed.
+- 100% statement, branch, function, and line coverage achieved.

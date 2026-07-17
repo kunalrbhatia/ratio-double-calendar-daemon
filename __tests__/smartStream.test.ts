@@ -10,6 +10,25 @@ jest.mock('../src/flags/flagWatcher');
 jest.mock('../src/auth/session');
 jest.mock('../src/positions/positionsStore');
 jest.mock('../src/logging/logger');
+jest.mock('../src/instruments/instrumentManager', () => ({
+  __esModule: true,
+  default: {
+    getExchangeByToken: jest.fn((token: string) => {
+      if (token === 'bfo-token') {
+        return 'BFO';
+      }
+      return 'NFO';
+    }),
+  },
+  instrumentManager: {
+    getExchangeByToken: jest.fn((token: string) => {
+      if (token === 'bfo-token') {
+        return 'BFO';
+      }
+      return 'NFO';
+    }),
+  },
+}));
 jest.mock('../src/schemas/env', () => ({
   __esModule: true,
   default: {
@@ -162,6 +181,20 @@ describe('SmartStreamClient', () => {
     });
     expect(smartStream.getCachedLtp('token123')).toBe(150.5);
 
+    // Cover token/ltp filters (ltp <= 0)
+    const badLtpBuf = Buffer.alloc(60);
+    badLtpBuf.writeUInt8(1, 0);
+    badLtpBuf.write('token123', 2, 25, 'utf8');
+    badLtpBuf.writeBigInt64LE(0n, 43);
+    messageCallback(badLtpBuf);
+
+    // Cover type === 3 branch
+    const type3Buf = Buffer.alloc(60);
+    type3Buf.writeUInt8(3, 0);
+    type3Buf.write('token123', 2, 25, 'utf8');
+    type3Buf.writeBigInt64LE(15050n, 43);
+    messageCallback(type3Buf);
+
     // Cover invalid binary frame (type != 1, 2, or 3)
     const buf2 = Buffer.alloc(60);
     buf2.writeUInt8(9, 0);
@@ -169,6 +202,39 @@ describe('SmartStreamClient', () => {
 
     // Cover non-buffer tick data
     messageCallback('not-a-buffer');
+  });
+
+  test('subscribes to BFO tokens with exchangeType 4', async () => {
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+    (sessionManager.getJwtToken as jest.Mock).mockReturnValue('mockJwt');
+    (sessionManager.getFeedToken as jest.Mock).mockReturnValue('mockFeed');
+
+    await smartStream.connect(jest.fn());
+
+    // Simulate WS Open
+    const openCallback = mockWsInstance.on.mock.calls.find((c: any) => c[0] === 'open')[1];
+    openCallback();
+
+    mockWsInstance.send.mockClear();
+
+    // Subscribe to both NFO and BFO tokens
+    smartStream.subscribe(['token123', 'bfo-token']);
+
+    expect(mockWsInstance.send).toHaveBeenCalled();
+    const lastCallArg = mockWsInstance.send.mock.calls[0][0];
+    const payload = JSON.parse(lastCallArg);
+
+    expect(payload.action).toBe(1);
+    const tokenList = payload.params.tokenList;
+
+    const nfoGroup = tokenList.find((g: any) => g.exchangeType === 2);
+    const bfoGroup = tokenList.find((g: any) => g.exchangeType === 4);
+
+    expect(nfoGroup).toBeDefined();
+    expect(nfoGroup.tokens).toContain('token123');
+
+    expect(bfoGroup).toBeDefined();
+    expect(bfoGroup.tokens).toContain('bfo-token');
   });
 
   test('handles connect errors and socket disconnect/close', async () => {

@@ -19,6 +19,7 @@ export interface IInstrumentManager {
     optionType: 'CE' | 'PE',
   ): InstrumentCacheEntry | null;
   getExpiries(underlying: string): string[];
+  getExchangeByToken(token: string): string | null;
 }
 
 export class InstrumentManager implements IInstrumentManager {
@@ -217,6 +218,15 @@ export class InstrumentManager implements IInstrumentManager {
       const dateB = dayjs(b, 'DDMMMYYYY');
       return dateA.diff(dateB);
     });
+  }
+
+  getExchangeByToken(token: string): string | null {
+    for (const key of Object.keys(this.cache)) {
+      if (this.cache[key].symboltoken === token) {
+        return this.cache[key].exchange;
+      }
+    }
+    return null;
   }
 
   getVixToken(): string {
