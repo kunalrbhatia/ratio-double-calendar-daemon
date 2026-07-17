@@ -26,10 +26,10 @@ The strategy consists of a 4-leg options basket matching specific delta and LTP 
 
 | Action   | Qty (Lots) |      Expiry       | Type |                           Target                            |
 | :------- | :--------: | :---------------: | :--: | :---------------------------------------------------------: |
-| **SELL** |     3      |  $T_0$ (Current)  | Call | $\sim 0.15$ Delta (range $[0.10, 0.15]$, closest to $0.15$) |
-| **SELL** |     3      |  $T_0$ (Current)  | Put  | $\sim 0.15$ Delta (range $[0.10, 0.15]$, closest to $0.15$) |
-| **BUY**  |     3      | $T_1$ (Next Week) | Call | LTP-matched to $T_0$ Short CE (Absolute closest LTP match)  |
-| **BUY**  |     3      | $T_1$ (Next Week) | Put  | LTP-matched to $T_0$ Short PE (Absolute closest LTP match)  |
+| **SELL** |   `LOTS`   |  $T_0$ (Current)  | Call | $\sim 0.15$ Delta (range $[0.10, 0.15]$, closest to $0.15$) |
+| **SELL** |   `LOTS`   |  $T_0$ (Current)  | Put  | $\sim 0.15$ Delta (range $[0.10, 0.15]$, closest to $0.15$) |
+| **BUY**  |   `LOTS`   | $T_1$ (Next Week) | Call | LTP-matched to $T_0$ Short CE (Absolute closest LTP match)  |
+| **BUY**  |   `LOTS`   | $T_1$ (Next Week) | Put  | LTP-matched to $T_0$ Short PE (Absolute closest LTP match)  |
 
 ### 💧 Liquidity Screening Criteria
 
