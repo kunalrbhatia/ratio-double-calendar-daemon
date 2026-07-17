@@ -3,6 +3,7 @@ import { StrategyManager } from '../src/strategy/strategyManager';
 import brokerClient from '../src/execution/brokerClient';
 import instrumentManager from '../src/instruments/instrumentManager';
 import notifier from '../src/notify/notifier';
+import env from '../src/schemas/env';
 
 import { calculateDelta } from '../src/strategy/blackScholes';
 
@@ -608,5 +609,41 @@ describe('StrategyManager', () => {
 
     const basket = await manager.buildBasket('NIFTY', true);
     expect(basket).not.toBeNull();
+  });
+
+  test('buildBasket scales quantity with env.LOTS', async () => {
+    const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
+    (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
+      todayStr,
+      '16JUL2026',
+      '23JUL2026',
+    ]);
+    (brokerClient.getLtp as jest.Mock).mockImplementation(async (exchange, symbol) => {
+      if (symbol === 'Nifty 50') return 19000;
+      if (symbol === 'INDIA VIX') return 12.5;
+      return 100;
+    });
+    (instrumentManager.getInstrument as jest.Mock).mockImplementation(
+      (underlying, expiry, strike, type) => {
+        return {
+          symboltoken: `token-${expiry}-${strike}-${type}`,
+          tradingsymbol: `NIFTY-${expiry}-${strike}-${type}`,
+          lotsize: 50,
+          exchange: 'NFO',
+        };
+      },
+    );
+
+    // Test with 3 lots
+    env.LOTS = 3;
+    let basket = await manager.buildBasket('NIFTY', true);
+    expect(basket).not.toBeNull();
+    expect(basket?.[0].quantity).toBe(150); // 50 * 3
+
+    // Test with 1 lot (default)
+    env.LOTS = 1;
+    basket = await manager.buildBasket('NIFTY', true);
+    expect(basket).not.toBeNull();
+    expect(basket?.[0].quantity).toBe(50); // 50 * 1
   });
 });

@@ -59,6 +59,18 @@ describe('Environment Schema Validation', () => {
     expect(envSchema.parse({ ...baseEnv, SENSEX_EXPIRY_ENABLED: true }).SENSEX_EXPIRY_ENABLED).toBe(
       true,
     );
+
+    // LOTS defaults to 1
+    expect(envSchema.parse({ ...baseEnv }).LOTS).toBe(1);
+
+    // LOTS empty string defaults to 1
+    expect(envSchema.parse({ ...baseEnv, LOTS: '' }).LOTS).toBe(1);
+
+    // LOTS parses numeric strings
+    expect(envSchema.parse({ ...baseEnv, LOTS: '3' }).LOTS).toBe(3);
+
+    // LOTS invalid string defaults to 1
+    expect(envSchema.parse({ ...baseEnv, LOTS: 'invalid' }).LOTS).toBe(1);
   });
 
   test('throws error on missing credentials', () => {
