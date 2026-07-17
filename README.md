@@ -137,7 +137,7 @@ To optimize margin utilization and avoid transient order blocks, orders are sequ
 
 ### 2. Risk Management & Profit Targets (1.1% Stoploss / 1.5% Profit Exit)
 
-- **Margin Base:** During entry, the daemon computes the required margin using the Angel One margin calculator API.
+- **Margin Base:** During entry, the daemon computes the required margin using the Angel One margin calculator API. If the API call fails, it utilizes a lot-size scaled fallback margin tailored to the index (₹150,000 per lot for NIFTY, and ₹120,000 per lot for SENSEX).
 - **Daily Margin Refresh:** Overnight changes in span or exposure margins can affect risk thresholds. The daemon automatically queries the broker API to refresh the stored `marginUtilized` daily at **09:20 AM IST** (Monday through Friday) for active open positions, ensuring risk thresholds remain accurate.
 - **Monitoring:** The daemon polls LTP/WebSockets to monitor cumulative mark-to-market P&L.
 - **Stoploss:** If cumulative losses exceed **1.1% of the weekly utilized margin**, all legs are unwound.
