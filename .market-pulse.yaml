@@ -1,0 +1,11 @@
+    version: 1
+    indices:
+      - NIFTY      # Add indices you trade (NIFTY, SENSEX, BANKNIFTY, etc.)
+      - SENSEX
+    broker: angel-one          # Your broker (angel-one supported out of the box)
+    configPath: config/market-config.json  # Path to your market config file
+    verify: pnpm verify        # Command to run tests after auto-patch
+    paperFirst: true           # PRs target paper-staging branch first
+    notify:
+      pr: true                 # Open a PR when patches are applied
+      issue: true              # Open an issue on failures / manual review
