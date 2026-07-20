@@ -195,8 +195,8 @@ export class CronScheduler {
       if (minutesSinceMidnight >= 570) {
         // After 09:30 AM IST
         // Check if we should entry
-        if (!currentPosition) {
-          // No position exists at all, run entry
+        if (!currentPosition || currentPosition.week !== currentWeek) {
+          // No position exists at all or it belongs to a different week, run entry
           await this.attemptEntry(underlying, currentWeek);
         } else if (currentPosition.status === 'skipped') {
           // Already skipped this week, do nothing

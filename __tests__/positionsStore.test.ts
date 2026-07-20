@@ -53,6 +53,39 @@ describe('PositionsStore', () => {
     expect(result?.orders[0].tradingsymbol).toBe('NIFTY09JUL26C19000');
   });
 
+  test('readPosition returns position when week mismatches but status is open', () => {
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    const data = {
+      week: '2026-W27',
+      status: 'open',
+      marginUtilized: 150000,
+      orders: [],
+      realizedPnl: 0,
+      skippedThisWeek: false,
+    };
+    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(data));
+
+    const result = store.readPosition('NIFTY', '2026-W28', true);
+    expect(result).not.toBeNull();
+    expect(result?.week).toBe('2026-W27');
+  });
+
+  test('readPosition returns null when week mismatches and status is not open', () => {
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    const data = {
+      week: '2026-W27',
+      status: 'closed',
+      marginUtilized: 150000,
+      orders: [],
+      realizedPnl: 0,
+      skippedThisWeek: false,
+    };
+    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(data));
+
+    const result = store.readPosition('NIFTY', '2026-W28', true);
+    expect(result).toBeNull();
+  });
+
   test('readPosition returns null on invalid or malformed data', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ malformed: 'data' }));
@@ -133,6 +166,7 @@ describe('PositionsStore', () => {
   test('cleanupOldFiles deletes only files older than retention limit', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     (fs.readdirSync as jest.Mock).mockReturnValue([
+      'positions-nifty.json',
       'positions-2026-W20.json',
       'positions-2026-W27.json',
     ]);

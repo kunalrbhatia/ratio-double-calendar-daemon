@@ -23,7 +23,17 @@ export class PositionsStore implements IPositionsStore {
     this.baseDir = path.resolve(process.cwd(), 'data');
   }
 
-  private getFilePath(underlying: string, week: string, isPaper: boolean): string {
+  private getFilePath(underlying: string, isPaper: boolean): string {
+    const subfolder = isPaper ? 'paper' : 'live';
+    const dir = path.join(this.baseDir, subfolder);
+    /* istanbul ignore next */
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return path.join(dir, `positions-${underlying.toLowerCase()}.json`);
+  }
+
+  private getArchivePath(underlying: string, week: string, isPaper: boolean): string {
     const subfolder = isPaper ? 'paper' : 'live';
     const dir = path.join(this.baseDir, subfolder);
     /* istanbul ignore next */
@@ -39,7 +49,7 @@ export class PositionsStore implements IPositionsStore {
   }
 
   readPosition(underlying: string, week: string, isPaper: boolean): WeeklyPosition | null {
-    const filePath = this.getFilePath(underlying, week, isPaper);
+    const filePath = this.getFilePath(underlying, isPaper);
     if (!fs.existsSync(filePath)) {
       return null;
     }
@@ -47,7 +57,15 @@ export class PositionsStore implements IPositionsStore {
     try {
       const content = fs.readFileSync(filePath, 'utf-8');
       const data = JSON.parse(content);
-      return WeeklyPositionSchema.parse(data);
+      const position = WeeklyPositionSchema.parse(data);
+
+      // If the stored position's week doesn't match the requested week,
+      // only return it if it is still open (active transition from prior week).
+      if (position.week !== week && position.status !== 'open') {
+        return null;
+      }
+
+      return position;
     } catch (error: unknown) {
       /* istanbul ignore next */
       const msg = error instanceof Error ? error.message : String(error);
@@ -62,11 +80,15 @@ export class PositionsStore implements IPositionsStore {
     isPaper: boolean,
     position: WeeklyPosition,
   ): void {
-    const filePath = this.getFilePath(underlying, week, isPaper);
+    const filePath = this.getFilePath(underlying, isPaper);
     try {
       // Validate schema before writing to guarantee integrity
       WeeklyPositionSchema.parse(position);
       fs.writeFileSync(filePath, JSON.stringify(position, null, 2), 'utf-8');
+
+      // Also write to historical archive path
+      const archivePath = this.getArchivePath(underlying, position.week, isPaper);
+      fs.writeFileSync(archivePath, JSON.stringify(position, null, 2), 'utf-8');
     } catch (error: unknown) {
       /* istanbul ignore next */
       const msg = error instanceof Error ? error.message : String(error);
@@ -114,6 +136,9 @@ export class PositionsStore implements IPositionsStore {
       for (const file of files) {
         /* istanbul ignore next */
         if (!file.startsWith('positions-') || !file.endsWith('.json')) continue;
+
+        // Skip active/stable position files (they don't have the -YYYY-Www pattern)
+        if (!file.match(/positions-(?:[a-zA-Z]+-)?\d{4}-W\d{2}\.json/)) continue;
 
         const filePath = path.join(dirPath, file);
         const stats = fs.statSync(filePath);
