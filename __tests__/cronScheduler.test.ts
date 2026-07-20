@@ -142,7 +142,10 @@ describe('CronScheduler', () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
     (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
     (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W27');
-    (positionsStore.readPosition as jest.Mock).mockReturnValue({ status: 'open' });
+    (positionsStore.readPosition as jest.Mock).mockReturnValue({
+      status: 'open',
+      week: '2026-W27',
+    });
 
     await scheduler.handleTradingTick();
 
@@ -155,7 +158,10 @@ describe('CronScheduler', () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
     (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
     (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W27');
-    (positionsStore.readPosition as jest.Mock).mockReturnValue({ status: 'skipped' });
+    (positionsStore.readPosition as jest.Mock).mockReturnValue({
+      status: 'skipped',
+      week: '2026-W27',
+    });
 
     await scheduler.handleTradingTick();
 
@@ -169,7 +175,10 @@ describe('CronScheduler', () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
     (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
     (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W28');
-    (positionsStore.readPosition as jest.Mock).mockReturnValue({ status: 'open' });
+    (positionsStore.readPosition as jest.Mock).mockReturnValue({
+      status: 'open',
+      week: '2026-W28',
+    });
 
     await scheduler.handleTradingTick();
 
