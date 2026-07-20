@@ -1,0 +1,31 @@
+{
+    "version": 1,
+    "lastUpdated": "2026-07-21",
+    "indices": {
+        "NIFTY": {
+            "lotSize": 25,
+            "expiryDay": 4,
+            "strikeStep": 50,
+            "entryTime": "09:20",
+            "exitTime": "15:15",
+            "spotToken": "99926000",
+            "exchange": "NSE",
+            "optionExchange": "NFO"
+        },
+        "SENSEX": {
+            "lotSize": 10,
+            "expiryDay": 5,
+            "strikeStep": 100,
+            "entryTime": "09:20",
+            "exitTime": "15:15",
+            "spotToken": "99919000",
+            "exchange": "BSE",
+            "optionExchange": "BFO"
+        }
+    },
+    "api": {
+        "baseUrl": "https://apiconnect.angelbroking.com",
+        "timeout": 10000,
+        "retries": 3
+    }
+}
