@@ -726,3 +726,290 @@ The total cost of these buy legs was approximately ₹31,498 (335.90×20 + 483.5
 - **📆 NIFTY Exit:** Tuesday, 21 Jul 2026 (2 trading days remaining)
 - **📆 SENSEX T0 Expiry:** Thursday, 23 Jul 2026 (4 trading days — same week as exit day)
 - **📆 SENSEX Exit:** Thursday, 23 Jul 2026
+
+---
+
+## Monday, 20 Jul 2026
+
+## 📊 Market Overview
+
+| Index | Value | Change | % Change |
+|-------|:-----:|:------:|:--------:|
+| Nifty 50 | 24,238.50 | -95.80 | -0.39% |
+| Bank Nifty | 57,945.00 | -576.40 | -0.98% |
+| India VIX | 12.98 | -0.17 | -1.29% |
+| SENSEX | 77,708.52 | -442.93 | -0.57% |
+
+---
+
+## NIFTY Week 2026-W29 (Day 4 — Monday)
+
+### 📋 Position Status
+
+- **Strategy:** Ratio Double Calendar Spread
+- **Entry Date:** 15 Jul 2026
+- **Expiry T0:** 21 Jul 2026 (TODAY is T-1 — Tomorrow is exit day)
+- **Expiry T1:** 28 Jul 2026 (8 days to expiry)
+- **Status:** Open
+- **Exit (Scheduled):** Tuesday, 21 Jul 2026
+
+### Position Details
+
+| Leg | Action | Strike | Type | Expiry | Qty | Entry Price | Current LTP | P&L |
+|:---:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:-----------:|:---:|
+| T1-CE | BUY | 24,800 | CE | 28 Jul | 195 | 26.10 | 19.90 | -1,209.00 |
+| T1-PE | BUY | 23,200 | PE | 28 Jul | 195 | 32.75 | 8.35 | -4,758.00 |
+| T0-CE | SELL | 24,500 | CE | 21 Jul | 195 | 24.75 | 5.55 | +3,744.00 |
+| T0-PE | SELL | 23,600 | PE | 21 Jul | 195 | 35.05 | 2.70 | +6,308.25 |
+
+**Total P&L:** ₹+4,085.25
+
+| Metric | Value |
+|:-------|:-----:|
+| Entry Net Credit | ₹ 185.25 |
+| Current Unrealized P&L (15:30 IST) | ₹ +4,085.25 |
+| Margin Utilized | ₹ 450,000 |
+| Return on Margin | +0.91% |
+| **⛔ Stoploss (1.1%)** | **₹ -4,950** |
+| **🎯 Profit Target (1.5%)** | **₹ +6,750** |
+| Distance to Stoploss | ₹ 9,035 |
+| Distance to Profit Target | ₹ 2,665 |
+
+### P&L Progression — NIFTY
+
+| Metric | Day 1 (Wed) | Day 2 (Thu) | Day 3 (Fri) | Day 4 (Mon) |
+|:-------|:-----------:|:-----------:|:-----------:|:-----------:|
+| Opening P&L | ₹0 (entry) | ₹702 | ₹3,032 | ₹312* |
+| Closing P&L | ₹702 | ₹2,223 | ₹312 | ₹4,085 |
+| Daily P&L Change | +₹702 | +₹1,521 | -₹1,911 | **+₹3,773** |
+| Low of Day | ₹0 | ₹1,238 | ₹507 | N/A† |
+| High of Day | ₹702 | ₹2,476 | ₹3,032 | N/A† |
+| Cumulative Return on Margin | +0.16% | +0.49% | +0.07% | **+0.91%** |
+
+> *Opening P&L was unknown due to positionsStore being empty at daemon start. The log shows "No open position found in positionsStore" throughout the day — the daemon did not track NIFTY P&L intraday.
+> † Intraday P&L extremes not available — SmartStream WebSocket was never connected.
+
+---
+
+## SENSEX Week 2026-W29 (Day 2 — Monday)
+
+### 📋 Position Status
+
+- **Strategy:** Ratio Double Calendar Spread
+- **Entry Date:** 17 Jul 2026 (Friday)
+- **Expiry T0:** 23 Jul 2026 (Thursday — 3 days to expiry)
+- **Expiry T1:** 30 Jul 2026 (10 days to expiry)
+- **Status:** Open
+- **Exit (Scheduled):** Thursday, 23 Jul 2026
+
+### Position Details
+
+| Leg | Action | Strike | Type | Expiry | Qty | Entry Price | Current LTP | P&L |
+|:---:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:-----------:|:---:|
+| T1-CE | BUY | 80,500 | CE | 30 Jul | 40 | 55.90 | 41.10 | -592.00 |
+| T1-PE | BUY | 75,500 | PE | 30 Jul | 40 | 178.50 | 100.00 | -3,140.00 |
+| T0-CE | SELL | 79,400 | CE | 23 Jul | 40 | 56.15 | 23.55 | +1,304.00 |
+| T0-PE | SELL | 76,600 | PE | 23 Jul | 40 | 190.60 | 92.85 | +3,910.00 |
+
+**Total P&L:** ₹+1,482.00
+
+| Metric | Value |
+|:-------|:-----:|
+| Entry Net Cost/Proceeds | (Partial fill — market sweep leg) |
+| Current Unrealized P&L (15:30 IST) | ₹ +1,482.00 |
+| Margin Utilized | ₹ 186,164 |
+| Return on Margin | +0.80% |
+| **⛔ Stoploss (1.1%)** | **₹ -2,048** |
+| **🎯 Profit Target (1.5%)** | **₹ +2,792** |
+| Distance to Stoploss | ₹ 3,530 |
+| Distance to Profit Target | ₹ 1,310 |
+
+### P&L Progression — SENSEX
+
+| Metric | Day 1 (Fri) | Day 2 (Mon) |
+|:-------|:-----------:|:-----------:|
+| Opening P&L | ₹0 (entry) | ₹-228 |
+| Closing P&L | ₹-228 | ₹1,482 |
+| Daily P&L Change | -₹228 | **+₹1,710** |
+| Cumulative Return | -0.05% | +0.80% |
+
+---
+
+## Combined Position Summary
+
+| Metric | NIFTY | SENSEX | Combined |
+|:-------|:-----:|:------:|:--------:|
+| Current P&L | ₹4,085 | ₹1,482 | **₹5,567** |
+| Margin | ₹450,000 | ₹186,164 | ₹636,164 |
+| Return on Margin | +0.91% | +0.80% | +0.87% |
+| Stoploss (1.1%) | ₹4,950 | ₹2,048 | ₹6,998 |
+| Profit Target (1.5%) | ₹6,750 | ₹2,792 | ₹9,542 |
+
+> ⚠️ **NIFTY exit is TOMORROW (Tuesday, 21 Jul).** Combined P&L of ₹5,567 is above the NIFTY profit target of ₹6,750 on its own, but below the combined target (₹9,542). SENSEX exit is Thursday (23 Jul).
+> NIFTY P&L at ₹4,085 is 60.5% of the profit target with 1 trading day remaining.
+> SENSEX P&L at ₹1,482 is 53.1% of the profit target with 3 trading days remaining.
+
+---
+
+## 📈 Daily Activity
+
+### Market Context
+
+A **negative day** for Indian equities after Friday's strong rally. Nifty gave back -95.80 points (-0.39%) to close at 24,238.50, retreating from Friday's 24,334.30 high. Bank Nifty underperformed with a -576.40 point (-0.98%) decline to 57,945.00. SENSEX also pulled back -442.93 points (-0.57%) to 77,708.52. India VIX eased slightly to 12.98 (-1.29%) from Friday's 13.15, indicating continued low volatility.
+
+### Daemon Activity
+
+**00:00 IST — Daily Log Cleanup:**
+- Routine log rotation and position data retention cleanup completed.
+
+**08:20 IST — PM2 Restart (Graceful Shutdown):**
+- Daemon shut down and restarted cleanly at 08:20
+- Fresh SmartAPI login successful
+- Environment: `production`
+- Scheduler started at 08:20:10
+
+**08:30 IST — Instrument Master Download:**
+- Scheduled job downloaded fresh scrip master (164,910 records, 4,653 options cached)
+
+**08:40 IST — VIX Check:**
+- India VIX: 13.15 — consistent with Friday's close
+
+**09:01–15:32 IST — No P&L Monitoring:**
+- **⚠️ Critical:** The daemon logged "No open position found in positionsStore. Skipping/disconnecting WebSocket." throughout the entire trading day (09:15 to 15:32).
+- **SmartStream WebSocket was NEVER connected.** All P&L monitoring was absent.
+- The `positionsStore` in memory likely lost its reference to the NIFTY W29 position file during the 08:20 restart. The position file exists on disk (`data/live/positions-nifty-2026-W29.json` with `status: "open"`), but the in-memory store did not load it.
+- No entry attempt was made (expected — there's no W30 entry scheduled for Monday)
+- No exit was logged (exit is scheduled for Tuesday, 21 Jul)
+
+**09:20 IST — Margin Refresh Attempt:**
+- Scheduled job ran to refresh margin utilized for open positions.
+- Since positionsStore was empty, this likely had no effect.
+
+**15:32 IST — Session Refresh:**
+- Active session loaded from disk cache (post-market).
+
+### Key P&L Performance
+
+| Metric | NIFTY | SENSEX |
+|:-------|:-----:|:------:|
+| Previous Close (Fri) | ₹312 | ₹-228 |
+| Current Close (Mon) | ₹4,085 | ₹1,482 |
+| Daily P&L Change | **+₹3,773** | **+₹1,710** |
+| Low of Day | N/A | N/A |
+| High of Day | N/A | N/A |
+
+> NIFTY P&L could not be monitored intraday because the daemon's positionsStore was empty. The closing figure (₹4,085) was computed from live LTPs at 15:42 IST (post-market) using the brokerClient's getLtp API. Actual closing P&L may differ slightly due to the ~12-minute gap between market close and LTP fetch.
+
+---
+
+## 🔍 Market Response Analysis
+
+### NIFTY — Remarkable Recovery on Pullback Day
+
+The NIFTY position experienced its **best single day of P&L** (+₹3,773) since entry, recovering from Friday's compressed ₹312 close to ₹4,085:
+
+1. **Directional Benefit — Nifty Pullback:** After Friday's +261 point rally that pushed Nifty near the short CE strike (24,500), today's -95.80 point pullback to 24,238.50 provided significant relief:
+
+   - Friday close: Nifty at 24,334.30 (166 pts below short CE)
+   - Monday close: Nifty at 24,238.50 (262 pts below short CE)
+   - The 96-point pullback moved the short CE further OTM, rapidly restoring premium decay
+
+2. **T0 Premium Collapse (Expiry T-1):** With T0 expiry tomorrow (Tuesday, 21 Jul), the short option premiums collapsed dramatically:
+
+   - **T0-CE (24,500):** ₹24.75 entry → ₹14.50 (Thu) → est. ₹65-85 (Fri rally) → **₹5.55 (Mon)** 
+   - The premium collapse from Friday's elevated levels reflects both the pullback and theta acceleration on the last full trading day before expiry
+   - **T0-PE (23,600):** ₹35.05 entry → ₹13.95 (Thu) → est. ₹2-5 (Fri) → **₹2.70 (Mon)**
+   - Nearly worthless — 92.3% premium decay from entry
+
+3. **Theta Acceleration (T-1 Effect):** With options expiring tomorrow, the theta decay curve steepens exponentially. Each point of movement in the underlying has amplified impact on T0 options vs T1 options:
+
+   - T0 options (21 Jul): Time value is nearly zero → premium ≈ intrinsic value only
+   - T1 options (28 Jul): Still 8 days to expiry → significant time value remains
+   - The gap between T0 and T1 theta decay is at its widest today — this is the optimal window for calendar spread profitability
+
+4. **T1 Buy Legs Depreciated Further:**
+
+   - **T1-CE (24,800):** ₹26.10 entry → ₹19.90 (-23.8%) — still 561.5 pts OTM, losing time value
+   - **T1-PE (23,200):** ₹32.75 entry → ₹8.35 (-74.5%) — deep OTM, losing value as Nifty stays elevated
+
+5. **VIX at 12.98:** Continued low volatility (down from 13.15 on Friday). Low VIX compresses option premiums across the board — beneficial for short positions (T0) but also reduces long option (T1) values. Net effect is moderately positive for the calendar today.
+
+### SENSEX — Strong Day 2 Recovery
+
+The SENSEX position swung from ₹-228 (Fri close) to ₹+1,482 (Mon) — a +₹1,710 reversal:
+
+1. **SENSEX Pullback Benefit:** After Friday's +964 point rally, SENSEX declined -443 points to 77,708.52 today:
+   - The short CE (79,400) is now 1,692 pts OTM vs ~757 pts OTM on Friday — significant improvement
+   - The short PE (76,600) is now 1,108 pts OTM vs ~1,551 pts OTM on Friday — slightly closer to money
+
+2. **SENSEX T0 Premiums Decaying:** With T0 expiry on Thursday (23 Jul), 3 days to expiry:
+   - **T0-CE (79,400):** ₹56.15 entry → ₹23.55 (-58.1%) — benefitting from pullback
+   - **T0-PE (76,600):** ₹190.60 entry → ₹92.85 (-51.3%) — losing value faster
+
+3. **SENSEX T1 Buy Legs Still Depreciating:**
+   - **T1-CE (80,500):** ₹55.90 entry → ₹41.10 (-26.5%) — still OTM by ~2,792 pts
+   - **T1-PE (75,500):** ₹178.50 entry → ₹100.00 (-44.0%) — still deep OTM
+
+4. **SENSEX Market Sweep Order Status:** Order `260717000359265` (80,500 CE) now shows `status: "COMPLETE"` in the position file with `price: 55.90`. The market sweep order did eventually fill at ₹55.90.
+
+### Combined Position Health
+
+| Indicator | Status |
+|:----------|:-------|
+| Both positions open | ✅ |
+| NIFTY approaching profit target | ✅ (60.5% of target) |
+| SENSEX above breakeven | ✅ (₹+1,482) |
+| Stoploss distance (both) | ✅ Well above stoploss |
+| Daemon P&L monitoring | ❌ positionsStore empty — no monitoring |
+| NIFTY exit tomorrow | ⏰ Scheduled for Tuesday |
+| SENSEX exit Thursday | ⏰ 3 days remaining |
+
+---
+
+## 🎯 Key Observations
+
+1. **🚀 NIFTY Best Day Yet:** A ₹+3,773 daily P&L change — the largest single-day gain since entry on Wednesday. The position has fully recovered from Friday's compression and is now at ₹4,085 (+0.91% on margin).
+
+2. **📆 TOMORROW IS EXIT DAY:** NIFTY W29 exit is scheduled for **Tuesday, 21 Jul 2026**. The position at ₹4,085 is 60.5% of the profit target (₹6,750). With the exit process potentially triggering in the morning, the final P&L depends on:
+   - Opening gap (if any)
+   - Exit execution quality (limit vs market orders)
+   - Whether slippage reduces the theoretical P&L
+
+3. **📆 SENSEX Exit Thursday:** SENSEX exit is Thursday (23 Jul). At ₹1,482 (+0.80%), it's 53.1% of the profit target (₹2,792). Three trading days remain — including Wednesday and Thursday morning.
+
+4. **⚠️ Daemon positionsStore Empty All Day:** The most significant operational issue today. The daemon's `positionsStore` was empty after the 08:20 restart, meaning:
+   - No SmartStream WebSocket connection was established
+   - No P&L monitoring occurred throughout the day
+   - No intraday NIFTY P&L extremes are available for this report
+   - The exit scheduler may also be affected — TOMORROW's exit depends on the positionsStore loading correctly
+
+5. **⚠️ Exit Risk — PositionsStore Might Prevent Exit:** If the positionsStore is still empty at tomorrow's exit time, the daemon won't know about the NIFTY W29 position and may not execute the exit. **This is a critical risk.** The exit is scheduled for Tuesday — if the daemon doesn't register the position, it won't sell the T0 options or buy back the T1 hedges.
+
+6. **SENSEX Market Sweep Order Filled:** Order `260717000359265` for 80,500 CE now shows `status: "COMPLETE"` at ₹55.90 in the position file. The Friday execution uncertainty is resolved.
+
+7. **VIX at 12.98 — Range-Bound:** VIX continues to hover around the 13 level. The past week's range (12.88–13.27) is unusually tight, reflecting low market volatility expectation.
+
+8. **Combined P&L at ₹5,567:** Both positions are now profitable. Combined return on margin is +0.87% (₹5,567 on ₹636,164). This is approaching the combined profit target of ₹9,542.
+
+---
+
+## ⚠️ Alerts / Risks
+
+- **🔴 CRITICAL — NIFTY Exit Tomorrow (Tue, 21 Jul):** Exit must execute correctly. Verify that `positionsStore` has the NIFTY W29 data before market open. If the daemon still shows "No open position found", manual intervention may be required to restart the daemon with the position loaded. Check daemon logs at 09:15 for SmartStream connection status.
+
+- **🔴 CRITICAL — SENSEX W28 Still Unresolved:** The SENSEX W28 buy legs must be closed manually. These long options (26 Jul expiry) are now 10 days old, with the T0 shorts having expired on 16 Jul. At current SENSEX levels (77,708):
+  - 79,000 CE @ 335.90 entry → now worth ~₹5-10 (98%+ loss)
+  - 76,700 PE @ 483.50 entry → now worth ~₹5-10 (98%+ loss)
+  - Total cost of buy legs was ~₹31,498 — essentially a total loss unless closed for residual value.
+
+- **🟡 Daemon positionsStore Empty:** This is the most critical operational finding. The daemon may need a restart with explicit position loading, or the `PositionsManager` needs investigation. The exit tomorrow is at risk.
+
+- **🟡 NIFTY Profit Target Within Reach:** At ₹4,085, the position is ₹2,665 away from the profit target (₹6,750). With theta accelerating on T-1, a flat or slightly down day could push P&L to target. Avoid early exit unless the profit target is clearly unreachable.
+
+- **🟡 SENSEX Profit Target Reachable:** At ₹1,482, the position is ₹1,310 away from target (₹2,792). Three days remain — a modest pullback or theta decay should suffice.
+
+- **⚠️ LTP Computation Note:** Today's P&L was computed at 15:42 IST (12 minutes after market close) using brokerClient.getLtp() API calls. Individual leg LTPs may have a slight mismatch compared to actual 15:30 close prices. However, the directional magnitude and order of magnitude are reliable.
+
+- **📆 NIFTY Exit:** **TOMORROW — Tuesday, 21 Jul 2026** (1 trading day remaining)
+- **📆 SENSEX T0 Expiry:** Thursday, 23 Jul 2026 (3 trading days)
+- **📆 SENSEX Exit:** Thursday, 23 Jul 2026
