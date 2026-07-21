@@ -1,31 +1,53 @@
 {
-    "version": 1,
-    "lastUpdated": "2026-07-21",
-    "indices": {
-        "NIFTY": {
-            "lotSize": 65,
-            "expiryDay": 2,
-            "strikeStep": 50,
-            "entryTime": "09:20",
-            "exitTime": "15:15",
-            "spotToken": "99926000",
-            "exchange": "NSE",
-            "optionExchange": "NFO"
-        },
-        "SENSEX": {
-            "lotSize": 20,
-            "expiryDay": 4,
-            "strikeStep": 100,
-            "entryTime": "09:20",
-            "exitTime": "15:15",
-            "spotToken": "99919000",
-            "exchange": "BSE",
-            "optionExchange": "BFO"
-        }
+  "version": 2,
+  "lastUpdated": "2026-07-21",
+  "indices": {
+    "NIFTY": {
+      "lotSize": 65,
+      "expiryDay": 2,
+      "strikeStep": 50,
+      "entryTime": "09:20",
+      "exitTime": "15:15",
+      "spotToken": "99926000",
+      "exchange": "NSE",
+      "optionExchange": "NFO"
     },
-    "api": {
-        "baseUrl": "https://apiconnect.angelbroking.com",
-        "timeout": 10000,
-        "retries": 3
+    "SENSEX": {
+      "lotSize": 20,
+      "expiryDay": 4,
+      "strikeStep": 100,
+      "entryTime": "09:20",
+      "exitTime": "15:15",
+      "spotToken": "99919000",
+      "exchange": "BSE",
+      "optionExchange": "BFO"
     }
+  },
+  "api": {
+    "baseUrl": "https://apiconnect.angelbroking.com",
+    "timeout": 10000,
+    "retries": 3
+  },
+  "holidays": [
+    "15-Jan-2026",
+    "26-Jan-2026",
+    "15-Feb-2026",
+    "03-Mar-2026",
+    "21-Mar-2026",
+    "26-Mar-2026",
+    "31-Mar-2026",
+    "03-Apr-2026",
+    "14-Apr-2026",
+    "01-May-2026",
+    "28-May-2026",
+    "26-Jun-2026",
+    "15-Aug-2026",
+    "14-Sep-2026",
+    "02-Oct-2026",
+    "20-Oct-2026",
+    "08-Nov-2026",
+    "10-Nov-2026",
+    "24-Nov-2026",
+    "25-Dec-2026"
+  ]
 }
