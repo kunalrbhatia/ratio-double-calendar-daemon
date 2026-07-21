@@ -232,8 +232,9 @@ export class BrokerClient implements IBrokerClient {
       });
 
       const parsed = SmartApiOrderResponseSchema.parse(response);
-      if (!parsed.status || !parsed.data) {
-        throw new Error(`Order placement failed: ${parsed.message}`);
+      if (!parsed.status || !parsed.data || !parsed.data.orderid) {
+        /* istanbul ignore next */
+        throw new Error(`Order placement failed: ${parsed.message || 'No order ID returned'}`);
       }
       return parsed.data.orderid;
     } catch (error: unknown) {

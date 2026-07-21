@@ -136,7 +136,10 @@ export class ExecutionManager implements IExecutionManager {
           }
         }
 
-        const limitPrice = Math.round(targetPrice / OPTION_TICK_SIZE) * OPTION_TICK_SIZE;
+        const limitPrice = Math.max(
+          OPTION_TICK_SIZE,
+          Math.round(targetPrice / OPTION_TICK_SIZE) * OPTION_TICK_SIZE,
+        );
 
         logger.info(
           `[Reprice Attempt ${attempt + 1}/${maxAttempts}] Placing LIMIT ${transactiontype} order for ${leg.tradingsymbol} @ ₹${limitPrice.toFixed(2)} (LTP: ₹${ltp}, Bid: ₹${bid}, Ask: ₹${ask})`,
