@@ -3,8 +3,8 @@
     "lastUpdated": "2026-07-21",
     "indices": {
         "NIFTY": {
-            "lotSize": 25,
-            "expiryDay": 4,
+            "lotSize": 65,
+            "expiryDay": 2,
             "strikeStep": 50,
             "entryTime": "09:20",
             "exitTime": "15:15",
@@ -13,8 +13,8 @@
             "optionExchange": "NFO"
         },
         "SENSEX": {
-            "lotSize": 10,
-            "expiryDay": 5,
+            "lotSize": 20,
+            "expiryDay": 4,
             "strikeStep": 100,
             "entryTime": "09:20",
             "exitTime": "15:15",
