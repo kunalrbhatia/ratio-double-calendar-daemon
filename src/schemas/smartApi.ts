@@ -49,9 +49,9 @@ export const SmartApiOrderResponseSchema = z.object({
   errorcode: z.string(),
   data: z
     .object({
-      script: z.string().optional(),
-      orderid: z.string(),
-      uniqueorderid: z.string().optional(),
+      script: z.string().optional().nullable(),
+      orderid: z.string().optional().nullable(),
+      uniqueorderid: z.string().optional().nullable(),
     })
     .optional()
     .nullable(),
