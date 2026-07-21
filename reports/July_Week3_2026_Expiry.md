@@ -1013,3 +1013,252 @@ The SENSEX position swung from ₹-228 (Fri close) to ₹+1,482 (Mon) — a +₹
 - **📆 NIFTY Exit:** **TOMORROW — Tuesday, 21 Jul 2026** (1 trading day remaining)
 - **📆 SENSEX T0 Expiry:** Thursday, 23 Jul 2026 (3 trading days)
 - **📆 SENSEX Exit:** Thursday, 23 Jul 2026
+
+---
+
+## Tuesday, 21 Jul 2026 — NIFTY Exit Day
+
+## 📊 Market Overview
+
+| Index | Value | Change | % Change |
+|-------|:-----:|:------:|:--------:|
+| Nifty 50 | 24,187.70 | -50.80 | -0.21% |
+| Bank Nifty | 57,835.35 | -109.65 | -0.19% |
+| India VIX | 12.60 | -0.38 | -2.93% |
+| SENSEX | 77,470.11 | -238.41 | -0.31% |
+
+---
+
+## NIFTY Week 2026-W29 (Exit Day — Day 5)
+
+### 📋 Position Status — CLOSED
+
+- **Strategy:** Double Calendar Spread (4-leg degenerate)
+- **Entry Date:** 15 Jul 2026 (Wednesday)
+- **Expiry T0:** 21 Jul 2026 (TODAY — Expiry)
+- **Expiry T1:** 28 Jul 2026
+- **Scheduled Exit:** 15:15 IST
+- **Status:** **CLOSED** (partial exit execution)
+- **Realized P&L:** **₹ +3,344.25**
+
+### Position Exit Log
+
+| Leg | Action | Strike | Type | Expiry | Qty | Entry Price | Exit Price | P&L |
+|:---:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:----------:|:---:|
+| T1-CE | BUY | 24,800 | CE | 28 Jul | 195 | 26.10 | 10.40 (SELL) | -₹3,061.50 |
+| T1-PE | BUY | 23,200 | PE | 28 Jul | 195 | 32.75 | 5.85 (SELL) | -₹5,245.50 |
+| T0-CE | SELL | 24,500 | CE | 21 Jul | 195 | 24.75 | **0.00** (Expired OTM) | **+₹4,826.25** |
+| T0-PE | SELL | 23,600 | PE | 21 Jul | 195 | 35.05 | 0.05 (BUY) | **+₹6,825.00** |
+
+**Total Realized P&L: ₹ +3,344.25**
+
+| Metric | Value |
+|:-------|:-----:|
+| Entry Net Credit | ₹ 185.25 |
+| Final Realized P&L | ₹ +3,344.25 |
+| Margin Utilized (peak) | ₹ 771,013.23 |
+| Return on Margin (total account) | +0.43% |
+| Return on Margin (per-position ₹301,991) | **+1.11%** |
+| **⛔ Stoploss (1.1%)** | **₹ -8,481** (total) / ₹-3,322 (per-position) |
+| **🎯 Profit Target (1.5%)** | **₹ +11,565** (total) / ₹+4,530 (per-position) |
+
+> The stoploss and profit target thresholds above use the batch margin of ₹771,013.23 (which includes other account positions). The actual per-position margin for NIFTY was ₹301,991.23, making the effective SL ₹3,322 and PT ₹4,530. The result of ₹3,344 falls slightly above the per-position SL but below the per-position PT — a moderate outcome.
+
+### P&L Progression Summary
+
+| Metric | Day 1 (Wed) | Day 2 (Thu) | Day 3 (Fri) | Day 4 (Mon) | **Day 5 (Tue)** |
+|:-------|:-----------:|:-----------:|:-----------:|:-----------:|:---------------:|
+| Opening P&L | ₹0 (entry) | ₹702 | ₹3,032 | ₹312 | ₹4,085 |
+| Closing P&L | ₹702 | ₹2,223 | ₹312 | ₹4,085 | **₹3,344 (realized)** |
+| Daily P&L Change | +₹702 | +₹1,521 | -₹1,911 | +₹3,773 | -₹741 |
+| Return on per-position margin | +0.16% | +0.49% | +0.07% | +0.91% | **+1.11%** (cumulative) |
+
+> Monday's unrealized close of ₹4,085 → exit realized ₹3,344. The -₹741 difference is due to exit execution (T1 long legs sold at compressed prices at 15:15 vs Monday's 15:30 close).
+
+---
+
+## SENSEX Week 2026-W29 (Day 3 — Tuesday)
+
+### 📋 Position Status
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Entry Date:** 17 Jul 2026 (Friday)
+- **Expiry T0:** 23 Jul 2026 (Thursday — 2 days to expiry)
+- **Expiry T1:** 30 Jul 2026 (9 days to expiry)
+- **Status:** Open
+- **Exit (Scheduled):** Thursday, 23 Jul 2026
+- **Current Unrealized P&L (15:30 IST):** **₹ +1,948.00**
+
+### Position Details
+
+| # | Action | Strike | Type | Expiry | Qty | Entry Price | Current LTP | P&L |
+|:-:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:-----------:|:---:|
+| 1 | 🔴 SELL | 79,400 | CE | 23 Jul | 40 | 56.15 | 8.65 | +₹1,900.00 |
+| 2 | 🔴 SELL | 76,600 | PE | 23 Jul | 40 | 190.60 | 58.45 | +₹5,286.00 |
+| 3 | 🟢 BUY | 80,500 | CE | 30 Jul | 40 | 55.90 | 19.00 | -₹1,476.00 |
+| 4 | 🟢 BUY | 75,500 | PE | 30 Jul | 40 | 178.50 | 84.45 | -₹3,762.00 |
+
+**Total Unrealized P&L: ₹ +1,948.00**
+
+| Metric | Value |
+|:-------|:-----:|
+| Current Unrealized P&L (15:30 IST) | ₹ +1,948.00 |
+| Margin Utilized | ₹ 179,583.73 |
+| Return on Margin | +1.08% |
+| **⛔ Stoploss (1.1%)** | **₹ -1,975** |
+| **🎯 Profit Target (1.5%)** | **₹ +2,694** |
+| Distance to Stoploss | ₹ 3,923 |
+| Distance to Profit Target | ₹ 746 |
+
+### P&L Progression — SENSEX
+
+| Metric | Day 1 (Fri) | Day 2 (Mon) | Day 3 (Tue) |
+|:-------|:-----------:|:-----------:|:-----------:|
+| Opening P&L | ₹0 (entry) | ₹-228 | ₹1,482 |
+| Closing P&L | ₹-228 | ₹1,482 | **₹1,948** |
+| Daily P&L Change | -₹228 | +₹1,710 | **+₹466** |
+| Low of Day | -₹844 | N/A | ₹936 |
+| High of Day | ₹166 | N/A | ₹2,062 |
+| Cumulative Return | -0.05% | +0.80% | **+1.08%** |
+
+---
+
+## Combined Position Summary
+
+| Metric | NIFTY | SENSEX | Combined |
+|:-------|:-----:|:------:|:--------:|
+| Final P&L | ₹3,344 (realized) | ₹1,948 (unrealized) | **₹5,292** |
+| Margin | ₹301,991 | ₹179,584 | ₹481,575 |
+| Return on Margin | +1.11% | +1.08% | +1.10% |
+
+> **NIFTY W29: Closed at ₹3,344 (realized)** — moderate result after volatile week.
+> **SENSEX W29: Still open** — ₹1,948, 72.3% of PT (₹2,694). Exit Thursday.
+
+---
+
+## 📈 Daily Activity
+
+### Market Context
+
+A **mildly negative session** for Indian equities. Nifty edged lower by -50.80 points (-0.21%) to close at 24,187.70, continuing the pullback from Friday's 24,334 high. Bank Nifty slipped -109.65 points (-0.19%) to 57,835.35. SENSEX declined -238.41 points (-0.31%) to 77,470.11. India VIX dropped to 12.60 (-2.93%) — its lowest level of the week, indicating extremely low options pricing ahead of the weekly expiry.
+
+### Daemon Activity
+
+**00:20 IST — Daemon Restart:** PM2 restarted the daemon with graceful shutdown. Fresh SmartAPI login and instrument cache download (164,910 records, 4,653 options cached).
+
+**00:32 IST — Second Daemon Restart:** Another restart within 12 minutes. Graceful — no position loss.
+
+**08:20 IST — PM2 Morning Restart:** Standard pre-market restart. Fresh login, cached instrument load (4,653 options). Scheduler started at 08:20:01.
+
+**08:30 IST — Instrument Master Download:** Fresh scrip master download (165,996 records, 4,653 options cached).
+
+**08:40 IST — VIX Check:** India VIX at 12.98. Entry filter passed.
+
+**09:01 IST — Session Load:** Active session loaded from disk cache.
+
+**09:15 IST — Market Open / P&L Monitoring (✅ positionsStore Loaded):** Unlike Monday, the daemon successfully loaded positions:
+- **NIFTY opening P&L: ₹4,241.25** (above Monday's ₹4,085 close)
+- **SENSEX opening P&L: ₹1,316** (below Monday's ₹1,482 close)
+- SmartStream WebSocket connected and subscribed to ALL 8 tokens
+- Heartbeat re-subscription active every 45 seconds
+
+**09:15–15:14 IST — NIFTY P&L Monitoring:**
+
+| Time (IST) | NIFTY P&L | Notes |
+|:----------:|:---------:|:------|
+| 09:15 | ₹4,241 | Opening — near week's high |
+| 09:17–09:50 | ₹3,831–₹3,969 | Gradual decline |
+| 10:00–10:30 | ₹3,588–₹3,344 | Continued erosion |
+| 10:30–11:30 | ₹3,315–₹3,472 | Stabilized in ₹3,300–₹3,500 |
+| 11:30–12:30 | ₹3,256–₹3,276 | Narrow consolidation |
+| 12:30–13:30 | ₹3,149–₹3,237 | Mild afternoon dip |
+| 13:30–14:30 | ₹3,100–₹3,217 | Day's low ~₹3,081 (14:35) |
+| 14:30–15:14 | ₹3,129–₹3,159 | Final drift before exit |
+
+**09:15–15:30 IST — SENSEX P&L Monitoring:**
+
+| Time (IST) | SENSEX P&L | Notes |
+|:----------:|:----------:|:------|
+| 09:15 | ₹1,316 | Opening gap down from Mon close |
+| 09:16–10:00 | ₹1,924–₹2,020 | Strong recovery |
+| 10:00–11:00 | ₹1,552–₹1,628 | Dip to ₹1,152 (10:52 — day's low) |
+| 11:00–12:30 | ₹1,234–₹1,510 | Recovery |
+| 13:01 | **₹936** | Sharp dip — LTP volatility spike |
+| 13:02–13:30 | ₹1,174–₹1,458 | V-shaped recovery |
+| 13:30–15:30 | ₹1,342–₹1,910 | Gradual climb |
+| 15:30 | **₹1,948** | Market close |
+
+**09:20 IST — Margin Refresh:**
+- Batch margin returned ₹771,013.23 for NIFTY (✅ success)
+- ₹179,583.73 for SENSEX (✅ success)
+- ₹771K is **account-wide margin** (includes other algos), not per-position. Per-position NIFTY margin: ₹301,991.
+
+**10:57 IST — SmartStream Disconnect:** Brief disconnect at 10:57. Auto-reconnected in 5s.
+
+**15:15 IST — NIFTY Scheduled Exit Execution:**
+
+The daemon triggered the scheduled exit at 15:15. ALL 4 leg placements initially failed with the Zod schema error: `"expected": "string", "received": "null"` for `orderid`.
+
+**Despite the error, 3 of 4 orders were actually placed:**
+
+| Exit Leg | Action | Attempts | Result | Avg Price |
+|:---------|:------:|:--------:|:------:|:---------:|
+| T0-CE (24,500) | BUY | 4 limit + market | ❌ NOT placed | N/A |
+| T0-PE (23,600) | BUY | 4 limit + market | ✅ COMPLETE | ₹0.05 |
+| T1-CE (24,800) | SELL | 4 limit + market | ✅ COMPLETE | ₹10.40 |
+| T1-PE (23,200) | SELL | 4 limit + market | ✅ COMPLETE (1st rejected, 2nd OK) | ₹5.85 |
+
+**T0-CE (24,500):** Not placed, but expiry day + Nifty at 24,188 < 24,500 → **expires worthless**. Full ₹4,826.25 premium retained.
+
+Post-market exit attempts at 15:31 were correctly rejected: `"Markets are closed"`.
+
+**15:31 IST — SmartStream Disconnected:** WebSocket disconnected outside market hours.
+
+---
+
+## 🔍 Market Response Analysis
+
+### NIFTY — Exit Day: Realized ₹3,344 (+1.11% per-position margin)
+
+**Position closed at a moderate profit.** Key factors:
+- **Expiry Day Tailwind:** Both T0 options expired OTM. Full short premium collected.
+- **T1 Losses:** Buy hedges sold at -60% to -82% losses — expected T1 decay in a directional market.
+- **Exit Quality:** Adequate fills. Zod bug caused false failure reporting.
+
+**P&L journey this week:**
+```
+Wed: ₹702  → Thu: ₹2,223  → Fri: ₹312  → Mon: ₹4,085  → Tue (exit): ₹3,344
+```
+
+**Zod Schema Bug:** The daemon reported ALL 4 legs failed, but OrderBook confirms 3 of 4 succeeded. The `"orderid": null` parsing error makes the daemon think no order was placed, when in fact the order WAS placed and the response parsing simply failed.
+
+### SENSEX — Steady Day 3 to ₹1,948 (+1.08%)
+
+- **₹1,948 = 72.3% of profit target (₹2,694).** Two trading days remain before Thursday exit.
+- SENSEX -238 pts pullback benefitted short CE (79,400) without hurting short PE (76,600) excessively.
+- P&L ranged ₹936 (13:01) to ₹2,062 (15:25) — partly SENSEX option liquidity, partly REST API artifacts.
+
+---
+
+## 🎯 Key Observations
+
+1. **✅ NIFTY W29 Closed at ₹3,344 (+1.11%):** Solid result after volatile week (P&L range ₹312–₹4,241).
+2. **✅ SENSEX W29 at ₹1,948 — 72.3% of PT:** Position recovered from ₹-228 (Day 1). Exit Thursday.
+3. **⚠️ Exit Execution Masked by Zod Bug:** All legs reported as failed but 3/4 placed. One missed leg expired worthless — no harm.
+4. **⚠️ Batch Margin API Returns Account-Wide Margin:** ₹771K includes other intraday algos. Per-position NIFTY margin is ₹301,991.
+5. **✅ Daemon positionsStore Working Today:** SmartStream connected for NIFTY all day.
+6. **📌 VIX at 12.60 — Cycle Low:** Favorable for NIFTY W30 entry tomorrow.
+7. **📌 SENSEX W28 Legacy:** Stranded buy legs (~₹31,498 cost) will expire 26 Jul. No recovery possible.
+
+---
+
+## ⚠️ Alerts / Risks
+
+- **✅ NIFTY W29 Closed:** Position exited. T0 expired OTM. No further action.
+- **📌 SENSEX W29 Exit Thursday (23 Jul):** ₹1,948, ₹746 from PT. Watch Zod bug for false failure reports.
+- **📌 SENSEX W28 Legacy:** Let buy legs expire 26 Jul. Loss already incurred.
+- **🟡 NIFTY W30 Entry Tomorrow (Wed, 22 Jul):** VIX 12.60 favorable. Verify 6-leg basket structure.
+- **🟡 Zod Schema Bug:** `"orderid": null` causes false failure reporting. Fix needed.
+- **📆 SENSEX T0 Expiry:** Thursday, 23 Jul (2 days)
+- **📆 SENSEX Exit:** Thursday, 23 Jul
+- **📆 NIFTY W30 Entry:** Wednesday, 22 Jul (tomorrow)
