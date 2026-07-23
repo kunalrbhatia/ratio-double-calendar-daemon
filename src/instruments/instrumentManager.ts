@@ -20,6 +20,7 @@ export interface IInstrumentManager {
   ): InstrumentCacheEntry | null;
   getExpiries(underlying: string): string[];
   getExchangeByToken(token: string): string | null;
+  getExpiryByToken(token: string): string | null;
 }
 
 export class InstrumentManager implements IInstrumentManager {
@@ -224,6 +225,18 @@ export class InstrumentManager implements IInstrumentManager {
     for (const key of Object.keys(this.cache)) {
       if (this.cache[key].symboltoken === token) {
         return this.cache[key].exchange;
+      }
+    }
+    return null;
+  }
+
+  getExpiryByToken(token: string): string | null {
+    for (const key of Object.keys(this.cache)) {
+      if (this.cache[key].symboltoken === token) {
+        const parts = key.split('_');
+        if (parts.length >= 2) {
+          return parts[1];
+        }
       }
     }
     return null;

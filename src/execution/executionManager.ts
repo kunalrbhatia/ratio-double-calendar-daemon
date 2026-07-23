@@ -1,5 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import logger from '../logging/logger';
 import notifier from '../notify/notifier';
 import flagWatcher from '../flags/flagWatcher';
@@ -8,6 +11,10 @@ import positionsStore from '../positions/positionsStore';
 import { StrategyLeg } from '../strategy/strategyManager';
 import { OrderRecord, WeeklyPosition } from '../schemas/smartApi';
 import smartStream from './smartStream';
+import instrumentManager from '../instruments/instrumentManager';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const OPTION_TICK_SIZE = 0.05;
 
@@ -496,6 +503,30 @@ export class ExecutionManager implements IExecutionManager {
       entryOrder.tradingsymbol,
       entryOrder.symboltoken,
     );
+
+    // Skip exit if it's expiry day, exit time (>= 3:15 PM IST), and the option is worthless (LTP <= 0.10)
+    const now = dayjs().tz('Asia/Kolkata');
+    const minutesSinceMidnight = now.hour() * 60 + now.minute();
+    const expiryStr = instrumentManager.getExpiryByToken(entryOrder.symboltoken);
+    const isExpiryDay = expiryStr ? dayjs(expiryStr, 'DDMMMYYYY').isSame(now, 'day') : false;
+    const isExitTime = minutesSinceMidnight >= 915; // 3:15 PM IST
+    const isWorthless = ltp <= 0.1;
+
+    if (isExpiryDay && isExitTime && isWorthless) {
+      logger.info(
+        `Skipping exit execution for worthless option ${entryOrder.tradingsymbol} on expiry day at exit time (LTP: ₹${ltp})`,
+      );
+      return {
+        symboltoken: entryOrder.symboltoken,
+        tradingsymbol: entryOrder.tradingsymbol,
+        transactiontype: exitAction,
+        quantity: entryOrder.quantity,
+        exchange: entryOrder.exchange,
+        orderid: `SKIPPED-WORTHLESS-${Date.now()}`,
+        status: 'COMPLETE',
+        price: ltp,
+      };
+    }
 
     if (isPaper) {
       logger.info(

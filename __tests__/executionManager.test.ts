@@ -4,8 +4,15 @@ import flagWatcher from '../src/flags/flagWatcher';
 import positionsStore from '../src/positions/positionsStore';
 import notifier from '../src/notify/notifier';
 import { StrategyLeg } from '../src/strategy/strategyManager';
+import instrumentManager from '../src/instruments/instrumentManager';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 
 import fs from 'fs';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 jest.mock('../src/execution/brokerClient');
 jest.mock('../src/flags/flagWatcher');
@@ -241,6 +248,52 @@ describe('ExecutionManager', () => {
 
     const success = await executionManager.executeExit('NIFTY', '2026-W27', false);
     expect(success).toBe(false);
+  });
+
+  test('executeExit skips exit for worthless option on expiry day at exit time', async () => {
+    const mockNow = dayjs.tz('2026-07-15 15:20:00', 'Asia/Kolkata');
+    const tzSpy = jest.spyOn(dayjs.prototype, 'tz').mockReturnValue(mockNow as any);
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
+
+    const openPosition = {
+      week: '2026-W27',
+      status: 'open' as const,
+      marginUtilized: 120000,
+      orders: [
+        {
+          symboltoken: 'WORTHLESS_CE',
+          tradingsymbol: 'NIFTY15JUL26C19100',
+          transactiontype: 'BUY' as const,
+          quantity: 50,
+          exchange: 'NFO',
+          orderid: 'O1',
+          status: 'COMPLETE',
+          price: 100,
+        },
+      ],
+      realizedPnl: 0,
+      skippedThisWeek: false,
+    };
+    (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
+    (brokerClient.getLtp as jest.Mock).mockResolvedValue(0.05);
+    (instrumentManager.getExpiryByToken as jest.Mock).mockReturnValue('15JUL2026');
+
+    const success = await executionManager.executeExit('NIFTY', '2026-W27', false);
+    expect(success).toBe(true);
+
+    expect(brokerClient.placeOrder).not.toHaveBeenCalled();
+    expect(positionsStore.writePosition).toHaveBeenCalledWith(
+      'NIFTY',
+      '2026-W27',
+      false,
+      expect.objectContaining({
+        status: 'closed',
+        realizedPnl: -4997.5,
+      }),
+    );
+
+    tzSpy.mockRestore();
   });
 
   test('monitorPnl handles kill switch and non-open positions', async () => {
