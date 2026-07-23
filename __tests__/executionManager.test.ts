@@ -6,8 +6,13 @@ import notifier from '../src/notify/notifier';
 import { StrategyLeg } from '../src/strategy/strategyManager';
 import instrumentManager from '../src/instruments/instrumentManager';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 
 import fs from 'fs';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 jest.mock('../src/execution/brokerClient');
 jest.mock('../src/flags/flagWatcher');
@@ -246,7 +251,7 @@ describe('ExecutionManager', () => {
   });
 
   test('executeExit skips exit for worthless option on expiry day at exit time', async () => {
-    const mockNow = dayjs('2026-07-15T15:20:00+05:30');
+    const mockNow = dayjs.tz('2026-07-15 15:20:00', 'Asia/Kolkata');
     const tzSpy = jest.spyOn(dayjs.prototype, 'tz').mockReturnValue(mockNow as any);
 
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
