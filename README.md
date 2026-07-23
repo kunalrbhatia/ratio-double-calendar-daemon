@@ -18,7 +18,7 @@ The daemon automates a **Double Calendar Spread** on Indian indices (**NIFTY** a
   - **Exit Window:** Thursday at 15:15 PM IST.
 - **VIX Entry Filter:** Entry for either index is only allowed if **India VIX is between 10 and 13.5** at the time of entry.
 - **Liquidity Screening:** Candidates are filtered dynamically using real-time quotes to ensure active market depth, preventing orders on illiquid option strikes. If no liquid strikes match, it falls back to the theoretical best strike and alerts the operator.
-- **Exit Rules:** Positions are unwound on stoploss breach (1.1% of utilized margin, any day), profit target reach (1.5% of utilized margin, any day), or naturally closed at the scheduled exit window. There is no other exit trigger.
+- **Exit Rules:** Positions are unwound on stoploss breach (1.1% of utilized margin, any day), profit target reach (1.5% of utilized margin, any day), or naturally closed at the scheduled exit window. To save brokerage costs, options that are worthless (LTP <= ₹0.10) on their expiry day at the scheduled exit time (15:15 PM IST onwards) are not exited (their exit is simulated at the worthless LTP value for bookkeeping). There is no other exit trigger.
 
 ### Leg Structure & Target Deltas
 
