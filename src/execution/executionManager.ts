@@ -510,7 +510,7 @@ export class ExecutionManager implements IExecutionManager {
     const expiryStr = instrumentManager.getExpiryByToken(entryOrder.symboltoken);
     const isExpiryDay = expiryStr ? dayjs(expiryStr, 'DDMMMYYYY').isSame(now, 'day') : false;
     const isExitTime = minutesSinceMidnight >= 915; // 3:15 PM IST
-    const isWorthless = ltp <= 0.10;
+    const isWorthless = ltp <= 0.1;
 
     if (isExpiryDay && isExitTime && isWorthless) {
       logger.info(
