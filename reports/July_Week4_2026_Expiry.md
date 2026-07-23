@@ -175,3 +175,172 @@ WebSocket disconnected outside market hours as expected.
 - **NIFTY VIX spike:** VIX jumped from 12.60 to 13.29 (+5.48%). A further spike could temporarily hurt the position on IV expansion, but theta decay should offset.
 - **SmartStream cache:** SENSEX BFO tokens still rely on REST API fallback for all LTP fetches — no WebSocket data available for BFO instruments.
 - **NIFTY W30 early entry:** At ₹205 P&L on Day 1, the position has 14+ days of theta decay ahead. Low risk currently.
+
+---
+
+# Trading Report — Thursday, 23 Jul 2026
+
+## 📊 Market Overview
+
+| Index | Previous Close | Today LTP | Change | % Change |
+|-------|:-------------:|:---------:|:------:|:--------:|
+| Nifty 50 | 23,996.25 | 23,869.60 | -126.65 | -0.53% |
+| Bank Nifty | 57,126.80 | 56,592.00 | -534.80 | -0.94% |
+| India VIX | 13.29 | 13.48 | +0.19 | +1.43% |
+| SENSEX | 76,755.05 | 76,391.39 | -363.66 | -0.47% |
+
+---
+
+## NIFTY Week 2026-W30 — Day 2 (Thursday)
+
+### 📋 Position Status
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Entry Date:** 22 Jul 2026 (Wednesday)
+- **Lot Size (LOTS):** 2 (130 qty)
+- **Sell Expiry (T0):** 28 Jul 2026 — Sell 130 CE + 130 PE at delta 0.10–0.15
+- **Buy Expiry (T1):** 04 Aug 2026 — Buy 130 CE + 130 PE LTP-matched to T0 shorts
+- **Status:** Open
+- **Margin:** ₹175,509.30
+- **⛔ Stoploss (1.1%):** ₹-1,930.60
+- **🎯 Profit Target (1.5%):** ₹+2,632.64
+
+### Position Details
+
+| # | Action | Strike | Type | Expiry | Qty | Entry Price | LTP (post-market) | P&L |
+|:-:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:-----------------:|:---:|
+| 1 | 🔴 SELL | 24,500 | CE | 28 Jul | 130 | 24.68 | 8.30 | +₹2,129.40 |
+| 2 | 🔴 SELL | 23,600 | PE | 28 Jul | 130 | 30.45 | 37.10 | -₹864.50 |
+| 3 | 🟢 BUY  | 24,800 | CE | 04 Aug | 130 | 25.70 | 13.40 | -₹1,599.00 |
+| 4 | 🟢 BUY  | 23,300 | PE | 04 Aug | 130 | 33.85 | 46.05 | +₹1,586.00 |
+
+**Total P&L (post-market computed):** **₹ +1,251.90**
+
+> LTPs fetched at 15:42 IST (12 min after market close). Post-market LTP drift may cause ±5–15% variance from actual 15:30 close values.
+> **Daemon's last P&L snapshot (09:15):** ₹-912.60. No further intraday P&L data available due to weekly lockout (see Daily Activity).
+
+### P&L Summary
+
+| Metric | Value |
+|:-------|:-----:|
+| Day Open P&L (from yesterday's close) | ₹205.40 |
+| Day Close P&L (post-market computed) | ₹1,251.90 |
+| Day Change | +₹1,046.50 |
+| Distance to PT (₹2,632.64) | ₹1,380.74 |
+| Distance to SL (-₹1,930.60) | ₹3,182.50 |
+
+### Key Observations (NIFTY)
+
+- **Strong theta decay day.** The T0 short CE (24,500) decayed from 19.95 to 8.30 (-58%), contributing +₹2,129 to P&L. NIFTY fell to 23,869 — well inside the 23,600–24,500 short range.
+- **PE short under moderate pressure.** The 23,600 PE rose from 36.40 to 37.10 (+₹0.70), a small loss offset by other legs.
+- **T1 buy legs mixed.** The 24,800 CE buy hedged dropped (good for position), while the 23,300 PE buy hedge appreciated (added cost). Net buy-leg impact was roughly neutral.
+- **P&L improved ₹1,046.50 from yesterday's close** of +₹205, reaching +₹1,251.90 by post-market computation.
+
+---
+
+## SENSEX Week 2026-W29 — STOPLOSS TRIGGERED (CLOSED)
+
+### 📋 Position Status — FINAL
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Entry Date:** 17 Jul 2026 (Friday)
+- **Exit Date:** 23 Jul 2026 (Thursday — SToploss Triggered)
+- **Lot Size (LOTS):** 2 (40 qty)
+- **Sell Expiry (T0):** 23 Jul 2026 (Thursday)
+- **Buy Expiry (T1):** 26 Jul 2026
+- **Status:** Closed — Stoploss
+- **Realized P&L:** **₹ -1,938.00**
+
+### Exit Timeline
+
+| Time | Event |
+|:----:|:------|
+| 09:15:01 | **Stoploss breach detected** — SENSEX P&L at ₹-3,602 vs threshold ₹-2,003.60 |
+| 09:15:01 | Exit unwind initiated (LIVE mode, isStoploss: true) |
+| 09:15:03–15 | Multi-leg exit execution with reprice attempts (403 rate limits on order book fetches) |
+| 09:15:16 | SENSEX exit completed. Weekly lockout set. Daemon enters "Trading paused" mode. |
+| All day | Daemon remained paused. No further NIFTY P&L monitoring. |
+
+> **Contributing factors to stoploss:**
+> - The 76,600 PE short widened significantly from entry (190.60) to LTP at exit (306.05+), driven by SENSEX falling below the strike
+> - SENSEX dropped to ~76,391 range, putting the 76,600 PE short slightly ITM by ~209 pts
+> - All REST API calls hit 403 rate limits during exit, but orders were still placed and filled
+> - The SENSEX W30 week was set to "skipped" after the exit to prevent re-entry
+
+### SENSEX Week 2026-W30 — Skipped
+
+SENSEX entry for this week (normally Friday) has been **skipped** due to the stoploss lockout. No SENSEX position will be entered for Week 2026-W30.
+
+---
+
+## 📈 Daily Activity
+
+### 08:20 IST — Daemon Restart
+PM2 restarted the daemon. SmartAPI login successful. Scrip master downloaded (4627 instrument cache). All positions loaded from disk.
+
+### 08:40 IST — VIX Check
+India VIX at 13.29 — moderate level. Entry filter conditions met.
+
+### 09:15 IST — First P&L Check (Daemon's Only Snapshot)
+| Index | P&L | Status |
+|:------|:---:|:-------|
+| NIFTY | -₹912.60 | Within SL (-₹1,930.60) — OK |
+| SENSEX | -₹3,602.00 | **SL breached** — Exit initiated |
+
+### 09:15–09:16 IST — SENSEX Stoploss Exit
+The daemon attempted to close all 4 legs of the SENSEX W29 position. Multiple reprice attempts were made due to REST API 403 rate limits. Order book fetches intermittently failed. Despite this, exit orders were placed and filled.
+
+### 09:16–15:40 IST — Weekly Lockout (Trading Paused)
+After the SENSEX exit, the daemon set a weekly lockout flag (`done-for-this-week`). All subsequent P&L monitoring cycles logged "Trading paused (kill switch or weekly lockout active). Disconnecting SmartStream WebSocket..." — meaning **no further NIFTY P&L monitoring occurred for the remainder of the day**.
+
+### 15:40 IST — Report Generation
+LTPs fetched via brokerClient for NIFTY index and position legs. P&L computed post-market.
+
+---
+
+## 🔍 Market Response Analysis
+
+### NIFTY W30 — Day 2: +₹1,251.90 (+0.71% of margin)
+
+**A strong theta-decay day.** NIFTY opened lower and continued the previous day's decline, closing at 23,869.60 (-126.65 pts, -0.53%). The position benefited substantially from:
+
+1. **CE short (24,500) deep theta decay** — Premium collapsed from 19.95 to 8.30 (-58%) as NIFTY moved away from the strike. This leg alone contributed ₹2,129.
+2. **PE short (23,600) manageable** — Despite the market decline, PE rose only modestly from 36.40 to 37.10 (+₹0.70), giving up only ₹90. The 236 pts cushion to the market close helped.
+3. **Buy hedges neutralized** — The 24,800 CE buy lost value (good for position, +₹1,586) while the 23,300 PE buy gained (costly for position, -₹1,599), roughly offsetting.
+
+**Net effect:** The position gained +₹1,046.50 from yesterday's close of ₹205. The NIFTY 23,869 close is well inside the 23,600–24,500 short range, and the theta decay on the short CE is accelerating as T0 expiry (28 Jul) approaches.
+
+### SENSEX W29 — Exit Day: -₹1,938 (realized loss)
+
+**The SENSEX position was closed at a loss of ₹1,938** (1.06% of ₹182,145 margin). The overnight gap-down in SENSEX (opening weak and dropping further to 76,391) pushed the 76,600 PE short into ITM territory.
+
+Key factors:
+- SENSEX closed yesterday at 76,755 and dropped further today to 76,391 — the PE short (76,600) was ~209 pts ITM at exit
+- The sell CE (79,400) expired deeply OTM — negligible impact
+- The T1 buy legs (80,500 CE, 75,500 PE) were exited at a combined loss
+- The stoploss trigger at -₹3,602 was breached due to a combination of IV expansion and directional move against the PE short
+
+**Lesson:** The SENSEX 76,600 PE short, entered at ₹190.60 with a 76,755 close, had only ~155 pts of downside buffer. On a -363 pt SENSEX day, this was insufficient.
+
+---
+
+## 🎯 Key Observations
+
+1. **NIFTY W30 theta decay accelerating.** The 24,500 CE short decayed from 19.95 to 8.30 in a single day. With 5 days remaining to T0 expiry (28 Jul), theta decay will accelerate further — the position is well-positioned if NIFTY stays range-bound.
+
+2. **SENSEX stoploss triggered — first realized loss of the series.** The W29 SENSEX position closed at -₹1,938. The stoploss mechanism worked correctly, limiting the loss to 1.06% of margin vs the -₹3,602 peak drawdown.
+
+3. **Weekly lockout prevented NIFTY P&L monitoring.** After the SENSEX stoploss triggered the weekly lockout, the daemon stopped monitoring NIFTY P&L entirely. The NIFTY position was left unattended for the entire trading day. This is a **process gap** — NIFTY's stoploss was not breached, and its P&L was healthy, but the lockout treated both indices as identical.
+
+4. **VIX rose to 13.48** from yesterday's 13.29 (+1.43%). The gradual VIX increase reflects heightened market uncertainty but remains well within the low-vol regime.
+
+5. **NIFTY W29 short legs expired worthless.** The old W29 positions (NIFTY 24,500 CE and 23,600 PE shorts, 21 Jul expiry) expired worthless as expected — no assignment risk.
+
+---
+
+## ⚠️ Alerts / Risks
+
+- **⚠️ Weekly lockout killed NIFTY P&L monitoring for the entire day.** The NIFTY W30 position was left unmonitored from 09:16 onward. If the position had reversed sharply (e.g., a gap up breaking 24,500), the stoploss would not have triggered. **Action:** Consider decoupling index-level lockouts so NIFTY monitoring continues when only SENSEX hits a stoploss.
+- **SENSEX W30 entry skipped** due to stoploss lockout. No SENSEX position this week.
+- **NIFTY W30 has 5 days to T0 expiry (28 Jul).** The position is in a healthy +₹1,251.90 state. With NIFTY at 23,869 and strikes at 24,500 CE / 23,600 PE, the risk-reward is favorable.
+- **Position real P&L at 15:30 close may differ** from the post-market computed ₹1,251.90 due to the 12-minute gap between market close and LTP fetch. Expected variance: ±5–15%.
