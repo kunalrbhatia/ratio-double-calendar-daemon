@@ -61,8 +61,8 @@ describe('CronScheduler', () => {
   });
 
   test('handleTradingTick does nothing outside market hours', async () => {
-    // 8:00 AM IST (outside 09:15-15:30)
-    jest.setSystemTime(new Date('2026-07-01T08:00:00+05:30')); // Wednesday 8am
+    // 09:15 AM IST (outside 09:30-15:30)
+    jest.setSystemTime(new Date('2026-07-01T09:15:00+05:30')); // Wednesday 09:15am
 
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
     (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
