@@ -65,14 +65,14 @@ async function bootstrap() {
         return;
       }
 
-      // "Only connect during market hours — 09:15–15:30 IST, Mon–Fri"
+      // "Only connect during market hours — 09:30–15:30 IST, Mon–Fri"
       const now = dayjs().tz('Asia/Kolkata');
       const day = now.day();
       const minutesSinceMidnight = now.hour() * 60 + now.minute();
       const isMarketHours =
         day >= 1 &&
         day <= 5 &&
-        minutesSinceMidnight >= 555 && // 09:15 IST
+        minutesSinceMidnight >= 570 && // 09:30 IST
         minutesSinceMidnight <= 930; // 15:30 IST
 
       if (!isMarketHours) {

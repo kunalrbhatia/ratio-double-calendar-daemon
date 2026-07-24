@@ -25,7 +25,7 @@ export class CronScheduler {
   start() {
     logger.info('Starting scheduler daemon (Asia/Kolkata IST)...');
 
-    // Task 1: Main trading loop running every minute during market hours (09:15 - 15:30, Mon-Fri)
+    // Task 1: Main trading loop running every minute during market hours (09:30 - 15:30, Mon-Fri)
     // Cron format: minute hour day-of-month month day-of-week
     // Running every 5 minutes during market hours is cleaner, but let's run every 1 minute for faster stoploss checks.
     const tradingTickJob = cron.schedule('* 9-15 * * 1-5', async () => {
@@ -159,8 +159,8 @@ export class CronScheduler {
     const now = dayjs().tz('Asia/Kolkata');
     const minutesSinceMidnight = now.hour() * 60 + now.minute();
 
-    // Market hours are 09:15 to 15:30 (555 to 930 minutes)
-    if (minutesSinceMidnight < 555 || minutesSinceMidnight > 930) {
+    // Market hours are 09:30 to 15:30 (570 to 930 minutes)
+    if (minutesSinceMidnight < 570 || minutesSinceMidnight > 930) {
       return; // Outside market hours
     }
 
