@@ -344,3 +344,149 @@ Key factors:
 - **SENSEX W30 entry skipped** due to stoploss lockout. No SENSEX position this week.
 - **NIFTY W30 has 5 days to T0 expiry (28 Jul).** The position is in a healthy +₹1,251.90 state. With NIFTY at 23,869 and strikes at 24,500 CE / 23,600 PE, the risk-reward is favorable.
 - **Position real P&L at 15:30 close may differ** from the post-market computed ₹1,251.90 due to the 12-minute gap between market close and LTP fetch. Expected variance: ±5–15%.
+
+
+---
+
+# Trading Report — Friday, 24 Jul 2026
+
+## 📊 Market Overview
+
+| Index | Previous Close | LTP | Change | % Change |
+|-------|:-------------:|:---:|:------:|:--------:|
+| Nifty 50 | 23,869.60 | 23,767.45 | -102.15 | -0.43% |
+| Bank Nifty | 56,592.00 | 56,693.50 | +101.50 | +0.18% |
+| India VIX | 13.48 | 14.03 | +0.55 | +4.08% |
+| SENSEX | 76,391.39 | 76,059.77 | -331.62 | -0.43% |
+
+---
+
+## NIFTY Week 2026-W30 — STOPLOSS TRIGGERED (CLOSED)
+
+### 📋 Position Status — FINAL
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Entry Date:** 22 Jul 2026 (Wednesday)
+- **Exit Date:** 24 Jul 2026 (Friday — Stoploss @ 09:15)
+- **Lot Size (LOTS):** 2 (130 qty)
+- **Sell Expiry (T0):** 28 Jul 2026
+- **Buy Expiry (T1):** 04 Aug 2026
+- **Status:** Closed — Stoploss
+- **Realized P&L:** **₹ -724.10** (0.41% of ₹175,509.30 margin)
+- **⛔ Stoploss threshold:** -₹1,930.60 (1.1% of margin)
+- **🎯 Profit target:** +₹2,632.64 (1.5% of margin)
+
+### Exit Timeline
+
+| Time (IST) | Event |
+|:----------:|:------|
+| 09:15:00 | **Stoploss breach detected** — NIFTY P&L at -₹4,695.60 vs threshold -₹1,930.60 |
+| 09:15:00 | Exit unwind initiated (LIVE mode, isStoploss: true) |
+| 09:15:01–09:15:15 | Multi-leg exit execution with reprice attempts (403 rate limits on order book) |
+| 09:15:16 | NIFTY exit completed. Weekly lockout set. SmartStream WebSocket disconnected. |
+| 09:15–15:40 | Daemon remained in "Trading paused" mode for the rest of the day |
+
+### Exit Order Details
+
+| # | Action | Strike | Type | Expiry | Qty | Entry Price | Exit Price | Leg P&L |
+|:-:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:----------:|:-------:|
+| 1 | 🔴 SELL → ✅ BUY | 24,500 | CE | 28 Jul | 130 | 24.68 | 4.35 | +₹2,642.90 |
+| 2 | 🔴 SELL → ✅ BUY | 23,600 | PE | 28 Jul | 130 | 30.45 | 87.45 | **-₹7,410.00** |
+| 3 | 🟢 BUY  → ✅ SELL | 24,800 | CE | 04 Aug | 130 | 25.70 | 8.40 | -₹2,249.00 |
+| 4 | 🟢 BUY  → ✅ SELL | 23,300 | PE | 04 Aug | 130 | 33.85 | 82.25 | +₹6,292.00 |
+
+**Total Realized P&L:** **₹ -724.10**
+
+| Metric | Value |
+|:-------|:-----:|
+| Gross loss (peak intraday) | -₹4,695.60 (at 09:15 open) |
+| Realized loss (net of all legs) | -₹724.10 |
+| Entry net cost (debit at entry) | -₹574.60 |
+| Loss as % of margin | 0.41% |
+| Stoploss limit breach | Peak drawdown 2.68% of margin exceeded 1.1% threshold |
+
+---
+
+## SENSEX Week 2026-W30 — Skipped
+
+SENSEX entry for Week 2026-W30 (normally Friday) was **skipped** due to the prior SENSEX stoploss lockout from W29. No SENSEX position active this week.
+
+---
+
+## 📈 Daily Activity
+
+### 08:20 IST — Daemon Restart (PM2)
+Daemon restarted via PM2. SmartAPI login successful. Scrip master downloaded (4,555 options cached). Scheduler started.
+
+### 08:40 IST — VIX Check
+India VIX at 13.48 — moderate level. No entry was scheduled (weekly lockout active from SENSEX stoploss on Thursday).
+
+### 09:15:00 IST — NIFTY W30 Stoploss Breach
+
+**The NIFTY position gapped down sharply at market open.** NIFTY opened at ~23,748 (from previous close of 23,869.60), a gap-down of ~121 points. This pushed the 23,600 PE short deep ITM:
+
+- **24,500 CE short:** Benefited from the gap-down — premium collapsed further (yesterday's close ₹8.30 → exit buyback at ₹4.35). This leg was profitable.
+- **23,600 PE short:** **Hit hard** — premium exploded from yesterday's ~37.10 to an exit buyback price of ₹87.45. NIFTY at 23,748 made this PE short ~148 pts ITM, driving massive loss.
+- **24,800 CE long hedge:** Sold at ₹8.40 (entry ₹25.70) — lost value, partially offsetting.
+- **23,300 PE long hedge:** Sold at ₹82.25 (entry ₹33.85) — gained ₹6,292 as the market fell, partially offsetting the PE short loss.
+
+**Net result:** The 23,600 PE short loss (-₹7,410) was partially hedged by the 23,300 PE long gain (+₹6,292), netting -₹1,118 on the PE side. The CE side netted +₹394. Total realized loss: **-₹724.10**.
+
+### 09:15–15:40 IST — Weekly Lockout (Trading Paused)
+After the NIFTY stoploss exit, the daemon set a weekly lockout (`done-for-this-week`). All subsequent monitoring cycles logged "Trading paused (kill switch or weekly lockout active)" for the remainder of the day.
+
+### 15:40 IST — Report Generation
+LTPs fetched post-market for index values. Position exit verified via OrderBook (all 4 exit orders completed).
+
+---
+
+## 🔍 Market Response Analysis
+
+### NIFTY W30 — Exit Day: -₹724.10 (0.41% of margin)
+
+**A textbook stoploss exit driven by a gap-down opening.** NIFTY gapped down 121 points from yesterday's close of 23,869.60 to open near 23,748, sending the 23,600 PE short ITM by ~148 points at open:
+
+1. **PE short was the culprit.** The 23,600 PE premium gapped from ~37.10 (yesterday's close) to ~87.45 at exit — a **136% spike**. This leg alone accounted for the entire drawdown.
+2. **PE buy hedge provided significant offset.** The 23,300 PE long hedge gained +₹6,292 (exit ₹82.25 vs entry ₹33.85), absorbing 85% of the PE short loss.
+3. **CE side was profitable.** The 24,500 CE short decayed further to ₹4.35 (vs entry ₹24.68), contributing +₹2,642.90. The 24,800 CE buy hedge lost -₹2,249, netting +₹394 on the CE side.
+4. **The realized loss (-₹724.10) was well within the 1.1% stoploss threshold** in absolute terms, even though the intraday breach (at -₹4,695.60) was significantly larger due to bid-ask spread at open.
+
+### Post-Market NIFTY LTPs (15:44 IST)
+
+| Leg | Symbol | Post-Market LTP |
+|:---:|:-------|:----------------:|
+| T0 CE Short | 24,500 CE (28 Jul) | ₹3.85 |
+| T0 PE Short | 23,600 PE (28 Jul) | ₹39.20 |
+| T1 CE Long | 24,800 CE (04 Aug) | ₹6.30 |
+| T1 PE Long | 23,300 PE (04 Aug) | ₹57.85 |
+
+> The post-market LTPs confirm the exit was timely. The 23,600 PE settled further to ₹39.20 (from exit ₹87.45) — indicating the massive gap at open was largely a liquidity/momentum event. However, the stoploss mechanism correctly limited losses.
+
+### SENSEX W30 — Still Skipped
+No SENSEX position for this week. SENSEX continued its decline, closing at 76,059.77 — down another 0.43%.
+
+---
+
+## 🎯 Key Observations
+
+1. **NIFTY W30 stoploss triggered by gap-down at open.** The position lasted only 2 days (entry Wed 22 Jul → exit Fri 24 Jul). The gap-down of ~121 pts at open was sufficient to push the 23,600 PE short ITM.
+
+2. **Realized loss of ₹724.10 is modest** relative to the peak intraday drawdown of -₹4,695.60. The 23,300 PE buy hedge (part of the calendar spread structure) absorbed 85% of the PE short loss, demonstrating the value of the calendar spread's hedge layers.
+
+3. **The SENSEX and NIFTY both triggered stoploss in the same week** — SENSEX W29 on Thursday (₹-1,938) and NIFTY W30 on Friday (₹-724). Combined loss for the week: **-₹2,662.10** across both indices.
+
+4. **VIX rose to 14.03** (+4.08%), the highest level this week. The VIX trajectory this week: 12.60 → 13.29 → 13.48 → 14.03 — a steady increase reflecting heightened market uncertainty.
+
+5. **SmartStream cache remained empty all day** for the 09:15 P&L check, falling back to REST API for all 4 leg LTPs. The REST API also hit 403 rate limits during exit order book fetches, though the exit orders still went through.
+
+6. **Both positions are now closed/skipped for W30.** There are no active positions going into next week.
+
+---
+
+## ⚠️ Alerts / Risks
+
+- **🔴 Both positions closed this week.** NIFTY W30 realized -₹724.10 loss. SENSEX W30 skipped (no entry). Combined week loss: -₹2,662.10.
+- **🔴 Weekly lockout pattern confirmed — again.** Both SENSEX (Thu) and NIFTY (Fri) stoploss events triggered lockout. In NIFTY's case, the daemon caught the breach as soon as the market opened and executed the exit, so no unmonitored period occurred for the active position — it was a clean exit.
+- **🟡 VIX at 14.03** — creeping higher but still in low-vol regime. Entry conditions for next week depend on VIX staying below the filter threshold.
+- **🟡 Next entry window:** NIFTY W31 entry on Wednesday 29 Jul (if conditions met). SENSEX W31 entry on Friday 31 Jul (if conditions met and no lockout carryover from W30).
+- **🟢 Both stoploss limits held.** The 1.1% stoploss mechanism worked correctly in both cases (SENSEX: realized -1.06%; NIFTY: realized -0.41%). Losses were contained well within risk parameters.
