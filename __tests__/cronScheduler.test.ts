@@ -55,7 +55,7 @@ describe('CronScheduler', () => {
 
   test('start and stop scheduled jobs', () => {
     scheduler.start();
-    expect(cron.schedule).toHaveBeenCalledTimes(6);
+    expect(cron.schedule).toHaveBeenCalledTimes(7);
 
     scheduler.stop();
   });
@@ -232,20 +232,24 @@ describe('CronScheduler', () => {
     expect(fs.unlinkSync).toHaveBeenCalled();
   });
 
-  test('handleTradingTick does nothing if weekly lockout is active', async () => {
+  test('handleTradingTick skips lockout underlying but runs others', async () => {
     // Wednesday 10:00 AM IST
     jest.setSystemTime(new Date('2026-07-01T10:00:00+05:30'));
 
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
     (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
-    (flagWatcher.isDoneForThisWeek as jest.Mock).mockReturnValue(true);
+
+    // NIFTY is not locked out, SENSEX is locked out
+    (flagWatcher.isDoneForThisWeek as jest.Mock).mockImplementation((u) => u === 'SENSEX');
+    (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W27');
 
     await scheduler.handleTradingTick();
 
-    expect(positionsStore.getCurrentWeekString).not.toHaveBeenCalled();
+    // NIFTY should process, SENSEX should skip
+    expect(positionsStore.getCurrentWeekString).toHaveBeenCalled();
   });
 
-  test('weekly lockout clear job deletes done-for-this-week file', () => {
+  test('nifty weekly lockout clear job clears nifty weekly lockout flag', () => {
     let clearCallback: any;
     (cron.schedule as jest.Mock).mockImplementation((expression, cb) => {
       if (expression === '0 16 * * 2') {
@@ -257,29 +261,45 @@ describe('CronScheduler', () => {
     scheduler.start();
     expect(clearCallback).toBeDefined();
 
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
     clearCallback();
-    expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week'));
+    expect(flagWatcher.clearDoneForThisWeek).toHaveBeenCalledWith('NIFTY');
   });
 
-  test('weekly lockout clear job does nothing if done-for-this-week file does not exist', () => {
+  test('sensex weekly lockout clear job clears sensex weekly lockout flag when enabled', () => {
     let clearCallback: any;
     (cron.schedule as jest.Mock).mockImplementation((expression, cb) => {
-      if (expression === '0 16 * * 2') {
+      if (expression === '0 16 * * 4') {
         clearCallback = cb;
       }
       return { start: jest.fn(), stop: jest.fn() };
     });
 
+    env.SENSEX_EXPIRY_ENABLED = true;
     scheduler.start();
     expect(clearCallback).toBeDefined();
 
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
     clearCallback();
-    expect(fs.unlinkSync).not.toHaveBeenCalled();
+    expect(flagWatcher.clearDoneForThisWeek).toHaveBeenCalledWith('SENSEX');
   });
 
-  test('margin refresh job does nothing if kill switch or lockout is active', async () => {
+  test('sensex weekly lockout clear job does nothing if disabled', () => {
+    let clearCallback: any;
+    (cron.schedule as jest.Mock).mockImplementation((expression, cb) => {
+      if (expression === '0 16 * * 4') {
+        clearCallback = cb;
+      }
+      return { start: jest.fn(), stop: jest.fn() };
+    });
+
+    env.SENSEX_EXPIRY_ENABLED = false;
+    scheduler.start();
+    expect(clearCallback).toBeDefined();
+
+    clearCallback();
+    expect(flagWatcher.clearDoneForThisWeek).not.toHaveBeenCalledWith('SENSEX');
+  });
+
+  test('margin refresh job does nothing if kill switch is active', async () => {
     let refreshCallback: any;
     (cron.schedule as jest.Mock).mockImplementation((expression, cb) => {
       if (expression === '20 9 * * 1-5') {
@@ -292,12 +312,6 @@ describe('CronScheduler', () => {
     expect(refreshCallback).toBeDefined();
 
     (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(true);
-    await refreshCallback();
-    expect(executionManager.updateMarginUtilized).not.toHaveBeenCalled();
-
-    jest.clearAllMocks();
-    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
-    (flagWatcher.isDoneForThisWeek as jest.Mock).mockReturnValue(true);
     await refreshCallback();
     expect(executionManager.updateMarginUtilized).not.toHaveBeenCalled();
   });

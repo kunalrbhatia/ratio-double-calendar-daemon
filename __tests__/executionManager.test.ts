@@ -9,8 +9,6 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 
-import fs from 'fs';
-
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -19,7 +17,6 @@ jest.mock('../src/flags/flagWatcher');
 jest.mock('../src/positions/positionsStore');
 jest.mock('../src/notify/notifier');
 jest.mock('../src/instruments/instrumentManager');
-jest.mock('fs');
 
 describe('ExecutionManager', () => {
   let executionManager: ExecutionManager;
@@ -366,11 +363,7 @@ describe('ExecutionManager', () => {
 
     expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true);
     expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
-    expect(fs.writeFileSync).toHaveBeenCalledWith(
-      expect.stringContaining('done-for-this-week'),
-      'lockout',
-      'utf-8',
-    );
+    expect(flagWatcher.setDoneForThisWeek).toHaveBeenCalledWith('NIFTY');
     executeExitSpy.mockRestore();
   });
 
@@ -405,11 +398,7 @@ describe('ExecutionManager', () => {
 
     expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
     expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
-    expect(fs.writeFileSync).toHaveBeenCalledWith(
-      expect.stringContaining('done-for-this-week'),
-      'lockout',
-      'utf-8',
-    );
+    expect(flagWatcher.setDoneForThisWeek).toHaveBeenCalledWith('NIFTY');
     executeExitSpy.mockRestore();
   });
 
@@ -449,11 +438,7 @@ describe('ExecutionManager', () => {
       true,
       true,
     );
-    expect(fs.writeFileSync).not.toHaveBeenCalledWith(
-      expect.stringContaining('done-for-this-week'),
-      'lockout',
-      'utf-8',
-    );
+    expect(flagWatcher.setDoneForThisWeek).not.toHaveBeenCalled();
     executeExitSpy.mockRestore();
   });
 
@@ -743,7 +728,7 @@ describe('ExecutionManager', () => {
     });
 
     test('updates marginUtilized in live mode success', async () => {
-      const openPosition = {
+      const openPosition: any = {
         week: '2026-W27',
         status: 'open',
         marginUtilized: 0,
@@ -762,19 +747,25 @@ describe('ExecutionManager', () => {
         realizedPnl: 0,
         skippedThisWeek: false,
       };
-      (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
+      (positionsStore.readPosition as jest.Mock).mockImplementation((underlying) => {
+        if (underlying === 'NIFTY') return openPosition;
+        return null;
+      });
       (brokerClient.getMarginUtilized as jest.Mock).mockResolvedValue(380000);
 
       await executionManager.updateMarginUtilized('NIFTY', '2026-W27', false);
 
-      expect(brokerClient.getMarginUtilized).toHaveBeenCalledWith([
-        {
-          exchange: 'NFO',
-          symboltoken: 'T1_CE_BUY',
-          quantity: 50,
-          action: 'BUY',
-        },
-      ]);
+      expect(brokerClient.getMarginUtilized).toHaveBeenCalledWith(
+        [
+          {
+            exchange: 'NFO',
+            symboltoken: 'T1_CE_BUY',
+            quantity: 50,
+            action: 'BUY',
+          },
+        ],
+        true,
+      );
       expect(openPosition.marginUtilized).toBe(380000);
       expect(positionsStore.writePosition).toHaveBeenCalledWith(
         'NIFTY',
@@ -800,6 +791,168 @@ describe('ExecutionManager', () => {
 
       expect(openPosition.marginUtilized).toBe(120000); // unchanged
       expect(positionsStore.writePosition).not.toHaveBeenCalled();
+    });
+
+    test('getIsolatedMargin computes simple margin when other underlying has no open position', async () => {
+      const openPosition: any = {
+        week: '2026-W27',
+        status: 'open',
+        marginUtilized: 0,
+        orders: [
+          {
+            symboltoken: 'T1_CE_BUY',
+            tradingsymbol: 'NIFTY16JUL26C19100',
+            transactiontype: 'BUY',
+            quantity: 50,
+            exchange: 'NFO',
+            orderid: 'ORD-1',
+            status: 'COMPLETE',
+            price: 100,
+          },
+        ],
+        realizedPnl: 0,
+        skippedThisWeek: false,
+      };
+      (positionsStore.readPosition as jest.Mock).mockImplementation((underlying) => {
+        if (underlying === 'NIFTY') return openPosition;
+        return null; // SENSEX has no open position
+      });
+      (brokerClient.getMarginUtilized as jest.Mock).mockResolvedValue(300000);
+
+      await executionManager.updateMarginUtilized('NIFTY', '2026-W27', false);
+
+      expect(openPosition.marginUtilized).toBe(300000);
+      expect(openPosition.marginBasis).toBe('simple');
+    });
+
+    test('getIsolatedMargin computes isolated margin (delta) when both positions are open', async () => {
+      const niftyPosition: any = {
+        week: '2026-W27',
+        status: 'open',
+        marginUtilized: 0,
+        orders: [
+          {
+            symboltoken: 'NIFTY_TOKEN',
+            tradingsymbol: 'NIFTY16JUL26C19100',
+            transactiontype: 'BUY',
+            quantity: 50,
+            exchange: 'NFO',
+            orderid: 'ORD-N',
+            status: 'COMPLETE',
+            price: 100,
+          },
+        ],
+        realizedPnl: 0,
+        skippedThisWeek: false,
+      };
+      const sensexPosition = {
+        week: '2026-W27',
+        status: 'open',
+        marginUtilized: 200000,
+        orders: [
+          {
+            symboltoken: 'SENSEX_TOKEN',
+            tradingsymbol: 'SENSEX26JUL26C70000',
+            transactiontype: 'BUY',
+            quantity: 10,
+            exchange: 'BFO',
+            orderid: 'ORD-S',
+            status: 'COMPLETE',
+            price: 150,
+          },
+        ],
+        realizedPnl: 0,
+        skippedThisWeek: false,
+      };
+
+      (positionsStore.readPosition as jest.Mock).mockImplementation((underlying) => {
+        if (underlying === 'NIFTY') return niftyPosition;
+        if (underlying === 'SENSEX') return sensexPosition;
+        return null;
+      });
+
+      // Mock getMarginUtilized to return distinguishable values:
+      // For SENSEX alone: 200000
+      // For NIFTY + SENSEX combined: 550000
+      // So isolated margin is 550000 - 200000 = 350000
+      (brokerClient.getMarginUtilized as jest.Mock).mockImplementation(async (basket) => {
+        const hasNifty = basket.some((leg: any) => leg.symboltoken === 'NIFTY_TOKEN');
+        const hasSensex = basket.some((leg: any) => leg.symboltoken === 'SENSEX_TOKEN');
+        if (hasNifty && hasSensex) return 550000;
+        if (hasSensex) return 200000;
+        if (hasNifty) return 300000;
+        return 0;
+      });
+
+      await executionManager.updateMarginUtilized('NIFTY', '2026-W27', false);
+
+      expect(niftyPosition.marginUtilized).toBe(350000);
+      expect(niftyPosition.marginBasis).toBe('isolated');
+    });
+
+    test('getIsolatedMargin falls back to simple and alerts when before/after margin calls fail', async () => {
+      const niftyPosition: any = {
+        week: '2026-W27',
+        status: 'open',
+        marginUtilized: 0,
+        orders: [
+          {
+            symboltoken: 'NIFTY_TOKEN',
+            tradingsymbol: 'NIFTY16JUL26C19100',
+            transactiontype: 'BUY',
+            quantity: 50,
+            exchange: 'NFO',
+            orderid: 'ORD-N',
+            status: 'COMPLETE',
+            price: 100,
+          },
+        ],
+        realizedPnl: 0,
+        skippedThisWeek: false,
+      };
+      const sensexPosition = {
+        week: '2026-W27',
+        status: 'open',
+        marginUtilized: 200000,
+        orders: [
+          {
+            symboltoken: 'SENSEX_TOKEN',
+            tradingsymbol: 'SENSEX26JUL26C70000',
+            transactiontype: 'BUY',
+            quantity: 10,
+            exchange: 'BFO',
+            orderid: 'ORD-S',
+            status: 'COMPLETE',
+            price: 150,
+          },
+        ],
+        realizedPnl: 0,
+        skippedThisWeek: false,
+      };
+
+      (positionsStore.readPosition as jest.Mock).mockImplementation((underlying) => {
+        if (underlying === 'NIFTY') return niftyPosition;
+        if (underlying === 'SENSEX') return sensexPosition;
+        return null;
+      });
+
+      // Reject on getMarginUtilized to trigger fallback
+      (brokerClient.getMarginUtilized as jest.Mock).mockImplementation(
+        async (basket, throwOnError) => {
+          if (throwOnError) {
+            throw new Error('API failure');
+          }
+          return 300000; // fallback margin
+        },
+      );
+
+      await executionManager.updateMarginUtilized('NIFTY', '2026-W27', false);
+
+      expect(niftyPosition.marginUtilized).toBe(300000);
+      expect(niftyPosition.marginBasis).toBe('fallback');
+      expect(notifier.send).toHaveBeenCalledWith(
+        expect.stringContaining('Isolated margin calculation failed'),
+      );
     });
   });
 });

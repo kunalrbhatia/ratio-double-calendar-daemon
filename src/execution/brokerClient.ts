@@ -48,7 +48,7 @@ export interface IBrokerClient {
   placeOrder(params: PlaceOrderParams): Promise<string>;
   cancelOrder(orderid: string, variety: string): Promise<void>;
   getOrderBook(): Promise<OrderBookItem[]>;
-  getMarginUtilized(basket: MarginLeg[]): Promise<number>;
+  getMarginUtilized(basket: MarginLeg[], throwOnError?: boolean): Promise<number>;
   getOptionGreeks(name: string, expirydate: string): Promise<OptionGreekItem[]>;
 }
 
@@ -293,7 +293,7 @@ export class BrokerClient implements IBrokerClient {
     }
   }
 
-  async getMarginUtilized(basket: MarginLeg[]): Promise<number> {
+  async getMarginUtilized(basket: MarginLeg[], throwOnError = false): Promise<number> {
     // Exact path: /rest/secure/angelbroking/margin/v1/batch
     const url = 'https://apiconnect.angelone.in/rest/secure/angelbroking/margin/v1/batch';
 
@@ -325,6 +325,9 @@ export class BrokerClient implements IBrokerClient {
       // Return marginUtilized if present, or totalMarginRequired as fallback
       return parsed.data.marginUtilized ?? parsed.data.totalMarginRequired;
     } catch (error: unknown) {
+      if (throwOnError) {
+        throw error;
+      }
       /* istanbul ignore next */
       const msg = error instanceof Error ? error.message : String(error);
       logger.error(`Error calculating batch margin: ${msg}. Returning fallback margin.`);

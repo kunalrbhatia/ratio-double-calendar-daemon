@@ -25,14 +25,15 @@ node .agents/skills/pr-description-check/scripts/verify.cjs pr-body.txt
 *Note: If formatting warnings/errors are reported (e.g., unbackticked paths/commands), edit the file to fix them and re-run the check.*
 
 ### 3. Create Branch, Commit, Push, and Open PR
-Once all checks pass, run the following sequence to push the changes, open the PR using the verified description file, and monitor its checks:
+Once all checks pass, run the following sequence to push the changes, open the PR using the verified description file, clean up the description file, and monitor its checks:
 ```powershell
-git checkout -b <branch-name>; git add .; git commit -m "<conventional-commit-msg>"; git push -u origin <branch-name>; gh pr create --title "<pr-title>" --body-file pr-body.txt --reviewer kunalbhatia; node .agents/skills/verify-pr-status/scripts/verify-checks.cjs
+git checkout -b <branch-name>; git add .; git commit -m "<conventional-commit-msg>"; git push -u origin <branch-name>; gh pr create --title "<pr-title>" --body-file pr-body.txt --reviewer kunalbhatia; rm pr-body.txt; node .agents/skills/verify-pr-status/scripts/verify-checks.cjs
 ```
 
 ## Guidelines
 
 - **PR Lifecycle**: Always run the `verify-pr-status` check script immediately after creating a PR to monitor status until all checks resolve.
+- **Clean Up**: Always remove `pr-body.txt` after successfully opening the Pull Request so it doesn't linger or get accidentally committed (note that `pr-body.txt` is also ignored in `.gitignore`).
 - **Branch Naming**: Use `feat/`, `fix/`, or `docs/` prefixes (e.g., `feat/new-api-endpoint`).
 - **Commit Messages**: Always use **Conventional Commits** (e.g., `feat: add slack command listener`).
 - **PR Titles**: Match the commit message or use a clear descriptive title.

@@ -137,12 +137,12 @@ To optimize margin utilization and avoid transient order blocks, orders are sequ
 
 ### 2. Risk Management & Profit Targets (1.1% Stoploss / 1.5% Profit Exit)
 
-- **Margin Base:** During entry, the daemon computes the required margin using the Angel One margin calculator API. If the API call fails, it utilizes a lot-size scaled fallback margin tailored to the index (₹150,000 per lot for NIFTY, and ₹120,000 per lot for SENSEX).
-- **Daily Margin Refresh:** Overnight changes in span or exposure margins can affect risk thresholds. The daemon automatically queries the broker API to refresh the stored `marginUtilized` daily at **09:20 AM IST** (Monday through Friday) for active open positions, ensuring risk thresholds remain accurate.
+- **Margin Base & Isolation:** During entry, the daemon isolates each position's own contribution to total account margin by computing incremental delta margin: `margin(everything else + this position) - margin(everything else alone)`. This prevents portfolio-level cross-margining from other concurrent positions from inflating the stoploss/profit target thresholds. If the calculation falls back or fails, a warning alert is sent to Telegram/Slack, and it falls back to the simple margin or a lot-size scaled fallback margin tailored to the index (₹150,000 per lot for NIFTY, and ₹120,000 per lot for SENSEX).
+- **Daily Margin Refresh:** Overnight changes in span or exposure margins can affect risk thresholds. The daemon automatically recalculates and refreshes the isolated `marginUtilized` daily at **09:20 AM IST** (Monday through Friday) for active open positions, ensuring risk thresholds remain accurate.
 - **Monitoring:** The daemon polls LTP/WebSockets to monitor cumulative mark-to-market P&L.
 - **Stoploss:** If cumulative losses exceed **1.1% of the weekly utilized margin**, all legs are unwound.
 - **Profit Target:** If cumulative profits reach or exceed **1.5% of the weekly utilized margin**, all legs are unwound immediately to lock in gains.
-- **Weekly Lockout:** Upon stoploss or profit target hits, the daemon generates a `done-for-this-week` lockout file. When this lockout is active, all ticks and stream monitoring are suspended. The lockout is automatically cleared via cron job every Tuesday at 16:00 IST.
+- **Weekly Lockout:** Upon stoploss or profit target hits, the daemon generates a per-underlying weekly lockout file (e.g. `done-for-this-week-nifty` or `done-for-this-week-sensex`). When a lockout is active for an underlying, trading ticks and monitoring are paused for that specific index only. Lockouts are automatically cleared via cron jobs independently: NIFTY lockout is cleared Tuesdays at 16:00 IST, and SENSEX lockout is cleared Thursdays at 16:00 IST.
 
 ### 3. Limit Order Repricing Walk with Market Fallback
 
@@ -179,7 +179,7 @@ The primary trading reports are stored under `data/live/` (for production) and `
 - **Status Indicators:** Records the state of the trading week (e.g., `open`, `skipped`, or `closed`).
 - **Margin Tracking:** Captures the initial margin requirement computed by the Angel One margin calculator API.
 - **Order Audits:** Lists every executed order with detailed fill attributes including `orderId`, `status`, `averagePrice`, `transactionType`, `quantity`, and execution timestamps.
-- **Performance Metrics:** Tracks the cumulative and final realized P&L of the 6-leg basket.
+- **Performance Metrics:** Tracks the cumulative and final realized P&L of the 4-leg basket.
 
 ### 2. Operational & Execution Logs (`logs/`)
 

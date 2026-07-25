@@ -4,18 +4,22 @@ import path from 'path';
 export interface IFlagWatcher {
   isPaperMode(): boolean;
   isKillSwitched(): boolean;
-  isDoneForThisWeek(): boolean;
+  isDoneForThisWeek(underlying: string): boolean;
+  setDoneForThisWeek(underlying: string): void;
+  clearDoneForThisWeek(underlying: string): void;
 }
 
 export class FlagWatcher implements IFlagWatcher {
   private paperPath: string;
   private killPath: string;
-  private doneForThisWeekPath: string;
 
   constructor() {
     this.paperPath = path.resolve(process.cwd(), '.paper');
     this.killPath = path.resolve(process.cwd(), '.kill');
-    this.doneForThisWeekPath = path.resolve(process.cwd(), 'done-for-this-week');
+  }
+
+  private getLockoutPath(underlying: string): string {
+    return path.resolve(process.cwd(), `done-for-this-week-${underlying.toLowerCase()}`);
   }
 
   isPaperMode(): boolean {
@@ -26,8 +30,19 @@ export class FlagWatcher implements IFlagWatcher {
     return fs.existsSync(this.killPath);
   }
 
-  isDoneForThisWeek(): boolean {
-    return fs.existsSync(this.doneForThisWeekPath);
+  isDoneForThisWeek(underlying: string): boolean {
+    return fs.existsSync(this.getLockoutPath(underlying));
+  }
+
+  setDoneForThisWeek(underlying: string): void {
+    fs.writeFileSync(this.getLockoutPath(underlying), 'lockout', 'utf-8');
+  }
+
+  clearDoneForThisWeek(underlying: string): void {
+    const lockoutPath = this.getLockoutPath(underlying);
+    if (fs.existsSync(lockoutPath)) {
+      fs.unlinkSync(lockoutPath);
+    }
   }
 }
 
