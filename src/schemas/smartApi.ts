@@ -197,6 +197,7 @@ export const WeeklyPositionSchema = z.object({
   week: z.string(), // e.g. 2026-W27
   status: z.enum(['open', 'closed', 'skipped']),
   marginUtilized: z.number(),
+  marginBasis: z.enum(['isolated', 'simple', 'fallback']).optional(),
   orders: z.array(OrderRecordSchema),
   realizedPnl: z.number(),
   skippedThisWeek: z.boolean(),

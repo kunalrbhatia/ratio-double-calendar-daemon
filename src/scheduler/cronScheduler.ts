@@ -43,10 +43,8 @@ export class CronScheduler {
     const scripMasterJob = cron.schedule('30 8 * * 1-5', async () => {
       /* istanbul ignore next */
       try {
-        if (flagWatcher.isKillSwitched() || flagWatcher.isDoneForThisWeek()) {
-          logger.info(
-            'Trading paused (kill switch or weekly lockout active). Skipping instrument master download.',
-          );
+        if (flagWatcher.isKillSwitched()) {
+          logger.info('Trading paused (kill switch active). Skipping instrument master download.');
           return;
         }
         logger.info('Scheduled job: Downloading instrument master...');
@@ -63,10 +61,8 @@ export class CronScheduler {
     const initializationJob = cron.schedule('40 8 * * 1-5', async () => {
       /* istanbul ignore next */
       try {
-        if (flagWatcher.isKillSwitched() || flagWatcher.isDoneForThisWeek()) {
-          logger.info(
-            'Trading paused (kill switch or weekly lockout active). Skipping 08:40 AM IST initialization.',
-          );
+        if (flagWatcher.isKillSwitched()) {
+          logger.info('Trading paused (kill switch active). Skipping 08:40 AM IST initialization.');
           return;
         }
         logger.info('Scheduled job: Running 08:40 AM IST initialization script...');
@@ -90,10 +86,8 @@ export class CronScheduler {
     const marginRefreshJob = cron.schedule('20 9 * * 1-5', async () => {
       /* istanbul ignore next */
       try {
-        if (flagWatcher.isKillSwitched() || flagWatcher.isDoneForThisWeek()) {
-          logger.info(
-            'Trading paused (kill switch or weekly lockout active). Skipping daily margin refresh.',
-          );
+        if (flagWatcher.isKillSwitched()) {
+          logger.info('Trading paused (kill switch active). Skipping daily margin refresh.');
           return;
         }
         logger.info('Scheduled job: Refreshing margin utilized for open positions...');
@@ -123,24 +117,33 @@ export class CronScheduler {
     });
     this.cronTasks.push(cleanupJob);
 
-    // Task 4: Weekly lockout flag auto-clear job at 16:00 IST on Tuesdays (cron: '0 16 * * 2')
-    const lockoutClearJob = cron.schedule('0 16 * * 2', () => {
+    // Clear NIFTY lockout Tuesday 16:00 IST (after NIFTY's Tuesday exit window, before Wednesday's entry)
+    const niftyLockoutClearJob = cron.schedule('0 16 * * 2', () => {
       /* istanbul ignore next */
       try {
-        logger.info('Scheduled job: Auto-clearing weekly lockout flag done-for-this-week...');
-        const lockoutPath = path.resolve(process.cwd(), 'done-for-this-week');
-        if (fs.existsSync(lockoutPath)) {
-          fs.unlinkSync(lockoutPath);
-          logger.info('Successfully deleted done-for-this-week weekly lockout flag.');
-        } else {
-          logger.info('No done-for-this-week weekly lockout flag found to delete.');
+        flagWatcher.clearDoneForThisWeek('NIFTY');
+        logger.info('Cleared NIFTY weekly lockout flag.');
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Error clearing NIFTY weekly lockout flag: ${msg}`);
+      }
+    });
+    this.cronTasks.push(niftyLockoutClearJob);
+
+    // Clear SENSEX lockout Thursday 16:00 IST (after SENSEX's Thursday exit window, before Friday's entry)
+    const sensexLockoutClearJob = cron.schedule('0 16 * * 4', () => {
+      /* istanbul ignore next */
+      try {
+        if (env.SENSEX_EXPIRY_ENABLED) {
+          flagWatcher.clearDoneForThisWeek('SENSEX');
+          logger.info('Cleared SENSEX weekly lockout flag.');
         }
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
-        logger.error(`Error in weekly lockout flag auto-clear: ${msg}`);
+        logger.error(`Error clearing SENSEX weekly lockout flag: ${msg}`);
       }
     });
-    this.cronTasks.push(lockoutClearJob);
+    this.cronTasks.push(sensexLockoutClearJob);
 
     logger.info('Scheduler started successfully.');
   }
@@ -153,7 +156,6 @@ export class CronScheduler {
   async handleTradingTick() {
     const isPaper = flagWatcher.isPaperMode();
     const isKill = flagWatcher.isKillSwitched();
-    const isLockout = flagWatcher.isDoneForThisWeek();
 
     // Time-based checks in IST
     const now = dayjs().tz('Asia/Kolkata');
@@ -164,8 +166,8 @@ export class CronScheduler {
       return; // Outside market hours
     }
 
-    if (isKill || isLockout) {
-      logger.info('Trading paused (kill switch or weekly lockout active).');
+    if (isKill) {
+      logger.info('Trading paused (kill switch active).');
       return;
     }
 
@@ -186,6 +188,11 @@ export class CronScheduler {
     minutesSinceMidnight: number,
     isPaper: boolean,
   ) {
+    if (flagWatcher.isDoneForThisWeek(underlying)) {
+      logger.info(`Trading paused for ${underlying} (weekly lockout active).`);
+      return;
+    }
+
     const currentWeek = positionsStore.getCurrentWeekString();
     const currentPosition = positionsStore.readPosition(underlying, currentWeek, isPaper);
     const dayOfWeek = now.day();

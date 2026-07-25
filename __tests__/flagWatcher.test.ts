@@ -33,14 +33,36 @@ describe('FlagWatcher', () => {
     expect(flagWatcher.isKillSwitched()).toBe(false);
   });
 
-  test('isDoneForThisWeek returns true if done-for-this-week file exists', () => {
+  test('isDoneForThisWeek returns true if done-for-this-week-underlying file exists', () => {
     (fs.existsSync as jest.Mock).mockReturnValueOnce(true);
-    expect(flagWatcher.isDoneForThisWeek()).toBe(true);
-    expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week'));
+    expect(flagWatcher.isDoneForThisWeek('NIFTY')).toBe(true);
+    expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week-nifty'));
   });
 
-  test('isDoneForThisWeek returns false if done-for-this-week file does not exist', () => {
+  test('isDoneForThisWeek returns false if done-for-this-week-underlying file does not exist', () => {
     (fs.existsSync as jest.Mock).mockReturnValueOnce(false);
-    expect(flagWatcher.isDoneForThisWeek()).toBe(false);
+    expect(flagWatcher.isDoneForThisWeek('NIFTY')).toBe(false);
+  });
+
+  test('setDoneForThisWeek writes lockout file', () => {
+    flagWatcher.setDoneForThisWeek('SENSEX');
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('done-for-this-week-sensex'),
+      'lockout',
+      'utf-8',
+    );
+  });
+
+  test('clearDoneForThisWeek deletes lockout file if it exists', () => {
+    (fs.existsSync as jest.Mock).mockReturnValueOnce(true);
+    flagWatcher.clearDoneForThisWeek('NIFTY');
+    expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week-nifty'));
+    expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week-nifty'));
+  });
+
+  test('clearDoneForThisWeek does nothing if lockout file does not exist', () => {
+    (fs.existsSync as jest.Mock).mockReturnValueOnce(false);
+    flagWatcher.clearDoneForThisWeek('NIFTY');
+    expect(fs.unlinkSync).not.toHaveBeenCalled();
   });
 });

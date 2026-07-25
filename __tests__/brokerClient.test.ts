@@ -214,6 +214,17 @@ describe('BrokerClient', () => {
     expect(margin).toBe(480000);
   });
 
+  test('getMarginUtilized rethrows error when throwOnError is true', async () => {
+    (httpClient.request as jest.Mock).mockRejectedValueOnce(new Error('Network failure'));
+
+    await expect(
+      client.getMarginUtilized(
+        [{ exchange: 'NFO', symboltoken: '123', quantity: 50, action: 'BUY' }],
+        true,
+      ),
+    ).rejects.toThrow('Network failure');
+  });
+
   test('getMarketData returns ltp, bid, and ask', async () => {
     const mockQuoteRes = {
       status: true,

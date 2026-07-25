@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -12,6 +10,7 @@ import { StrategyLeg } from '../strategy/strategyManager';
 import { OrderRecord, WeeklyPosition } from '../schemas/smartApi';
 import smartStream from './smartStream';
 import instrumentManager from '../instruments/instrumentManager';
+import env from '../schemas/env';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -75,18 +74,30 @@ export class ExecutionManager implements IExecutionManager {
 
     // Calculate margin utilized
     let marginUtilized = 0;
+    let marginBasis: 'isolated' | 'simple' | 'fallback' = 'simple';
+    const week = positionsStore.getCurrentWeekString();
+
     if (isPaper) {
       marginUtilized = 150000 * 3; // simulated margin
+      marginBasis = 'simple';
     } else {
-      marginUtilized = await brokerClient.getMarginUtilized(basket);
+      const legs = basket.map((leg) => ({
+        exchange: leg.exchange,
+        symboltoken: leg.symboltoken,
+        quantity: leg.quantity,
+        action: leg.action as 'BUY' | 'SELL',
+      }));
+      const isolatedResult = await this.getIsolatedMargin(underlying, legs, isPaper);
+      marginUtilized = isolatedResult.margin;
+      marginBasis = isolatedResult.basis;
     }
 
     // Save positions
-    const week = positionsStore.getCurrentWeekString();
     const position: WeeklyPosition = {
       week,
       status: 'open',
       marginUtilized,
+      marginBasis,
       orders: executedOrders,
       realizedPnl: 0,
       skippedThisWeek: false,
@@ -681,9 +692,8 @@ export class ExecutionManager implements IExecutionManager {
         positionsStore.setWeeklySkipState(underlying, week, isPaper, true);
         logger.info(`Set skip state for ${underlying} week ${week}.`);
         // Write weekly lockout flag
-        const lockoutPath = path.resolve(process.cwd(), 'done-for-this-week');
-        fs.writeFileSync(lockoutPath, 'lockout', 'utf-8');
-        logger.info('Created weekly lockout flag done-for-this-week.');
+        flagWatcher.setDoneForThisWeek(underlying);
+        logger.info(`Created weekly lockout flag for ${underlying}.`);
       }
     } else if (currentPnl >= profitTargetThreshold) {
       logger.info(
@@ -699,9 +709,73 @@ export class ExecutionManager implements IExecutionManager {
         positionsStore.setWeeklySkipState(underlying, week, isPaper, true);
         logger.info(`Set skip state for ${underlying} week ${week} after profit target exit.`);
         // Write weekly lockout flag
-        const lockoutPath = path.resolve(process.cwd(), 'done-for-this-week');
-        fs.writeFileSync(lockoutPath, 'lockout', 'utf-8');
-        logger.info('Created weekly lockout flag done-for-this-week.');
+        flagWatcher.setDoneForThisWeek(underlying);
+        logger.info(`Created weekly lockout flag for ${underlying}.`);
+      }
+    }
+  }
+
+  private async getIsolatedMargin(
+    underlying: string,
+    newLegs: { exchange: string; symboltoken: string; quantity: number; action: 'BUY' | 'SELL' }[],
+    isPaper: boolean,
+  ): Promise<{ margin: number; basis: 'isolated' | 'simple' | 'fallback' }> {
+    if (isPaper) {
+      return { margin: 150000 * 3, basis: 'simple' };
+    }
+
+    const otherUnderlying = underlying === 'NIFTY' ? 'SENSEX' : 'NIFTY';
+    if (otherUnderlying === 'SENSEX' && !env.SENSEX_EXPIRY_ENABLED) {
+      try {
+        const margin = await brokerClient.getMarginUtilized(newLegs, true);
+        return { margin, basis: 'simple' };
+      } catch (err: any) {
+        logger.warn(
+          `Failed to fetch simple margin for ${underlying} (SENSEX disabled): ${err?.message || err}`,
+        );
+        const fallback = await brokerClient.getMarginUtilized(newLegs, false);
+        return { margin: fallback, basis: 'fallback' };
+      }
+    }
+
+    const otherCurrentWeek = positionsStore.getCurrentWeekString();
+    const otherPos = positionsStore.readPosition(otherUnderlying, otherCurrentWeek, isPaper);
+
+    if (!otherPos || otherPos.status !== 'open') {
+      try {
+        const margin = await brokerClient.getMarginUtilized(newLegs, true);
+        return { margin, basis: 'simple' };
+      } catch (err: any) {
+        logger.warn(`Failed to fetch simple margin for ${underlying}: ${err?.message || err}`);
+        const fallback = await brokerClient.getMarginUtilized(newLegs, false);
+        return { margin: fallback, basis: 'fallback' };
+      }
+    }
+
+    const otherLegs = otherPos.orders.map((o) => ({
+      exchange: o.exchange,
+      symboltoken: o.symboltoken,
+      quantity: o.quantity,
+      action: o.transactiontype as 'BUY' | 'SELL',
+    }));
+
+    try {
+      const marginBefore = await brokerClient.getMarginUtilized(otherLegs, true);
+      const marginAfter = await brokerClient.getMarginUtilized([...otherLegs, ...newLegs], true);
+      const isolatedMargin = Math.max(0, marginAfter - marginBefore);
+      return { margin: isolatedMargin, basis: 'isolated' };
+    } catch (err: any) {
+      logger.warn(`Failed to calculate isolated margin for ${underlying}: ${err?.message || err}`);
+      await notifier.send(
+        `⚠️ Isolated margin calculation failed for ${underlying} — using non-isolated margin. Stoploss/profit-target thresholds may be less precise this week.`,
+      );
+
+      try {
+        const simpleMargin = await brokerClient.getMarginUtilized(newLegs, true);
+        return { margin: simpleMargin, basis: 'simple' };
+      } catch (fallbackErr: any) {
+        const fallbackMargin = await brokerClient.getMarginUtilized(newLegs, false);
+        return { margin: fallbackMargin, basis: 'fallback' };
       }
     }
   }
@@ -717,8 +791,10 @@ export class ExecutionManager implements IExecutionManager {
     );
 
     let newMargin = 0;
+    let basis: 'isolated' | 'simple' | 'fallback' = 'simple';
     if (isPaper) {
       newMargin = 150000 * 3; // simulated margin
+      basis = 'simple';
     } else {
       try {
         const basket = position.orders.map((o) => ({
@@ -727,7 +803,9 @@ export class ExecutionManager implements IExecutionManager {
           quantity: o.quantity,
           action: o.transactiontype as 'BUY' | 'SELL',
         }));
-        newMargin = await brokerClient.getMarginUtilized(basket);
+        const isolatedResult = await this.getIsolatedMargin(underlying, basket, isPaper);
+        newMargin = isolatedResult.margin;
+        basis = isolatedResult.basis;
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
         logger.error(`Failed to fetch updated margin utilized for ${underlying}: ${msg}`);
@@ -736,9 +814,10 @@ export class ExecutionManager implements IExecutionManager {
 
     if (newMargin > 0) {
       position.marginUtilized = newMargin;
+      position.marginBasis = basis;
       positionsStore.writePosition(underlying, week, isPaper, position);
       logger.info(
-        `Successfully updated margin utilized for ${underlying} to ₹${newMargin.toLocaleString()}`,
+        `Successfully updated margin utilized for ${underlying} to ₹${newMargin.toLocaleString()} (${basis})`,
       );
     }
   }

@@ -39,10 +39,8 @@ async function bootstrap() {
     const manageWebSocketConnection = async () => {
       const isPaper = flagWatcher.isPaperMode();
 
-      if (flagWatcher.isKillSwitched() || flagWatcher.isDoneForThisWeek()) {
-        logger.info(
-          'Trading paused (kill switch or weekly lockout active). Disconnecting SmartStream WebSocket...',
-        );
+      if (flagWatcher.isKillSwitched()) {
+        logger.info('Trading paused (kill switch active). Disconnecting SmartStream WebSocket...');
         if (smartStream.getIsConnected()) {
           smartStream.disconnect();
         }
@@ -133,6 +131,19 @@ async function bootstrap() {
         logger.error(`Error in WebSocket connection manager: ${err?.message || err}`);
       }
     }, 30000);
+
+    // 3.5. Startup migration for old lockout file
+    const oldLockoutPath = path.resolve(process.cwd(), 'done-for-this-week');
+    if (fs.existsSync(oldLockoutPath)) {
+      logger.warn(
+        '⚠️ Stale weekly lockout flag (done-for-this-week) found from previous version. Deleting it. Manual re-verification of open positions is advised.',
+      );
+      try {
+        fs.unlinkSync(oldLockoutPath);
+      } catch (err: any) {
+        logger.error(`Failed to delete stale lockout file: ${err?.message || err}`);
+      }
+    }
 
     // 4. Start Scheduler
     cronScheduler.start();
