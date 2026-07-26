@@ -3,6 +3,7 @@ import brokerClient from '../src/execution/brokerClient';
 import flagWatcher from '../src/flags/flagWatcher';
 import positionsStore from '../src/positions/positionsStore';
 import notifier from '../src/notify/notifier';
+import mtmLogger from '../src/logging/mtmLogger';
 import { StrategyLeg } from '../src/strategy/strategyManager';
 import instrumentManager from '../src/instruments/instrumentManager';
 import dayjs from 'dayjs';
@@ -17,6 +18,7 @@ jest.mock('../src/flags/flagWatcher');
 jest.mock('../src/positions/positionsStore');
 jest.mock('../src/notify/notifier');
 jest.mock('../src/instruments/instrumentManager');
+jest.mock('../src/logging/mtmLogger');
 
 describe('ExecutionManager', () => {
   let executionManager: ExecutionManager;
@@ -361,6 +363,7 @@ describe('ExecutionManager', () => {
 
     await executionManager.monitorPnl('NIFTY', '2026-W27', true);
 
+    expect(mtmLogger.log).toHaveBeenCalledWith('NIFTY', 2500, true);
     expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true);
     expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
     expect(flagWatcher.setDoneForThisWeek).toHaveBeenCalledWith('NIFTY');
@@ -396,6 +399,7 @@ describe('ExecutionManager', () => {
 
     await executionManager.monitorPnl('NIFTY', '2026-W27', true);
 
+    expect(mtmLogger.log).toHaveBeenCalledWith('NIFTY', -2500, true);
     expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
     expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W27', true, true);
     expect(flagWatcher.setDoneForThisWeek).toHaveBeenCalledWith('NIFTY');
@@ -431,6 +435,7 @@ describe('ExecutionManager', () => {
 
     await executionManager.monitorPnl('NIFTY', '2026-W27', true);
 
+    expect(mtmLogger.log).toHaveBeenCalledWith('NIFTY', 2500, true);
     expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W27', true);
     expect(positionsStore.setWeeklySkipState).not.toHaveBeenCalledWith(
       'NIFTY',
