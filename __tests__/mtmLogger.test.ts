@@ -40,10 +40,9 @@ describe('MtmLogger', () => {
     logger.log('NIFTY', 6945.25, false);
 
     // Verify filename and path
-    expect(fs.createWriteStream).toHaveBeenCalledWith(
-      expect.stringContaining('2026-07-21.log'),
-      { flags: 'a' }
-    );
+    expect(fs.createWriteStream).toHaveBeenCalledWith(expect.stringContaining('2026-07-21.log'), {
+      flags: 'a',
+    });
 
     // Verify content format: [D/M/YYYY, h:mm:ss a]
     expect(mockWrite).toHaveBeenCalledWith('[21/7/2026, 2:32:18 pm] [INFO] NIFTY: MTM = 6945.25\n');
@@ -61,11 +60,11 @@ describe('MtmLogger', () => {
     // 21 July 2026, 2:54:08 am IST
     jest.setSystemTime(new Date('2026-07-21T02:54:08+05:30'));
 
-    logger.log('SENSEX', 7026.50, true);
+    logger.log('SENSEX', 7026.5, true);
 
     expect(fs.createWriteStream).toHaveBeenCalledWith(
       expect.stringContaining('2026-07-21-paper.log'),
-      { flags: 'a' }
+      { flags: 'a' },
     );
 
     // Rounded to 2 decimal places with trailing zero stripped (7026.5, not 7026.50)
@@ -84,12 +83,16 @@ describe('MtmLogger', () => {
     jest.setSystemTime(new Date('2026-07-21T14:32:18+05:30'));
 
     // 7000.00 -> 7000
-    logger.log('NIFTY', 7000.00, false);
-    expect(mockWrite).toHaveBeenLastCalledWith('[21/7/2026, 2:32:18 pm] [INFO] NIFTY: MTM = 7000\n');
+    logger.log('NIFTY', 7000.0, false);
+    expect(mockWrite).toHaveBeenLastCalledWith(
+      '[21/7/2026, 2:32:18 pm] [INFO] NIFTY: MTM = 7000\n',
+    );
 
     // 6945.249999 -> 6945.25
     logger.log('NIFTY', 6945.249999999998, false);
-    expect(mockWrite).toHaveBeenLastCalledWith('[21/7/2026, 2:32:18 pm] [INFO] NIFTY: MTM = 6945.25\n');
+    expect(mockWrite).toHaveBeenLastCalledWith(
+      '[21/7/2026, 2:32:18 pm] [INFO] NIFTY: MTM = 6945.25\n',
+    );
   });
 
   test('should rotate streams when day changes or paper mode changes', () => {
@@ -127,10 +130,7 @@ describe('MtmLogger', () => {
   test('should create logs directory if it does not exist', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(false);
     new MtmLogger();
-    expect(fs.mkdirSync).toHaveBeenCalledWith(
-      expect.stringContaining('logs'),
-      { recursive: true }
-    );
+    expect(fs.mkdirSync).toHaveBeenCalledWith(expect.stringContaining('logs'), { recursive: true });
   });
 
   test('export should work out of the box with default export', () => {
