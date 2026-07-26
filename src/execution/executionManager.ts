@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import logger from '../logging/logger';
+import mtmLogger from '../logging/mtmLogger';
 import notifier from '../notify/notifier';
 import flagWatcher from '../flags/flagWatcher';
 import brokerClient, { PlaceOrderParams } from './brokerClient';
@@ -665,6 +666,8 @@ export class ExecutionManager implements IExecutionManager {
     }
 
     logger.info(`Current unrealized P&L for ${underlying}: ₹${currentPnl.toLocaleString()}`);
+
+    mtmLogger.log(underlying, currentPnl, isPaper);
 
     // If cumulative loss exceeds 1.1% of the margin utilized, exit immediately
     const stoplossThreshold = -0.011 * pos.marginUtilized;
