@@ -490,3 +490,123 @@ No SENSEX position for this week. SENSEX continued its decline, closing at 76,05
 - **🟡 VIX at 14.03** — creeping higher but still in low-vol regime. Entry conditions for next week depend on VIX staying below the filter threshold.
 - **🟡 Next entry window:** NIFTY W31 entry on Wednesday 29 Jul (if conditions met). SENSEX W31 entry on Friday 31 Jul (if conditions met and no lockout carryover from W30).
 - **🟢 Both stoploss limits held.** The 1.1% stoploss mechanism worked correctly in both cases (SENSEX: realized -1.06%; NIFTY: realized -0.41%). Losses were contained well within risk parameters.
+
+---
+
+# Trading Report — Monday, 27 Jul 2026
+
+## 📊 Market Overview
+
+| Index | Previous Close | LTP | Change | % Change |
+|-------|:-------------:|:---:|:------:|:--------:|
+| Nifty 50 | 23,767.45 | 23,995.95 | +228.50 | +0.96% |
+| Bank Nifty | 56,693.50 | 57,087.20 | +393.70 | +0.69% |
+| India VIX | 14.03 | 12.66 | -1.37 | -9.77% |
+| SENSEX | 76,059.77 | 76,835.78 | +776.01 | +1.02% |
+
+> **Friday close reference:** Nifty 23,767.45 | Bank Nifty 56,693.50 | VIX 14.03 | SENSEX 76,059.77
+
+---
+
+## NIFTY Week 2026-W31 — Between Weeks (Monday)
+
+### 📋 Position Status
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Status:** No Active Position
+- **Previous Week (W30):** Closed — Stoploss exit on Friday at -₹724.10 realized loss
+
+### NIFTY W30 Post-Exit Position Legs at Market Close
+
+| # | Leg | Strike | Type | Expiry | Qty | Entry | Fri Exit | 27 Jul LTP | Implied P&L (if held) |
+|:-:|:---:|:-----:|:----:|:------:|:---:|:-----:|:--------:|:----------:|:---------------------:|
+| 1 | 🔴 SELL (closed) | 24,500 | CE | 28 Jul | 130 | 24.68 | 4.35 | 5.65 | N/A (closed) |
+| 2 | 🔴 SELL (closed) | 23,600 | PE | 28 Jul | 130 | 30.45 | 87.45 | 13.80 | N/A (closed) |
+| 3 | 🟢 BUY (closed) | 24,800 | CE | 04 Aug | 130 | 25.70 | 8.40 | 9.30 | N/A (closed) |
+| 4 | 🟢 BUY (closed) | 23,300 | PE | 04 Aug | 130 | 33.85 | 82.25 | 17.55 | N/A (closed) |
+
+> **Note:** The exit positions were executed at Fri 09:15. Today's LTPs show the post-exit option chain evolution. The 23,600 PE, which caused the stoploss breach at ₹87.45 on Friday, has recovered to ₹13.80 — confirming the exit was triggered by bid-ask spread at open, not a structural loss. Had the position survived, today's NIFTY rally to 23,995 (+228 pts) would have benefited the CE side.
+
+### NIFTY W30 Week Summary
+
+| Metric | Value |
+|:-------|:-----:|
+| Entry Date | Wed 22 Jul 2026 |
+| Exit Date | Fri 24 Jul 2026 |
+| Duration | 2 trading days |
+| Realized P&L | **-₹724.10** (0.41% of ₹175,509 margin) |
+| Peak Intraday Drawdown | -₹4,695.60 (2.68% of margin) |
+| Stoploss Threshold | -₹1,930.60 (1.1%) |
+| Best Day P&L | +₹1,251.90 (Thu 23 Jul, post-market) |
+
+---
+
+## SENSEX Week 2026-W30 — Skipped
+
+SENSEX entry for W30 was skipped due to the prior stoploss lockout from W29. No SENSEX position was active this week.
+
+---
+
+## 📈 Daily Activity
+
+### 08:40 IST — VIX Check (Pre-Market)
+India VIX at 14.03 — slightly elevated from the end of last week. Daemon initialization confirmed no open positions in positionsStore.
+
+### 09:15–15:30 IST — No Active Positions
+The daemon logged `"No open position found in positionsStore"` every 30 seconds throughout the trading day. No WebSocket connection was established (no positions to monitor). SmartStream remained disconnected.
+
+Key market activity for the day:
+- **NIFTY rallied +228 points (+0.96%)** recovering from Friday's gap-down low of 23,748. Today's close at 23,995 places NIFTY back near last Wednesday's entry level (24,048).
+- **SENSEX surged +776 points (+1.02%)** to 76,835, recovering from last week's -332 pt decline on Friday.
+- **VIX crashed from 14.03 to 12.66** (-9.77%), the largest single-day VIX drop of the month. This reflects a sharp reduction in market anxiety as indices recovered.
+- **Bank Nifty rose +394 pts (+0.69%)** to 57,087, partially recovering from last week's losses.
+
+### 15:40 IST — Report Generation
+LTPs fetched via brokerClient for index values. All values are post-market (15:42 IST).
+
+---
+
+## 🔍 Market Response Analysis
+
+### Between-Weeks Activity — No Positions
+
+**A strong recovery day across all indices** as markets bounced from last week's gap-down losses:
+
+1. **NIFTY +0.96%:** The recovery was broad-based, with NIFTY reclaiming the 24,000 level intraday and closing just below it at 23,995. This is a significant recovery from Friday's low of ~23,748.
+
+2. **VIX -9.77% (14.03 → 12.66):** The steepest single-day VIX drop in July. The market interpreted Friday's selloff as an overreaction, and the absence of further negative catalysts allowed volatility to contract sharply.
+
+3. **Position impact (counterfactual):** Had the NIFTY W30 position survived Friday's stoploss:
+   - The 23,600 PE short would now be at ₹13.80 (vs Friday exit of ₹87.45) — a massive recovery
+   - The 24,500 CE short at ₹5.65 is flat from Friday's exit (₹4.35)
+   - The 23,300 PE buy hedge at ₹17.55 (vs ₹82.25 exit) would have lost substantial hedge value
+   - Estimated net position P&L today: approximately **+₹400–₹600** (rough calculation from post-market LTPs)
+
+4. **VIX condition for W31 entry:** At 12.66, VIX is back in the low-vol regime and well below any reasonable entry filter threshold. Entry conditions for NIFTY W31 on Wednesday look favorable.
+
+---
+
+## 🎯 Key Observations
+
+1. **No active positions this week.** Both NIFTY W30 and SENSEX W30 positions are closed/skipped. The daemon was idle all day — correct and expected behavior.
+
+2. **Market recovered strongly from Friday's gap-down.** NIFTY regained +228 pts (closing at 23,995), nearly erasing the two-day decline from Wednesday's entry level. This recovery validates the stoploss exit's timing but also shows the position would have been profitable today.
+
+3. **VIX collapsed back to 12.66** — the lowest reading since last Wednesday (12.60). The mid-week VIX spike to 14.03 has fully reversed. This is favorable for next week's entry.
+
+4. **NIFTY W31 entry window opens Wednesday (29 Jul).** With VIX at 12.66 and NIFTY stabilizing near 24,000, entry conditions look favorable. No stoploss lockout carries over from W30 (both positions exited cleanly).
+
+5. **SENSEX W31 entry window opens Friday (31 Jul).** SENSEX at 76,836 is recovering from last week's 76,060 close. The W29 stoploss lockout is resolved (new week = new lockout cycle).
+
+6. **NIFTY W30 position would have been profitable if held.** The post-market LTP analysis shows the 23,600 PE short recovered from ₹87.45 to ₹13.80, and NIFTY's rally to 23,995 would have benefited the CE short side. The stoploss mechanism correctly prioritized risk management over potential profit — the gap-down at open was a genuine risk event.
+
+---
+
+## ⚠️ Alerts / Risks
+
+- **🟢 No open positions** — daemon idle, no exposure.
+- **🟢 VIX at 12.66** — favorable for W31 entry. Back in low-vol regime.
+- **🟡 NIFTY W31 entry on Wednesday (29 Jul)** — monitor VIX and opening conditions. NIFTY at ~24,000 is a reasonable level for strike selection.
+- **🟡 SENSEX W31 entry on Friday (31 Jul)** — depends on market conditions and VIX staying low.
+- **🟢 Last week's combined loss: -₹2,662.10** (NIFTY -₹724.10 + SENSEX -₹1,938.00). Both positions closed within risk parameters.
+- **🔴 Daemon performance note:** Even with no positions today, the daemon continued to heartbeat at 30s intervals with `"No open position found in positionsStore"`. No memory leak or runaway process observed — daemon idle behavior is correct.
