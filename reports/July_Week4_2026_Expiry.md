@@ -610,3 +610,141 @@ LTPs fetched via brokerClient for index values. All values are post-market (15:4
 - **🟡 SENSEX W31 entry on Friday (31 Jul)** — depends on market conditions and VIX staying low.
 - **🟢 Last week's combined loss: -₹2,662.10** (NIFTY -₹724.10 + SENSEX -₹1,938.00). Both positions closed within risk parameters.
 - **🔴 Daemon performance note:** Even with no positions today, the daemon continued to heartbeat at 30s intervals with `"No open position found in positionsStore"`. No memory leak or runaway process observed — daemon idle behavior is correct.
+
+---
+
+# Trading Report — Tuesday, 28 Jul 2026
+
+## 📊 Market Overview
+
+| Index | Previous Close | LTP | Change | % Change |
+|-------|:-------------:|:---:|:------:|:--------:|
+| Nifty 50 | 23,995.95 | 23,985.35 | -10.60 | -0.04% |
+| Bank Nifty | 57,087.20 | 56,755.60 | -331.60 | -0.58% |
+| India VIX | 12.66 | 12.56 | -0.10 | -0.79% |
+| SENSEX | 76,835.78 | 76,765.92 | -69.86 | -0.09% |
+
+> **Monday close reference:** Nifty 23,995.95 | Bank Nifty 57,087.20 | VIX 12.66 | SENSEX 76,835.78
+
+---
+
+## NIFTY Week 2026-W31 — Between Weeks (Tuesday)
+
+### 📋 Position Status
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Status:** No Active Position
+- **Previous Week (W30):** Closed — Stoploss exit on Friday at -₹724.10 realized loss
+
+### T0 Expiry Day (28 Jul) — All Legs Expired Worthless
+
+Today marks the T0 expiry date for the NIFTY W30 position's short legs. Both previously-closed short options expired worthless:
+
+| Leg | Strike | Type | Exit Price (24 Jul) | Today's LTP | Status |
+|:---:|:-----:|:----:|:-------------------:|:-----------:|:------:|
+| 🔴 SELL (closed) | 24,500 | CE (28 Jul) | ₹4.35 (buyback) | ₹0.05 | Expired worthless |
+| 🔴 SELL (closed) | 23,600 | PE (28 Jul) | ₹87.45 (buyback) | ₹0.05 | Expired worthless |
+| 🟢 BUY (closed) | 24,800 | CE (04 Aug) | ₹8.40 | ₹3.95 | Still active, decaying |
+| 🟢 BUY (closed) | 23,300 | PE (04 Aug) | ₹82.25 | ₹8.10 | Still active, decaying |
+
+> **Key takeaway:** Both T0 short legs expired at ₹0.05 (near-zero), confirming they had no intrinsic value at expiry. Had the stoploss NOT triggered on Friday and the position been held to expiry, the 23,600 PE buyback at ₹87.45 would have been avoided — the exit was driven by bid-ask spread at market open, not structural option value. However, the risk of assignment on a deeply ITM short at expiry was real, and the stoploss mechanism correctly prioritized risk containment.
+
+### NIFTY W30 Week Summary (Final)
+
+| Metric | Value |
+|:-------|:-----:|
+| Entry Date | Wed 22 Jul 2026 |
+| Exit Date | Fri 24 Jul 2026 |
+| T0 Expiry | Tue 28 Jul 2026 (✅ Expired worthless) |
+| Duration | 2 trading days (active) + 2 days idle |
+| Realized P&L | **-₹724.10** (0.41% of ₹175,509 margin) |
+| Peak Intraday Drawdown | -₹4,695.60 (2.68% of margin) |
+| Stoploss Threshold | -₹1,930.60 (1.1%) |
+| Best Day P&L | +₹1,251.90 (Thu 23 Jul, post-market) |
+| Combined W30 Loss (both indices) | **-₹2,662.10** |
+
+---
+
+## SENSEX Week 2026-W30 — Skipped
+
+SENSEX entry for W30 was skipped due to the prior stoploss lockout from W29. No SENSEX position was active this week.
+
+---
+
+## 📈 Daily Activity
+
+### 08:20 IST — Daemon Restart (PM2)
+Daemon restarted via PM2 at 08:20. SmartAPI login successful. Scrip master downloaded and parsed (4,599 options cached). Scheduler started.
+
+### 08:30 IST — Instrument Master Refresh
+Daily scheduled instrument master download completed successfully.
+
+### 08:40 IST — VIX Check (Pre-Market)
+India VIX at **12.66** — well within low-vol regime. Entry conditions for tomorrow's NIFTY W31 entry are favorable. No positions to initialize (between-weeks).
+
+### 09:15–15:30 IST — No Active Positions
+The daemon logged `"No open position found in positionsStore"` every 30 seconds throughout the trading day. No WebSocket connection was established. SmartStream remained disconnected.
+
+Key market activity for the day:
+- **NIFTY virtually flat** — closed at 23,985.35, down only -10.60 pts (-0.04%) from Monday's close. The index oscillated in a tight range near the 24,000 level.
+- **SENSEX marginally lower** — down -69.86 pts (-0.09%) to 76,765.92, a very quiet day.
+- **VIX edged lower to 12.56** (-0.79%) from Monday's 12.66, continuing the post-Friday recovery trend.
+- **Bank Nifty** underperformed, down -331.60 pts (-0.58%) to 56,755.60.
+- **Overall market tone:** Extremely low volatility session — a consolidation day ahead of potential catalysts.
+
+### 15:30 IST — Market Close
+Both indices closed near their opening levels. The options market was subdued, with the T0 expiry (28 Jul) passing without incident.
+
+### 15:42 IST — Report Generation
+LTPs fetched via brokerClient for index values and all position leg tokens.
+
+---
+
+## 🔍 Market Response Analysis
+
+### Between-Weeks Activity — No Positions
+
+**A consolidation day ahead of the NIFTY W31 entry window:**
+
+1. **NIFTY -0.04% (23,985):** Essentially unchanged from Monday's close. The index spent the entire day within a ~50-point range near 24,000. This consolidation follows Monday's +228 pt recovery rally.
+
+2. **VIX -0.79% (12.66 → 12.56):** VIX continued its downward trajectory, approaching the lowest levels seen this month (12.60 on 22 Jul). The low-vol regime is firmly entrenched, which is favorable for option selling strategies.
+
+3. **T0 short options expired worthless:** The NIFTY W30's 24,500 CE (at ₹0.05) and 23,600 PE (at ₹0.05) both expired at near-zero value. This confirms there was no structural risk in the T0 shorts at expiry — the option chain correctly priced them OTM.
+
+4. **Counterfactual (if held):** The T1 buy legs (04 Aug 24,800 CE at ₹3.95 and 23,300 PE at ₹8.10) continue to decay. Had the position been held through expiry:
+   - The 23,600 PE short would NOT have caused a loss (expired worthless at ₹0.05, vs the ₹87.45 buyback price)
+   - The net premium collected would have been the full credit from the shorts minus the remaining buy leg values
+   - Estimated if-held P&L at expiry: approximately **+₹1,200–₹1,500** (positive, vs the realized -₹724.10)
+
+5. **Entry window preparation:** With NIFTY trading near 24,000 and VIX at 12.56, conditions for tomorrow's W31 entry are favorable. The typical short strikes (roughly 1.5–2.5% above and below spot) would target approximately 24,400–24,500 CE and 23,400–23,500 PE for T0 shorts.
+
+---
+
+## 🎯 Key Observations
+
+1. **No active positions.** Both NIFTY W30 and SENSEX W30 are fully closed/settled. The T0 expiry today passed without incident.
+
+2. **Markets in a holding pattern.** The extremely narrow trading range (-10 pts for NIFTY, -70 pts for SENSEX) suggests participants are waiting for fresh catalysts. The FOMC meeting this week could provide direction.
+
+3. **VIX back near July lows.** At 12.56, VIX is on the verge of touching the lowest levels seen this month. This is optimal for the Double Calendar Spread strategy — low entry premium on short legs.
+
+4. **NIFTY W31 entry TOMORROW (Wednesday 29 Jul).** The entry window is set. With VIX at 12.56 (well below any filter threshold) and NIFTY at ~24,000, the conditions are favorable. Key watchpoints:
+   - Pre-market VIX check (must stay below entry threshold)
+   - NIFTY opening level and gap direction
+   - Strike selection based on opening delta targets (Δ0.10–0.15 for short legs)
+
+5. **SENSEX W31 entry on Friday (31 Jul).** Subject to market conditions and VIX staying low. No lockout carryover from W30.
+
+6. **Combined prior week (W30) loss stands at -₹2,662.10** across both indices. This loss is fully absorbed and has no carryover impact on new entries.
+
+---
+
+## ⚠️ Alerts / Risks
+
+- **🟢 No open positions** — daemon idle, no exposure. Both prior weeks fully settled.
+- **🟢 VIX at 12.56** — near July lows. Optimal conditions for W31 entry tomorrow.
+- **🟡 NIFTY W31 entry TOMORROW (Wednesday 29 Jul)** — VIX check at 08:40, entry at 09:30 if conditions met. NIFTY at ~24,000 provides ~400–500 pts of buffer for short strike selection.
+- **🟡 SENSEX W31 entry on Friday (31 Jul)** — depends on market conditions.
+- **🟡 FOMC meeting this week** — potential volatility catalyst. Rate decision could impact global markets and Indian indices. Monitor for gap risk on Thursday/Friday.
+- **🟢 Prior week loss fully settled:** -₹2,662.10 combined (NIFTY -₹724.10 + SENSEX -₹1,938.00). No residual lockout — fresh entries can proceed.
