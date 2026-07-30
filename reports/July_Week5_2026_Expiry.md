@@ -172,5 +172,139 @@ SENSEX entry not due until Friday. Daemon logged no SENSEX-related activity toda
 - **🟢 VIX at 12.01** — near multi-week low. Favorable for option selling strategy.
 - **🟡 Exit day approaching (Tue 04 Aug)** — T0 shorts expire Tuesday. Ensure daemon exit scheduler is healthy before Friday session.
 - **🟡 REST rate limiting at open** — 403 errors on getOrderBook during entry. On exit day (Tuesday), will need to cross-reference OrderBook to verify fills. If rate limited, exit repricing may be impaired.
-- **🟡 SENSEX W31 entry on Friday (31 Jul)** — monitor VIX level and SENSEX opening price. Apply ≥300 pt buffer on PE short (lesson from W29).
-- **🟢 No SENSEX position currently open** — no dual-index lockout risk for the time being.
+| **SENSEX W31 entry on Friday (31 Jul)** — monitor VIX level and SENSEX opening price. Apply ≥300 pt buffer on PE short (lesson from W29).
+
+---
+
+## Thursday, 30 Jul 2026 — Day 2
+
+### 📊 Market Overview
+
+| Index | Previous Close | LTP (15:42) | Change | % Change |
+|-------|:-------------:|:-----------:|:------:|:--------:|
+| Nifty 50 | 24,250.20† | 24,317.15 | +66.95 | +0.28% |
+| Bank Nifty | 57,205.90 | 57,147.50 | -58.40 | -0.10% |
+| India VIX | 12.01 | 12.16 | +0.15 | +1.25% |
+| SENSEX | 77,654.60 | 77,928.15 | +273.55 | +0.35% |
+
+> **† Yesterday's LTP (post-market). Actual 29 Jul close was ~24,178–24,250 range.**
+
+## 📋 NIFTY Week 2026-W31 — Day 2 of 7
+
+### Position Status
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Entry Date:** 29 Jul 2026 (Wednesday) — Day 1
+- **Exit Date:** 04 Aug 2026 (Tuesday) — T0 expiry
+- **Lot Size (LOTS):** 2 (130 qty)
+- **Status:** Open
+- **Margin:** ₹190,026.85
+- **⛔ Stoploss (1.1%):** ₹-2,090.30
+- **🎯 Profit Target (1.5%):** ₹+2,850.40
+
+### Position Details
+
+| # | Action | Strike | Type | Expiry | Qty | Entry Price | LTP (15:42) | P&L |
+|:-:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:-----------:|:---:|
+| 1 | 🔴 SELL | 24,600 | CE | 04 Aug | 130 | 16.10 | 15.10 | +₹130.00 |
+| 2 | 🔴 SELL | 23,700 | PE | 04 Aug | 130 | 20.40 | 7.65 | +₹1,657.50 |
+| 3 | 🟢 BUY  | 24,900 | CE | 11 Aug | 130 | 16.85 | 18.20 | +₹175.50 |
+| 4 | 🟢 BUY  | 23,300 | PE | 11 Aug | 130 | 18.50 | 11.00 | -₹975.00 |
+
+**Total P&L (daemon 15:30 IST close):** **₹ +988.00**
+
+> **Day 2 P&L improvement:** ₹988 vs ₹260 (yesterday). Net gain of +₹728 for the day.
+> **Per-leg note:** SELL PE 23,700 is the star performer — premium collapsed from 20.40→7.65 (₹1,657.50 gain) as spot moved well above the strike. BUY PE 23,300 lost ₹975 due to the same bullish move erasing the put premium.
+> **Post-market cross-check:** ₹988.00 computed vs daemon's ₹988.00 — **0% drift.** Perfect match with daemon's 15:30 close.
+> **Entry-to-date cumulative P&L:** ₹988.00 (+0.52% of margin).
+
+### P&L Range — Day 2
+
+| Metric | Value |
+|:-------|:-----:|
+| Day Open P&L | ₹676.00 (09:30) |
+| Day Low P&L | ₹169.00 (12:34) |
+| Day High P&L | ₹1,131.00 (15:16) |
+| Day Close P&L | ₹988.00 (15:30) |
+| Intraday Range | ₹962.00 (169→1,131) |
+| P&L as % of Margin | +0.52% |
+| Distance to PT (₹2,850.40) | ₹1,862.40 |
+| Distance to SL (-₹2,090.30) | ₹3,078.30 |
+
+## 📈 Daily Activity
+
+### NIFTY W31 — Day 2
+
+- **08:40 IST — VIX Check:** India VIX at 12.01. Entry filter would pass if this were entry day. No SENSEX-related daemon activity logged.
+- **09:20 IST — Margin Refresh:** Daemon updated margin for NIFTY to ₹190,026.85 (simple margin basis).
+- **09:30 IST — Monitoring Started:** Day 2 opened with P&L at ₹676. SmartStream cache initially empty (expected post-restart from 08:20 PM2) — first 4 P&L snapshots fell back to REST API. SmartStream connected within ~2 min (09:32).
+- **09:30–10:00 IST — Morning Dip:** P&L dipped from ₹676 to ₹591.50 (09:36) as sell legs widened slightly at open.
+- **10:00–12:00 IST — Recovery & Stabilization:** P&L recovered to ₹650–₹750 range. Steady theta decay on T0 shorts.
+- **12:00–13:00 IST — Mid-Day Weakness:** P&L touched day low of ₹169 at 12:34 — likely PE short 23,700 widened on intraday dip. But quickly recovered.
+- **13:00–15:00 IST — Strong Recovery:** P&L climbed steadily from ₹500→₹1,000+ range as NIFTY pushed higher. T0 PE premium continued to erode as spot remained well above 23,700.
+- **15:16 IST — Day High:** ₹1,131.00 — peak P&L of the day, just 14 min before close.
+- **15:30 IST — Close:** ₹988.00 — slight pullback from the peak but very strong close.
+- **15:31 IST — SmartStream Disconnected:** Outside market hours.
+- **15:40 IST — Report Generation:** Post-market LTPs fetched via brokerClient. Per-leg cross-check confirms ₹988.00 (0% drift).
+
+### No SENSEX Activity
+
+No SENSEX monitoring today — entry not due until Friday (31 Jul). Daemon logged only NIFTY P&L monitoring.
+
+### Daemon Health
+
+| Check | Status |
+|:-----|:------:|
+| PM2 Process | Running (08:20 restart) — healthy |
+| SmartAPI Login | Successful (cached session) |
+| SmartStream | Connected from 09:30–15:31 |
+| SmartStream Heartbeat | 45s re-subscribe pattern working (no drops detected) |
+| PositionsStore | NIFTY W31 loaded — 1-min P&L loop ran continuously |
+| REST Rate Limiting | No 403 errors observed today |
+| REST Fallback | First 4 snapshots used REST fallback (SmartStream cache cold at open) — recovered within 2 min |
+
+## 🔍 Market Response Analysis
+
+### Day 2 — Strong Theta Decay Day
+
+1. **NIFTY edged higher:** +66.95 pts (+0.28%) from yesterday's post-market reference. The index continued grinding higher, staying well above the short PE strike of 23,700. The T0 PE 23,700 short (entry 20.40, now 7.65) is the primary beneficiary — ₹1,657.50 of the total ₹988 P&L comes from this single leg's premium erosion.
+
+2. **VIX ticked up slightly:** From 12.01 to 12.16 (+1.25%). Despite the small VIX increase, T0 short premiums continued to decay. The IV crush effect from the massive VIX drop on entry day (12.56→12.01) has mostly washed through; now theta is the dominant P&L driver.
+
+3. **Sell legs performing excellently:**
+   - **24,600 CE:** Premium from 16.10→15.10 (-6.2%). Well OTM (~283 pts away from spot 24,317). Steady theta decay.
+   - **23,700 PE:** Premium collapsed from 20.40→7.65 (-62.5%). Massive winner. Spot at 24,317 vs strike 23,700 — ~617 pts OTM. The premium is approaching near-zero levels.
+
+4. **Buy legs absorbing gains (as expected):**
+   - **24,900 CE (T1):** Premium from 16.85→18.20 (+8.0%). Slight increase as NIFTY rose and T1 options have more time value. This is the expected behavior — the long hedge caps the upside but prevents gamma risk.
+   - **23,300 PE (T1):** Premium from 18.50→11.00 (-40.5%). Bearish hedge crushed by bullish move. This is the cost of tail-risk protection.
+
+5. **Net picture:** The position made +₹728 today (+₹988 vs yesterday's ₹260). Theta is decaying ~₹364/day on average. At this rate, the position would reach the profit target (₹2,850) within 5 more trading days, but T0 shorts expire on Tuesday (04 Aug), leaving only 3 full trading days (Fri, Mon, Tue). The exit scheduler needs to close these shorts by Tuesday's close.
+
+## 🎯 Key Observations
+
+1. **NIFTY W31 Day 2 closed at ₹988 (+0.52% of margin).** This is an excellent start — the position is nearly 35% of the way to the profit target (₹2,850) with 5 trading days remaining (including today). The T0 shorts (expiring Tuesday) are decaying fast.
+
+2. **PE short 23,700 is the dominant profit driver.** With spot at 24,317 (617 pts OTM), this leg is nearly exhausted. At ₹7.65, it's approaching dust levels. The remaining premium to collect is minimal — the leg has effectively done its job.
+
+3. **VIX at 12.16 — still near multi-week low.** Slightly up from yesterday's 12.01 but still in very favorable territory for option selling.
+
+4. **Exit day NEXT Tuesday (04 Aug).** The position has a long runway. The sell legs expire in 5 calendar days (4 trading sessions including today). The daemon needs to execute the exit on Tuesday:
+   - Buy back T0 shorts (04AUG26 24,600 CE + 23,700 PE)
+   - Roll or let T1 hedges (11AUG26 24,900 CE + 23,300 PE) continue
+   - Expected exit P&L: ₹988 + ~₹300-400 in remaining theta = ~₹1,300-1,400
+
+5. **SENSEX W31 entry window tomorrow (Friday 31 Jul).** SENSEX at 77,928.15, up +273.55 (+0.35%). VIX at 12.16 provides favorable entry conditions. Key lessons from W29:
+   - Apply ≥300 pt buffer on PE short (SENSEX W29 had only 155 pt buffer → stoploss at -₹1,938)
+   - Target PE delta < 0.10 for downside protection
+   - Monitor closely on entry day
+
+6. **REST rate limiting was absent today.** No 403 errors recorded. The morning SmartStream cold-start only lasted 2 minutes before the WebSocket connected.
+
+## ⚠️ Alerts / Risks
+
+- **🟢 NIFTY W31 position at ₹988 (+0.52% of margin)** — strong performance. Well within stoploss (-₹2,090.30). Distance to PT: ₹1,862.40.
+- **🟡 Exit day approaching (Tue 04 Aug)** — T0 shorts expire Tuesday. Daemon exit scheduler must be healthy. Test the exit flow on Friday to ensure no Zod `orderid: null` masking.
+- **🟡 SENSEX W31 entry on Friday (31 Jul)** — apply W29 lessons: ≥300 pt PE buffer, target PE delta < 0.10. Monitor dual-index lockout risk after entry.
+- **🟢 No SENSEX position currently open** — no dual-index lockout risk today.
+- **🟢 SmartStream heartbeat working reliably** — 45s re-subscribe pattern maintained throughout the session without drops.
