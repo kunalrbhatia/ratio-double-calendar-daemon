@@ -202,6 +202,11 @@ export class StrategyManager implements IStrategyManager {
     const t1DaysToExpiry = Math.max(0.01, t1ExpDate.diff(now, 'day', true));
     const t1 = t1DaysToExpiry / 365;
 
+    const isSensex = underlying.toUpperCase() === 'SENSEX';
+    const targetDelta = isSensex ? 0.25 : 0.15;
+    const minDelta = isSensex ? 0.2 : 0.1;
+    const maxDelta = isSensex ? 0.3 : 0.15;
+
     // A. Resolve Short CE Leg (T0)
     const t0CeCandidates = await this.getLiquidCandidates(
       underlying,
@@ -213,18 +218,21 @@ export class StrategyManager implements IStrategyManager {
       c.delta = Math.abs(calculateDelta(underlyingLtp, c.strike, t0, atmCeIv, 0.07, 'CE'));
     }
     const t0CeFiltered = t0CeCandidates.filter(
-      (c) => c.delta! >= 0.1 && c.delta! <= 0.15 && (skipLiquidityCheck || this.isLiquid(c)),
+      (c) =>
+        c.delta! >= minDelta && c.delta! <= maxDelta && (skipLiquidityCheck || this.isLiquid(c)),
     );
     if (t0CeFiltered.length === 0) {
-      logger.error(`No qualifying T0 CE strikes in delta range 0.10-0.15 for ${underlying}.`);
+      logger.error(
+        `No qualifying T0 CE strikes in delta range ${minDelta.toFixed(2)}-${maxDelta.toFixed(2)} for ${underlying}.`,
+      );
       await notifier.send(
-        `🚨 Basket generation failed: No qualifying T0 CE strikes in delta range 0.10-0.15 for ${underlying}.`,
+        `🚨 Basket generation failed: No qualifying T0 CE strikes in delta range ${minDelta.toFixed(2)}-${maxDelta.toFixed(2)} for ${underlying}.`,
       );
       return null;
     }
     const shortCe = t0CeFiltered.reduce((best, cur) => {
-      const curDiff = Math.abs(cur.delta! - 0.15);
-      const bestDiff = Math.abs(best.delta! - 0.15);
+      const curDiff = Math.abs(cur.delta! - targetDelta);
+      const bestDiff = Math.abs(best.delta! - targetDelta);
       if (curDiff < bestDiff) {
         return cur;
       }
@@ -244,18 +252,21 @@ export class StrategyManager implements IStrategyManager {
       c.delta = Math.abs(calculateDelta(underlyingLtp, c.strike, t0, iv, 0.07, 'PE'));
     }
     const t0PeFiltered = t0PeCandidates.filter(
-      (c) => c.delta! >= 0.1 && c.delta! <= 0.15 && (skipLiquidityCheck || this.isLiquid(c)),
+      (c) =>
+        c.delta! >= minDelta && c.delta! <= maxDelta && (skipLiquidityCheck || this.isLiquid(c)),
     );
     if (t0PeFiltered.length === 0) {
-      logger.error(`No qualifying T0 PE strikes in delta range 0.10-0.15 for ${underlying}.`);
+      logger.error(
+        `No qualifying T0 PE strikes in delta range ${minDelta.toFixed(2)}-${maxDelta.toFixed(2)} for ${underlying}.`,
+      );
       await notifier.send(
-        `🚨 Basket generation failed: No qualifying T0 PE strikes in delta range 0.10-0.15 for ${underlying}.`,
+        `🚨 Basket generation failed: No qualifying T0 PE strikes in delta range ${minDelta.toFixed(2)}-${maxDelta.toFixed(2)} for ${underlying}.`,
       );
       return null;
     }
     const shortPe = t0PeFiltered.reduce((best, cur) => {
-      const curDiff = Math.abs(cur.delta! - 0.15);
-      const bestDiff = Math.abs(best.delta! - 0.15);
+      const curDiff = Math.abs(cur.delta! - targetDelta);
+      const bestDiff = Math.abs(best.delta! - targetDelta);
       if (curDiff < bestDiff) {
         return cur;
       }
@@ -336,7 +347,7 @@ export class StrategyManager implements IStrategyManager {
         tradingsymbol: shortCe.inst.tradingsymbol,
         exchange: shortCe.inst.exchange,
         lotsize: shortCe.inst.lotsize,
-        targetDelta: 0.15,
+        targetDelta: targetDelta,
         actualDelta: shortCe.delta!,
         ltp: shortCe.ltp,
       },
@@ -350,7 +361,7 @@ export class StrategyManager implements IStrategyManager {
         tradingsymbol: shortPe.inst.tradingsymbol,
         exchange: shortPe.inst.exchange,
         lotsize: shortPe.inst.lotsize,
-        targetDelta: 0.15,
+        targetDelta: targetDelta,
         actualDelta: shortPe.delta!,
         ltp: shortPe.ltp,
       },
