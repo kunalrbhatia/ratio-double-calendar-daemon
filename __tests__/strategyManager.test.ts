@@ -145,6 +145,9 @@ describe('StrategyManager', () => {
   });
 
   test('buildBasket resolves SENSEX underlying parameters', async () => {
+    (calculateDelta as jest.Mock).mockImplementation((_s, _k, _t, _v, _r, type) => {
+      return type === 'CE' ? 0.22 : -0.22;
+    });
     const todayStr = dayjs().format('DDMMMYYYY').toUpperCase();
     (instrumentManager.getExpiries as jest.Mock).mockReturnValue([
       todayStr,
