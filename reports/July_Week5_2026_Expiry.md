@@ -308,3 +308,157 @@ No SENSEX monitoring today — entry not due until Friday (31 Jul). Daemon logge
 - **🟡 SENSEX W31 entry on Friday (31 Jul)** — apply W29 lessons: ≥300 pt PE buffer, target PE delta < 0.10. Monitor dual-index lockout risk after entry.
 - **🟢 No SENSEX position currently open** — no dual-index lockout risk today.
 - **🟢 SmartStream heartbeat working reliably** — 45s re-subscribe pattern maintained throughout the session without drops.
+
+---
+
+## Friday, 31 Jul 2026 — Day 3
+
+### 📊 Market Overview
+
+| Index | Previous Close | LTP (15:53) | Change | % Change |
+|-------|:-------------:|:-----------:|:------:|:--------:|
+| Nifty 50 | 24,317.15 | 24,383.60 | +66.45 | +0.27% |
+| Bank Nifty | 57,147.50 | 57,264.85 | +117.35 | +0.21% |
+| India VIX | 12.16 | 11.76 | -0.40 | -3.29% |
+| SENSEX | 77,928.15 | 78,094.64 | +166.49 | +0.21% |
+
+> **Previous close** = yesterday's post-market LTP (15:42). NIFTY edged higher for a 3rd straight session; VIX dropped to 11.76, a fresh multi-week low.
+
+## 📋 NIFTY Week 2026-W31 — Day 3 of 7
+
+### Position Status
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Entry Date:** 29 Jul 2026 (Wednesday) — Day 1
+- **Exit Date:** 04 Aug 2026 (Tuesday) — T0 expiry
+- **Lot Size (LOTS):** 2 (130 qty)
+- **Status:** Open
+- **Margin:** ₹192,682.02
+- **⛔ Stoploss (1.1%):** ₹-2,119.50
+- **🎯 Profit Target (1.5%):** ₹+2,890.23
+
+### Position Details
+
+| # | Action | Strike | Type | Expiry | Qty | Entry Price | LTP (15:53) | P&L |
+|:-:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:-----------:|:---:|
+| 1 | 🔴 SELL | 24,600 | CE | 04 Aug | 130 | 16.10 | 11.90 | +₹546.00 |
+| 2 | 🔴 SELL | 23,700 | PE | 04 Aug | 130 | 20.40 | 5.05 | +₹1,995.50 |
+| 3 | 🟢 BUY  | 24,900 | CE | 11 Aug | 130 | 16.85 | 18.35 | +₹195.00 |
+| 4 | 🟢 BUY  | 23,300 | PE | 11 Aug | 130 | 18.50 | 10.40 | -₹1,053.00 |
+
+**Total P&L (daemon 15:30 IST close):** **₹ +1,683.50**
+
+> **Day 3 gain:** +₹695.50 (₹988 → ₹1,683.50). Position closed at its day high.
+> **Post-market cross-check:** ₹1,683.50 computed from brokerClient LTPs vs daemon's 15:30 close ₹1,683.50 — **0% drift.** SmartStream was live until 15:31, so the close value is authoritative.
+> **Entry-to-date cumulative P&L:** ₹1,683.50 (+0.87% of margin) — 58% of the way to the profit target with 2.5 trading days left.
+
+### P&L Range — Day 3
+
+| Metric | Value |
+|:-------|:-----:|
+| Day Open P&L | ₹988.00 (09:30) |
+| Day Low P&L | ₹598.00 (12:15) |
+| Day High P&L | ₹1,683.50 (15:30 close) |
+| Day Close P&L | ₹1,683.50 (15:30) |
+| Intraday Range | ₹1,085.50 (598 → 1,683.5) |
+| P&L as % of Margin | +0.87% |
+| Distance to PT (₹2,890.23) | ₹1,206.73 |
+| Distance to SL (-₹2,119.50) | ₹3,803.00 |
+
+## SENSEX Week 2026-W31 — Entry FAILED (No Position)
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Status:** No Position — entry execution failed after 21 attempts (09:30–11:52 IST)
+- **Previous Week (W30):** Skipped
+- **W29 Outcome:** Closed at stoploss -₹1,938.00 (PE short insufficient buffer)
+- **W31 result:** No SENSEX position entered → no P&L contribution this week
+
+### Entry Attempt Failure Analysis
+
+Every attempt followed the same pattern:
+
+1. **Option greeks API unavailable** — `Error getting option greeks for SENSEX expiry 06AUG2026: Option Greeks check failed: No Data Available`. The daemon fell back to VIX-based IV estimation, producing unreliable delta targets (basket deltas ranged 0.083–0.243 vs the 0.10–0.15 target).
+2. **All orders rejected by Angel One risk policy** — `This contract is unavailable for fresh trading under Angel One's Risk Policy due to low liquidity or a strike price far away from the underlying's LTP.` All 4 reprice attempts + market sweep fallback were rejected for every basket (16 attempts 09:30–09:45, 5 attempts 11:48–11:52). Example baskets:
+   - 09:45 (SENSEX LTP 77,981.70): SELL 79,400 CE (Δ0.140) / 76,800 PE (Δ0.142) / BUY 80,500 CE (Δ0.099) / 75,800 PE (Δ0.083) — buy legs ~3% OTM rejected
+   - 11:52 (SENSEX LTP 78,032.67): SELL 79,000 CE (Δ0.237) / 77,300 PE (Δ0.243) / BUY 79,800 CE (Δ0.192) / 76,500 PE (Δ0.158) — closer strikes, still rejected
+3. **REST 403 rate limiting** — `quote` endpoint returned 403 (access rate exceeded) during most attempts, degrading basket construction further.
+4. **Order book is clean** — 110 orders, **0 open/pending**. All rejected orders were fully closed; no lingering positions from the attempts.
+
+**Root cause:** SENSEX options on BSE have thin liquidity and Angel One's fresh-trading risk policy rejects far-OTM contracts. With the greeks endpoint returning no data for the 06AUG expiry all morning, the basket builder could not select strikes within the tradable range.
+
+## 📈 Daily Activity
+
+- **08:20 IST — Scheduled PM2 restart:** Daemon up in production env (NODE_ENV=production, SENSEX tick enabled).
+- **09:30 IST — NIFTY monitoring resumed:** Day 3 opened at ₹988.00 (continuity with yesterday's close).
+- **09:30–11:52 IST — SENSEX W31 entry attempts (21×):** All failed (greeks "No Data Available" + risk-policy rejections). See analysis above.
+- **09:45:55 IST — Daemon restart #1:** Graceful shutdown ~50s after the 16th entry abort; restarted 11:47:50 (production).
+- **11:52:22 IST — Daemon restart #2:** Graceful shutdown ~14s after the 21st entry abort; PM2 app re-created 12:12:49.
+- **⚠️ 09:45–11:47 IST — NIFTY monitoring gap (~2h):** No P&L snapshots. NIFTY was unmonitored during this window; when monitoring resumed at 11:48, P&L was ₹741 (vs ₹832 at 09:45). No stoploss risk materialized (position stayed positive all day).
+- **12:12:49 IST — Daemon restart #3:** Current process runs in **development** env (`NODE_ENV=development`, `SENSEX_EXPIRY_ENABLED=false`). The SENSEX trading tick is gated on that flag, so no further entry attempts occurred after 11:52.
+- **12:13–15:30 IST — NIFTY monitoring continuous:** 219 total P&L snapshots today.
+- **12:15 IST — Day low:** ₹598.00 (midday dip), recovered within minutes.
+- **14:30–15:30 IST — Late rally:** P&L climbed ₹929.50 → ₹1,683.50 (+₹754 in the final hour; +₹416 in the final 15 min) as NIFTY pushed toward 24,380.
+- **15:30 IST — Close:** ₹1,683.50 (day high). SmartStream disconnected 15:31 (outside market hours).
+- **15:53 IST — Report Generation:** Post-market LTPs fetched via brokerClient. Per-leg cross-check: ₹1,683.50 (0% drift).
+
+### Daemon Health
+
+| Check | Status |
+|:-----|:------:|
+| PM2 Process | Running — but re-created at 12:12:49 in **development** env (not `--env production`) |
+| Daemon Starts Today | 3 (08:20 scheduled, 11:47:50, 12:12:49) + 2 graceful shutdowns (09:45:55, 11:52:22) |
+| SmartAPI Login | Successful on all starts |
+| SmartStream | Connected 09:30–09:45, 11:47–11:52, 12:12–15:31 (per process lifetime) |
+| PositionsStore | NIFTY W31 loaded on all starts; SENSEX never loaded (no position) |
+| Monitoring Gaps | 09:45–11:47 (~2h) and 11:52–12:12 (~20 min) — NIFTY unmonitored |
+| SENSEX Tick | **Disabled since 12:12:49 restart** (SENSEX_EXPIRY_ENABLED=false in dev env) |
+| Order Book | 110 orders, 0 open — no residue from failed SENSEX attempts |
+| REST Rate Limiting | 403s on `quote` endpoint during SENSEX attempts; NIFTY monitoring unaffected |
+
+## 🔍 Market Response Analysis
+
+### Day 3 — Strong Late-Session Rally
+
+1. **NIFTY ground higher for the 3rd straight session:** +66.45 pts (+0.27%) to 24,383.60, with the sharpest move in the final hour. SENSEX +166.49 pts (+0.21%), Bank Nifty +117.35 pts (+0.21%) — a broad, low-volatility grind higher.
+
+2. **VIX fell to 11.76 (-3.29%) — fresh multi-week low.** Continued compression in implied volatility is ideal for the strategy: the T0 short premiums keep eroding (PE 23,700: 20.40 → 5.05, -75% since entry; CE 24,600: 16.10 → 11.90, -26%).
+
+3. **Sell legs are doing the heavy lifting (+₹2,541.50 combined):**
+   - **23,700 PE short:** +₹1,995.50 — premium collapsed to ₹5.05 with spot ~683 pts above the strike. Effectively exhausted; max profit from this leg is nearly banked.
+   - **24,600 CE short:** +₹546.00 — steady decay as spot stays ~216 pts below the strike.
+
+4. **Buy legs remain the drag (-₹858.00 combined), as designed:** the 23,300 PE hedge lost ₹1,053 (spot far above strike), while the 24,900 CE hedge gained ₹195. This is the expected cost of tail protection — the shorts are decaying faster than the hedges.
+
+5. **Net trajectory:** ₹988 → ₹598 (12:15 low) → ₹1,683.50 close. The midday dip was fully recovered; the last-hour rally crushed the remaining short premium. Day 3 ended at +0.87% of margin, 58% of the way to the 1.5% profit target.
+
+### SENSEX Entry Failure — Structural Observations
+
+1. **The greeks endpoint returned "No Data Available" for the entire 06AUG SENSEX expiry, all morning.** This forced the VIX-fallback delta estimation, which produced inconsistent baskets (deltas 0.083–0.243) — a clear sign the strike-selection logic was working without real option-chain data.
+2. **Angel One's fresh-trading risk policy rejected every order** — strikes ~2–3% OTM on BSE SENSEX options are effectively untradeable for fresh positions. This is consistent with the known SENSEX liquidity finding (deep OTM SENSEX strikes suffer 15–20% bid-ask slippage; entry should avoid strikes deeper than ~5% OTM — here even ~2% OTM was rejected).
+3. **Impact:** SENSEX has now been out of the market for 2 consecutive weeks (W30 skipped, W31 entry failed). The dual-index diversification benefit is currently inactive.
+
+## 🎯 Key Observations
+
+1. **NIFTY W31 is in excellent shape:** ₹1,683.50 (+0.87% of margin), 58% toward the ₹2,890.23 profit target with 2.5 trading days remaining (Mon, Tue). Exit is scheduled for Tuesday 04 Aug 15:15 IST.
+
+2. **Best day of the week so far:** +₹695.50 today vs +₹728 on Day 2 and +₹260 on Day 1. Theta + IV crush are compounding — the 23,700 PE short (₹5.05) and 24,600 CE short (₹11.90) are both near dust levels.
+
+3. **SENSEX W31 has NO position** — entry failed on all 21 attempts (greeks data gap + Angel One risk-policy rejections). Second consecutive SENSEX skip (W30 skipped, W31 failed). Combined W31 contribution is NIFTY-only.
+
+4. **Daemon now runs in development env** (SENSEX_EXPIRY_ENABLED=false) — the SENSEX trading tick is disabled. Next Friday's W32 SENSEX entry will NOT be attempted unless the daemon is restarted with production env (`pm2 start ecosystem.config.cjs --env production`).
+
+5. **NIFTY ran unmonitored ~2h this morning** (09:45–11:47) due to the daemon restart cycle around the SENSEX entry debugging. The gap did not coincide with adverse moves, but it is a coverage risk to flag.
+
+6. **Order book clean after the failed SENSEX attempts** — no open orders, no partial fills, no stranded legs. The failure was clean from an operational standpoint.
+
+7. **VIX at 11.76** — continuing to compress. Favorable for the open NIFTY position; note that very low VIX also means cheaper future entries (lower premium collected on shorts).
+
+## ⚠️ Alerts / Risks
+
+- 🟢 **NIFTY W31: ₹1,683.50 (+0.87% of margin)** — healthy, day-high close. SL buffer ₹3,803.00; PT distance ₹1,206.73.
+- 🟡 **SENSEX W31: NO POSITION** — entry failed (greeks API "No Data Available" + Angel One risk-policy rejections on all 21 attempts). Second consecutive skipped SENSEX week.
+- 🟡 **Daemon in development env** (since 12:12:49 restart) — `SENSEX_EXPIRY_ENABLED=false` disables the SENSEX tick. Restart with `--env production` before Friday 07 Aug for the W32 SENSEX entry. NIFTY tick and Tuesday's NIFTY exit are **not** affected.
+- 🟡 **NIFTY monitoring gap 09:45–11:47 (~2h)** — restart cycle around SENSEX entry debugging left NIFTY unmonitored. No adverse impact today, but exit day (Tue 04 Aug) requires uninterrupted monitoring; verify daemon stability before Monday.
+- 🟡 **Tuesday 04 Aug exit approaching** — T0 shorts (24,600 CE, 23,700 PE) expire that day; exit scheduler runs 15:15 IST. Confirm the daemon (dev-mode process) handles the exit correctly, and cross-reference the OrderBook for fills (Zod `orderid: null` masking lesson).
+- 🟢 **Order book clean** — no residue from failed SENSEX entry attempts.
+- 🟢 **VIX 11.76** — near multi-week low; favorable for the open position.
