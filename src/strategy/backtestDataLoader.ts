@@ -33,6 +33,12 @@ export interface OptionChainSnapshot {
   rows: OptionChainRow[];
 }
 
+export interface SnapshotGroup {
+  snapshot_time: string; // ISO timestamp, e.g., 2026-05-04T09:15:00+05:30
+  index_close: number;
+  expiries: Map<string, OptionChainSnapshot>; // Map key: expiry_date (YYYY-MM-DD)
+}
+
 export interface BacktestPositionLeg {
   action: 'BUY' | 'SELL';
   strike: number;
@@ -58,7 +64,7 @@ export interface BacktestTrade {
 }
 
 /**
- * Loads option chain snapshots from the data repository directory.
+ * Loads a single option chain snapshot file.
  */
 export function loadSnapshot(
   dataDir: string,
@@ -74,14 +80,16 @@ export function loadSnapshot(
 }
 
 /**
- * Scans available date folders and snapshot filenames under dataDir/chains/
+ * Scans dataDir/chains/, groups files by snapshot_time across all expiries,
+ * and returns chronologically sorted SnapshotGroup array.
  */
-export function getAvailableSnapshots(dataDir: string): { folderDate: string; filename: string }[] {
+export function getSnapshotGroups(dataDir: string): SnapshotGroup[] {
   const chainsDir = path.join(dataDir, 'chains');
   if (!fs.existsSync(chainsDir)) {
     return [];
   }
-  const results: { folderDate: string; filename: string }[] = [];
+
+  const groupMap = new Map<string, SnapshotGroup>();
   const folderNames = fs.readdirSync(chainsDir).sort();
 
   for (const folderDate of folderNames) {
@@ -91,10 +99,34 @@ export function getAvailableSnapshots(dataDir: string): { folderDate: string; fi
         .readdirSync(folderPath)
         .filter((f) => f.endsWith('.json'))
         .sort();
+
       for (const filename of files) {
-        results.push({ folderDate, filename });
+        const snap = loadSnapshot(dataDir, folderDate, filename);
+        if (!snap || !snap.snapshot_time) continue;
+
+        const timeKey = snap.snapshot_time;
+        let group = groupMap.get(timeKey);
+        if (!group) {
+          group = {
+            snapshot_time: timeKey,
+            index_close: snap.index_close,
+            expiries: new Map<string, OptionChainSnapshot>(),
+          };
+          groupMap.set(timeKey, group);
+        }
+
+        group.expiries.set(snap.expiry_date, snap);
+        if (snap.index_close) {
+          group.index_close = snap.index_close;
+        }
       }
     }
   }
-  return results;
+
+  // Sort groups chronologically by snapshot_time
+  const sortedGroups = Array.from(groupMap.values()).sort((a, b) =>
+    a.snapshot_time.localeCompare(b.snapshot_time),
+  );
+
+  return sortedGroups;
 }

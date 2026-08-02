@@ -1,9 +1,8 @@
 import dayjs from 'dayjs';
 import logger from '../logging/logger';
 import {
-  getAvailableSnapshots,
-  loadSnapshot,
-  OptionChainSnapshot,
+  getSnapshotGroups,
+  SnapshotGroup,
   BacktestTrade,
   BacktestPositionLeg,
 } from './backtestDataLoader';
@@ -44,11 +43,11 @@ export class DoubleCalendarBacktester {
   public run(): BacktestSummary {
     logger.info(`Starting Double Calendar Backtest using data in: ${this.dataDir}`);
 
-    const snapshots = getAvailableSnapshots(this.dataDir);
-    logger.info(`Found ${snapshots.length} total snapshot files.`);
+    const groups = getSnapshotGroups(this.dataDir);
+    logger.info(`Found ${groups.length} distinct snapshot timestamps.`);
 
-    if (snapshots.length === 0) {
-      logger.warn(`No option chain snapshots found in ${this.dataDir}/chains/`);
+    if (groups.length === 0) {
+      logger.warn(`No option chain snapshot groups found in ${this.dataDir}/chains/`);
       return {
         totalTrades: 0,
         winningTrades: 0,
@@ -63,24 +62,20 @@ export class DoubleCalendarBacktester {
     const trades: BacktestTrade[] = [];
     let currentTrade: BacktestTrade | null = null;
 
-    // Group snapshots by date/time
-    for (const snapRef of snapshots) {
-      const snapshot = loadSnapshot(this.dataDir, snapRef.folderDate, snapRef.filename);
-      if (!snapshot) continue;
-
-      const snapTime = dayjs(snapshot.snapshot_time);
+    for (const group of groups) {
+      const snapTime = dayjs(group.snapshot_time);
       const dayOfWeek = snapTime.day(); // 3 = Wednesday, 2 = Tuesday
       const timeStr = snapTime.format('HH:mm');
 
       // 1. Entry check: Wednesday after 09:30 AM IST (if no open trade)
       if (!currentTrade && dayOfWeek === 3 && timeStr >= '09:30') {
-        const basket = this.tryConstructBasket(snapshot);
+        const basket = this.tryConstructBasket(group);
         if (basket) {
           const margin = this.estimatedMarginPerSpread * this.lots;
           currentTrade = {
             tradeId: `TRADE_${snapTime.format('YYYYMMDD_HHmm')}`,
-            underlying: snapshot.symbol_name,
-            entryTime: snapshot.snapshot_time,
+            underlying: 'NIFTY',
+            entryTime: group.snapshot_time,
             status: 'OPEN',
             initialMargin: margin,
             legs: basket,
@@ -88,13 +83,13 @@ export class DoubleCalendarBacktester {
             maxProfit: 0,
             maxDrawdown: 0,
           };
-          logger.info(`[ENTRY] New position opened on ${snapshot.snapshot_time}`);
+          logger.info(`[ENTRY] New position opened on ${group.snapshot_time}`);
         }
       }
 
       // 2. Monitor open trade
       if (currentTrade && currentTrade.status === 'OPEN') {
-        const currentPnl = this.calculatePnl(currentTrade.legs, snapshot);
+        const currentPnl = this.calculatePnl(currentTrade.legs, group);
         const stopLossVal = -1 * currentTrade.initialMargin * this.stopLossPct;
         const targetProfitVal = currentTrade.initialMargin * this.targetProfitPct;
 
@@ -122,30 +117,27 @@ export class DoubleCalendarBacktester {
 
         if (shouldExit) {
           currentTrade.status = 'CLOSED';
-          currentTrade.exitTime = snapshot.snapshot_time;
+          currentTrade.exitTime = group.snapshot_time;
           currentTrade.exitReason = exitReason;
           currentTrade.realizedPnl = currentPnl;
           trades.push({ ...currentTrade });
           logger.info(
-            `[EXIT] Position closed on ${snapshot.snapshot_time}. PnL: ₹${currentPnl.toFixed(2)} | Reason: ${exitReason}`,
+            `[EXIT] Position closed on ${group.snapshot_time}. PnL: ₹${currentPnl.toFixed(2)} | Reason: ${exitReason}`,
           );
           currentTrade = null;
         }
       }
     }
 
-    // If trade remains open at end of data, close it at last known snapshot price
+    // If trade remains open at end of data, close it at last known snapshot prices
     if (currentTrade && currentTrade.status === 'OPEN') {
-      const lastSnapRef = snapshots[snapshots.length - 1];
-      const lastSnap = loadSnapshot(this.dataDir, lastSnapRef.folderDate, lastSnapRef.filename);
-      if (lastSnap) {
-        const currentPnl = this.calculatePnl(currentTrade.legs, lastSnap);
-        currentTrade.status = 'CLOSED';
-        currentTrade.exitTime = lastSnap.snapshot_time;
-        currentTrade.exitReason = 'End of backtest dataset';
-        currentTrade.realizedPnl = currentPnl;
-        trades.push({ ...currentTrade });
-      }
+      const lastGroup = groups[groups.length - 1];
+      const currentPnl = this.calculatePnl(currentTrade.legs, lastGroup);
+      currentTrade.status = 'CLOSED';
+      currentTrade.exitTime = lastGroup.snapshot_time;
+      currentTrade.exitReason = 'End of backtest dataset';
+      currentTrade.realizedPnl = currentPnl;
+      trades.push({ ...currentTrade });
     }
 
     const totalTrades = trades.length;
@@ -166,21 +158,46 @@ export class DoubleCalendarBacktester {
     };
   }
 
-  private tryConstructBasket(snapshot: OptionChainSnapshot): BacktestPositionLeg[] | null {
-    const underlyingPrice = snapshot.index_close;
-    if (!underlyingPrice || !snapshot.rows || snapshot.rows.length === 0) return null;
+  private tryConstructBasket(group: SnapshotGroup): BacktestPositionLeg[] | null {
+    if (group.expiries.size < 2) {
+      return null; // Need at least T0 and T1 expiries
+    }
 
-    // Use Black-Scholes or delta column if available
+    const now = dayjs(group.snapshot_time);
+
+    // Sort expiries chronologically (only future or today's expiries)
+    const sortedExpiries = Array.from(group.expiries.keys())
+      .filter((expDateStr) => {
+        const expDate = dayjs(expDateStr).endOf('day');
+        return expDate.isAfter(now) || expDate.isSame(now, 'day');
+      })
+      .sort();
+
+    if (sortedExpiries.length < 2) {
+      return null;
+    }
+
+    const t0ExpiryStr = sortedExpiries[0];
+    const t1ExpiryStr = sortedExpiries[1];
+
+    const t0Snap = group.expiries.get(t0ExpiryStr);
+    const t1Snap = group.expiries.get(t1ExpiryStr);
+
+    if (!t0Snap || !t1Snap || !t0Snap.rows || !t1Snap.rows) {
+      return null;
+    }
+
     const targetDelta = 0.15;
     const lotSize = 25; // NIFTY lot size
 
-    let bestShortCeRow = snapshot.rows[0];
+    // A. Resolve Short CE & PE Leg from T0 chain
+    let bestShortCeRow = t0Snap.rows[0];
     let minCeDiff = Infinity;
 
-    let bestShortPeRow = snapshot.rows[0];
+    let bestShortPeRow = t0Snap.rows[0];
     let minPeDiff = Infinity;
 
-    for (const row of snapshot.rows) {
+    for (const row of t0Snap.rows) {
       if (row.calls_delta !== undefined && row.calls_delta !== null) {
         const ceDiff = Math.abs(row.calls_delta - targetDelta);
         if (ceDiff < minCeDiff && row.calls_ltp && row.calls_ltp > 0) {
@@ -200,17 +217,17 @@ export class DoubleCalendarBacktester {
 
     if (!bestShortCeRow.calls_ltp || !bestShortPeRow.puts_ltp) return null;
 
-    // Find T1 match for Calendar spread (for backtest approximation, match premium on same/next expiry row)
     const shortCeLtp = bestShortCeRow.calls_ltp;
     const shortPeLtp = bestShortPeRow.puts_ltp;
 
-    let bestHedgeCeRow = snapshot.rows[0];
+    // B. Resolve Long CE & PE Hedge Legs from T1 chain (LTP-matched to short T0 legs)
+    let bestHedgeCeRow = t1Snap.rows[0];
     let minCeLtpDiff = Infinity;
 
-    let bestHedgePeRow = snapshot.rows[0];
+    let bestHedgePeRow = t1Snap.rows[0];
     let minPeLtpDiff = Infinity;
 
-    for (const row of snapshot.rows) {
+    for (const row of t1Snap.rows) {
       if (row.calls_ltp && row.calls_ltp > 0) {
         const diff = Math.abs(row.calls_ltp - shortCeLtp);
         if (diff < minCeLtpDiff) {
@@ -227,6 +244,8 @@ export class DoubleCalendarBacktester {
       }
     }
 
+    if (!bestHedgeCeRow.calls_ltp || !bestHedgePeRow.puts_ltp) return null;
+
     const qty = lotSize * this.lots;
 
     return [
@@ -234,7 +253,7 @@ export class DoubleCalendarBacktester {
         action: 'SELL',
         strike: bestShortCeRow.strike_price,
         type: 'CE',
-        expiry: snapshot.expiry_date,
+        expiry: t0ExpiryStr,
         quantity: qty,
         entryPrice: shortCeLtp,
         currentPrice: shortCeLtp,
@@ -243,7 +262,7 @@ export class DoubleCalendarBacktester {
         action: 'SELL',
         strike: bestShortPeRow.strike_price,
         type: 'PE',
-        expiry: snapshot.expiry_date,
+        expiry: t0ExpiryStr,
         quantity: qty,
         entryPrice: shortPeLtp,
         currentPrice: shortPeLtp,
@@ -252,35 +271,38 @@ export class DoubleCalendarBacktester {
         action: 'BUY',
         strike: bestHedgeCeRow.strike_price,
         type: 'CE',
-        expiry: snapshot.expiry_date, // Next weekly expiry leg
+        expiry: t1ExpiryStr,
         quantity: qty,
-        entryPrice: bestHedgeCeRow.calls_ltp ?? shortCeLtp,
-        currentPrice: bestHedgeCeRow.calls_ltp ?? shortCeLtp,
+        entryPrice: bestHedgeCeRow.calls_ltp,
+        currentPrice: bestHedgeCeRow.calls_ltp,
       },
       {
         action: 'BUY',
         strike: bestHedgePeRow.strike_price,
         type: 'PE',
-        expiry: snapshot.expiry_date, // Next weekly expiry leg
+        expiry: t1ExpiryStr,
         quantity: qty,
-        entryPrice: bestHedgePeRow.puts_ltp ?? shortPeLtp,
-        currentPrice: bestHedgePeRow.puts_ltp ?? shortPeLtp,
+        entryPrice: bestHedgePeRow.puts_ltp,
+        currentPrice: bestHedgePeRow.puts_ltp,
       },
     ];
   }
 
-  private calculatePnl(legs: BacktestPositionLeg[], snapshot: OptionChainSnapshot): number {
+  private calculatePnl(legs: BacktestPositionLeg[], group: SnapshotGroup): number {
     let totalPnl = 0;
 
     for (const leg of legs) {
-      const row = snapshot.rows.find((r) => r.strike_price === leg.strike);
+      const expirySnap = group.expiries.get(leg.expiry);
       let currentLtp = leg.entryPrice;
 
-      if (row) {
-        if (leg.type === 'CE' && row.calls_ltp !== undefined && row.calls_ltp !== null) {
-          currentLtp = row.calls_ltp;
-        } else if (leg.type === 'PE' && row.puts_ltp !== undefined && row.puts_ltp !== null) {
-          currentLtp = row.puts_ltp;
+      if (expirySnap && expirySnap.rows) {
+        const row = expirySnap.rows.find((r) => r.strike_price === leg.strike);
+        if (row) {
+          if (leg.type === 'CE' && row.calls_ltp !== undefined && row.calls_ltp !== null) {
+            currentLtp = row.calls_ltp;
+          } else if (leg.type === 'PE' && row.puts_ltp !== undefined && row.puts_ltp !== null) {
+            currentLtp = row.puts_ltp;
+          }
         }
       }
 
