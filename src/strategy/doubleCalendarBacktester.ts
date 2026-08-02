@@ -1,7 +1,5 @@
-import path from 'path';
 import dayjs from 'dayjs';
 import logger from '../logging/logger';
-import { calculateDelta } from './blackScholes';
 import {
   getAvailableSnapshots,
   loadSnapshot,

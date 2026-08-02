@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import dayjs from 'dayjs';
 
 export interface OptionChainRow {
   strike_price: number;
