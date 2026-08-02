@@ -1,3 +1,6 @@
+mux_client_request_session: session request failed: Session open refused by peer
+Warning: Permanently added '146.56.49.142' (ED25519) to the list of known hosts.
+ControlSocket /tmp/hermes-ssh/a02d3780b35840cc.sock already exists, disabling multiplexing
 # Double Calendar Spread Trading Daemon
 
 A production-grade, testable, self-hosted automated options trading pipeline built with **TypeScript (Node.js)** for executing and managing a **Double Calendar Spread** strategy via the **Angel One SmartAPI**. The daemon runs as a persistent process managed by `pm2` on an Oracle Cloud VM.
@@ -20,7 +23,7 @@ The daemon automates a **Double Calendar Spread** on Indian indices (**NIFTY** a
   - **Exit Window:** Thursday at 15:15 PM IST.
 - **VIX Entry Filter:** Entry for either index is only allowed if **India VIX is between 10 and 13.5** at the time of entry.
 - **Liquidity Screening:** Candidates are filtered dynamically using real-time quotes to ensure active market depth, preventing orders on illiquid option strikes. If no liquid strikes match, it falls back to the theoretical best strike and alerts the operator.
-- **Exit Rules:** Positions are unwound on stoploss breach (1.1% of utilized margin, any day), profit target reach (1.5% of utilized margin, any day), or naturally closed at the scheduled exit window. To save brokerage costs, options that are worthless (LTP <= ₹0.10) on their expiry day at the scheduled exit time (15:15 PM IST onwards) are not exited (their exit is simulated at the worthless LTP value for bookkeeping). There is no other exit trigger.
+- **Exit Rules:** Positions are unwound on stoploss breach (2% of utilized margin, any day), profit target reach (1.5% of utilized margin, any day), or naturally closed at the scheduled exit window. To save brokerage costs, options that are worthless (LTP <= ₹0.10) on their expiry day at the scheduled exit time (15:15 PM IST onwards) are not exited (their exit is simulated at the worthless LTP value for bookkeeping). There is no other exit trigger.
 
 ### Leg Structure & Target Deltas
 
@@ -137,12 +140,12 @@ To optimize margin utilization and avoid transient order blocks, orders are sequ
 - **Exit:** Sell legs are closed (buy-to-cover) and verified `COMPLETE` before any Buy leg is unwound.
 - **Failure Recovery:** If any buy leg fails to complete, the entry sequence is aborted, alerts are sent, and the daemon does not proceed to sells.
 
-### 2. Risk Management & Profit Targets (1.1% Stoploss / 1.5% Profit Exit)
+### 2. Risk Management & Profit Targets (2% Stoploss / 1.5% Profit Exit)
 
 - **Margin Base & Isolation:** During entry, the daemon isolates each position's own contribution to total account margin by computing incremental delta margin: `margin(everything else + this position) - margin(everything else alone)`. This prevents portfolio-level cross-margining from other concurrent positions from inflating the stoploss/profit target thresholds. If the calculation falls back or fails, a warning alert is sent to Telegram/Slack, and it falls back to the simple margin or a lot-size scaled fallback margin tailored to the index (₹150,000 per lot for NIFTY, and ₹120,000 per lot for SENSEX).
 - **Daily Margin Refresh:** Overnight changes in span or exposure margins can affect risk thresholds. The daemon automatically recalculates and refreshes the isolated `marginUtilized` daily at **09:20 AM IST** (Monday through Friday) for active open positions, ensuring risk thresholds remain accurate.
 - **Monitoring:** The daemon polls LTP/WebSockets to monitor cumulative mark-to-market P&L.
-- **Stoploss:** If cumulative losses exceed **1.1% of the weekly utilized margin**, all legs are unwound.
+- **Stoploss:** If cumulative losses exceed **2% of the weekly utilized margin**, all legs are unwound.
 - **Profit Target:** If cumulative profits reach or exceed **1.5% of the weekly utilized margin**, all legs are unwound immediately to lock in gains.
 - **Weekly Lockout:** Upon stoploss or profit target hits, the daemon generates a per-underlying weekly lockout file (e.g. `done-for-this-week-nifty` or `done-for-this-week-sensex`). When a lockout is active for an underlying, trading ticks and monitoring are paused for that specific index only. Lockouts are automatically cleared via cron jobs independently: NIFTY lockout is cleared Tuesdays at 16:00 IST, and SENSEX lockout is cleared Thursdays at 16:00 IST.
 
