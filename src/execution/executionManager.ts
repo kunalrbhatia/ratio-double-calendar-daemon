@@ -669,13 +669,13 @@ export class ExecutionManager implements IExecutionManager {
 
     mtmLogger.log(underlying, currentPnl, isPaper);
 
-    // If cumulative loss exceeds 1.1% of the margin utilized, exit immediately
-    const stoplossThreshold = -0.011 * pos.marginUtilized;
+    // If cumulative loss exceeds 2% of the margin utilized, exit immediately
+    const stoplossThreshold = -0.02 * pos.marginUtilized;
     // If cumulative profit exceeds 1.5% of the margin utilized, exit immediately
     const profitTargetThreshold = 0.015 * pos.marginUtilized;
 
     logger.info(
-      `[${underlying}] Stoploss threshold: ₹${stoplossThreshold.toLocaleString()} (1.1% of ₹${pos.marginUtilized.toLocaleString()})`,
+      `[${underlying}] Stoploss threshold: ₹${stoplossThreshold.toLocaleString()} (2% of ₹${pos.marginUtilized.toLocaleString()})`,
     );
     logger.info(
       `[${underlying}] Profit target threshold: ₹${profitTargetThreshold.toLocaleString()} (1.5% of ₹${pos.marginUtilized.toLocaleString()})`,

@@ -28,7 +28,7 @@ function runBacktestCLI() {
   const backtester = new DoubleCalendarBacktester({
     dataDir,
     lots: 1,
-    stopLossPct: 0.011, // 1.1% stop loss
+    stopLossPct: 0.02, // 2% stop loss
     targetProfitPct: 0.015, // 1.5% target profit
   });
 
