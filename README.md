@@ -8,6 +8,8 @@ A production-grade, testable, self-hosted automated options trading pipeline bui
 
 The daemon automates a **Double Calendar Spread** on Indian indices (**NIFTY** and **SENSEX**):
 
+<img width="881" height="362" alt="image" src="https://github.com/user-attachments/assets/ae202e5f-9974-410b-9c73-55003689faa9" />
+
 - **NIFTY Schedule:**
   - **Entry Window:** Basket construction and order execution happen on **Wednesdays** (after 09:30 AM IST).
   - **Hold & Monitor:** Wednesday through **Tuesday**.
