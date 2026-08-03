@@ -33,10 +33,17 @@ export interface OptionChainSnapshot {
   rows: OptionChainRow[];
 }
 
+export interface SnapshotFileInfo {
+  folderDate: string;
+  filename: string;
+  expiry_date: string;
+  snapshot_time: string;
+}
+
 export interface SnapshotGroup {
   snapshot_time: string; // ISO timestamp, e.g., 2026-05-04T09:15:00+05:30
-  index_close: number;
-  expiries: Map<string, OptionChainSnapshot>; // Map key: expiry_date (YYYY-MM-DD)
+  index_close?: number;
+  expiries: Map<string, SnapshotFileInfo>; // Map key: expiry_date (YYYY-MM-DD) -> file metadata
 }
 
 export interface BacktestPositionLeg {
@@ -81,7 +88,7 @@ export function loadSnapshot(
 
 /**
  * Scans dataDir/chains/, groups files by snapshot_time across all expiries,
- * and returns chronologically sorted SnapshotGroup array.
+ * storing file reference metadata only (without keeping parsed snapshot JSON objects in memory).
  */
 export function getSnapshotGroups(dataDir: string): SnapshotGroup[] {
   const chainsDir = path.join(dataDir, 'chains');
@@ -101,24 +108,28 @@ export function getSnapshotGroups(dataDir: string): SnapshotGroup[] {
         .sort();
 
       for (const filename of files) {
-        const snap = loadSnapshot(dataDir, folderDate, filename);
-        if (!snap || !snap.snapshot_time) continue;
+        // Derive expiry_date and HHmm timestamp from filename (YYYY-MM-DD_HHmm.json)
+        const match = filename.match(/^(\d{4}-\d{2}-\d{2})_(\d{2})(\d{2})\.json$/);
+        if (!match) continue;
 
-        const timeKey = snap.snapshot_time;
-        let group = groupMap.get(timeKey);
+        const [, expiry_date, hh, mm] = match;
+        const snapshot_time = `${folderDate}T${hh}:${mm}:00+05:30`;
+
+        let group = groupMap.get(snapshot_time);
         if (!group) {
           group = {
-            snapshot_time: timeKey,
-            index_close: snap.index_close,
-            expiries: new Map<string, OptionChainSnapshot>(),
+            snapshot_time,
+            expiries: new Map<string, SnapshotFileInfo>(),
           };
-          groupMap.set(timeKey, group);
+          groupMap.set(snapshot_time, group);
         }
 
-        group.expiries.set(snap.expiry_date, snap);
-        if (snap.index_close) {
-          group.index_close = snap.index_close;
-        }
+        group.expiries.set(expiry_date, {
+          folderDate,
+          filename,
+          expiry_date,
+          snapshot_time,
+        });
       }
     }
   }
