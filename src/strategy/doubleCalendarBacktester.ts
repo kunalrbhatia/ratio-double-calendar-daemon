@@ -2,7 +2,9 @@ import dayjs from 'dayjs';
 import logger from '../logging/logger';
 import {
   getSnapshotGroups,
+  loadSnapshot,
   SnapshotGroup,
+  OptionChainSnapshot,
   BacktestTrade,
   BacktestPositionLeg,
 } from './backtestDataLoader';
@@ -180,8 +182,15 @@ export class DoubleCalendarBacktester {
     const t0ExpiryStr = sortedExpiries[0];
     const t1ExpiryStr = sortedExpiries[1];
 
-    const t0Snap = group.expiries.get(t0ExpiryStr);
-    const t1Snap = group.expiries.get(t1ExpiryStr);
+    const t0Info = group.expiries.get(t0ExpiryStr);
+    const t1Info = group.expiries.get(t1ExpiryStr);
+
+    if (!t0Info || !t1Info) {
+      return null;
+    }
+
+    const t0Snap = loadSnapshot(this.dataDir, t0Info.folderDate, t0Info.filename);
+    const t1Snap = loadSnapshot(this.dataDir, t1Info.folderDate, t1Info.filename);
 
     if (!t0Snap || !t1Snap || !t0Snap.rows || !t1Snap.rows) {
       return null;
@@ -291,9 +300,21 @@ export class DoubleCalendarBacktester {
   private calculatePnl(legs: BacktestPositionLeg[], group: SnapshotGroup): number {
     let totalPnl = 0;
 
+    // Cache loaded snapshots during calculatePnl call to avoid re-reading the same file for multiple legs with same expiry
+    const loadedSnaps = new Map<string, OptionChainSnapshot | null>();
+
     for (const leg of legs) {
-      const expirySnap = group.expiries.get(leg.expiry);
       let currentLtp = leg.entryPrice;
+
+      if (!loadedSnaps.has(leg.expiry)) {
+        const expiryInfo = group.expiries.get(leg.expiry);
+        const snap = expiryInfo
+          ? loadSnapshot(this.dataDir, expiryInfo.folderDate, expiryInfo.filename)
+          : null;
+        loadedSnaps.set(leg.expiry, snap);
+      }
+
+      const expirySnap = loadedSnaps.get(leg.expiry);
 
       if (expirySnap && expirySnap.rows) {
         const row = expirySnap.rows.find((r) => r.strike_price === leg.strike);
