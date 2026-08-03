@@ -308,7 +308,9 @@ export class DoubleCalendarBacktester {
 
       if (!loadedSnaps.has(leg.expiry)) {
         const expiryInfo = group.expiries.get(leg.expiry);
-        const snap = expiryInfo ? loadSnapshot(this.dataDir, expiryInfo.folderDate, expiryInfo.filename) : null;
+        const snap = expiryInfo
+          ? loadSnapshot(this.dataDir, expiryInfo.folderDate, expiryInfo.filename)
+          : null;
         loadedSnaps.set(leg.expiry, snap);
       }
 
