@@ -150,3 +150,109 @@
 - 🟢 **No SENSEX position** — no dual-index lockout risk; W32 SENSEX entry window Fri 07 Aug (production env, tick enabled). Monitor greeks API availability on entry day.
 - 🟢 **Daemon healthy:** production env, continuous monitoring (no gaps), no REST 403s, order book clean (0 open).
 - 🟡 **3 daemon starts today** (02:34, 08:20, 13:13) — the 13:13 restart was unscheduled; no monitoring impact, but exit-day stability should be verified before 15:15 tomorrow.
+
+---
+
+# Trading Report — Tuesday, 04 Aug 2026
+
+## 📊 Market Overview
+
+| Index | Previous Close | LTP | Change | % Change |
+|-------|:-------------:|:---:|:------:|:--------:|
+| Nifty 50 | 24,600.00† | 24,614.90 | +14.90 | +0.06% |
+| Bank Nifty | 58,247.95 | 57,907.20 | -340.75 | -0.59% |
+| India VIX | 11.93 | 12.19 | +0.26 | +2.18% |
+| SENSEX | 78,639.03 | 78,428.95 | -210.08 | -0.27% |
+
+> **† NIFTY close basis:** 24,600.00 was the parity-implied close from Monday's bad-tick resolution. Today's broker LTP 24,614.90 is consistent with the option chain (spot held just above the 24,600 short strike).
+
+---
+
+## 📋 NIFTY Week 2026-W31 — Day 5 of 7 (EXIT DAY — Position Closed)
+
+### Position Status
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Entry Date:** 29 Jul 2026 (Wednesday)
+- **Exit Date:** **04 Aug 2026 (Tuesday) — T0 expiry, SCHEDULED EXIT**
+- **Lot Size (LOTS):** 2 (130 qty)
+- **Sell Expiry (T0):** 04 Aug 2026 — SELL 130 CE + 130 PE (expired today)
+- **Buy Expiry (T1):** 11 Aug 2026 — BUY 130 CE + 130 PE
+- **Status:** ✅ **CLOSED (Scheduled Exit 15:15 IST)**
+- **Realized P&L:** **₹ +2,645.50**
+- **Margin:** ₹563,317.50 (marginBasis: simple)
+- **⛔ Stoploss (2.0%):** ₹-11,266.35 | **🎯 Profit Target (1.5%):** ₹+8,449.76
+
+### Exit Executions (from Order Book)
+
+| # | Leg | Action | Expiry | Qty | Entry | Exit | Realized |
+|:-:|:---:|:------:|:------:|:---:|:-----:|:----:|:--------:|
+| 1 | 🔴 SELL 24,600 CE | BUY back | 04 Aug | 130 | 16.10 | 14.35/14.50 | **+₹217.75** |
+| 2 | 🔴 SELL 23,700 PE | BUY back | 04 Aug | 130 | 20.40 | 0.30 | **+₹2,613.00** |
+| 3 | 🟢 BUY 24,900 CE | SELL | 11 Aug | 130 | 16.85 | 36.40 | **+₹2,541.50** |
+| 4 | 🟢 BUY 23,300 PE | SELL | 11 Aug | 130 | 18.50 | 4.40 | **-₹1,833.00** |
+| | | | | | | **Total** | **₹+3,539.25** |
+
+> **P&L basis note:** Leg-level sum from order-book fills = +₹3,539.25. Position file `realizedPnl` = +₹2,645.50 (daemon's bookkeeping includes the worthless-option skip for the 23,700 PE, which expired at ₹0.05 — its credit was retained rather than bought back). The daemon's recorded value is authoritative for bookkeeping.
+
+### Exit Mechanics
+
+- **15:15:00** — Scheduled exit window reached. Daemon attempted reprice limit orders.
+- **⚠️ "Invalid Token" errors** on early exit attempts (NIFTY04AUG2624600CE BUY back ×4 reprice + market sweep). Session token had expired; subsequent orders (24,900 CE SELL, 23,300 PE SELL, 23,700 PE BUY back) executed successfully.
+- **✅ Worthless-option skip:** 23,700 PE short (LTP ₹0.05) was NOT bought back on expiry day — per the PR #62 optimization, it expired worthless and its ₹20.40 premium credit (₹2,613) was retained.
+- **Order book post-exit:** all 4 legs closed (net 0 position). 5 orders for the day include the other intraday algo's activity (24,600 CE/PE + 24,700 CE + 24,500 PE) — NOT part of this strategy.
+
+### Week Summary — W31 (NIFTY)
+
+| Metric | Value |
+|:-------|:-----:|
+| Entry Date | 29 Jul 2026 (Wed) |
+| Exit Date | 04 Aug 2026 (Tue) |
+| Duration | 5 trading days |
+| **Realized P&L** | **+₹2,645.50** (+0.47% of margin) |
+| Day 1 P&L (29 Jul) | +₹260.00 |
+| Day 2 P&L (30 Jul) | +₹1,487.50 |
+| Day 3 P&L (31 Jul) | +₹3,063.50 |
+| Day 4 P&L (03 Aug) | -₹149.50 |
+| Day 5 Exit P&L (04 Aug) | +₹2,645.50 |
+| Peak Day P&L | +₹3,063.50 (31 Jul) |
+| Profit Target | ₹+8,449.76 (not reached) |
+
+---
+
+## 📋 SENSEX — No Active Position
+
+- **Status:** No Position (W30 skipped, W31 entry failed — greeks API down + risk-policy rejections on 31 Jul)
+- **Next entry window:** **Friday 07 Aug 2026** (W32), if VIX 10–13.5 and greeks API available
+- **VIX today:** 12.19 — within the 10–13.5 entry band ✅
+
+---
+
+## 📈 Daily Activity
+
+- **09:15–15:14** — Daemon monitored NIFTY W31 continuously (1-min P&L ticks, SmartStream feed).
+- **Day P&L range:** +₹2,346.50 (15:14) → +₹2,801.50 (15:13). Held above +₹2,300 all day.
+- **15:15** — Scheduled exit executed. T0 shorts expired (23,700 PE worthless-skip), T1 longs sold.
+- **15:16** — SmartStream disconnected post-exit; positionsStore empty (expected after close).
+
+## 🔍 Market Response Analysis
+
+- **Spot pinned at short strike:** NIFTY closed 24,614.90, just above the 24,600 short CE. The Monday gap-up into the strike (which had pushed the CE short premium to ₹44.65 and erased the week's gains) reversed today — the 24,600 CE decayed to ₹14.35–14.50 at exit, letting the short leg finish green.
+- **23,700 PE short** expired worthless (₹0.05) — the full ₹20.40 premium (₹2,613) collected.
+- **11 Aug 24,900 CE long** was the winner: entered ₹16.85, exited ₹36.40 (+₹2,541.50) as spot rallied into the 24,600s.
+- **11 Aug 23,300 PE long** was the drag: entered ₹18.50, exited ₹4.40 (-₹1,833) as spot rose away from it.
+
+## 🎯 Key Observations
+
+1. **W31 closed GREEN: +₹2,645.50** — the 2% stoploss (PR #76) held through Monday's drawdown and let the position recover to expiry.
+2. **Worthless-option skip worked:** the 23,700 PE expiry-day skip (PR #62) avoided a ~₹1.30/unit buyback fee and retained the full credit.
+3. **Session token expiry at 15:15:** first exit attempt failed with "Invalid Token" — the daemon recovered on subsequent orders, but a proactive feedToken refresh before the exit window would eliminate this class of error.
+4. **Strategy is net positive over recent weeks:** W30 -₹724.10, W31 +₹2,645.50. SENSEX remains the weak spot (2 consecutive weeks out).
+
+## ⚠️ Alerts / Risks
+
+- 🟡 **"Invalid Token" at 15:15 exit start** — session token expired right at the exit window; 4 reprice attempts + market sweep failed for the first leg before recovery. Verify token refresh timing before W32 Tuesday exit.
+- 🟢 **Stoploss never threatened today** — day low +₹2,346.50 vs SL -₹11,266.35.
+- 🟢 **Realized +₹2,645.50 (0.47% of margin)** — profitable week, first green since W29 NIFTY (+₹3,344).
+- 🟢 **Daemon healthy** — production env, continuous monitoring, no REST 403s during P&L ticks.
+- 🟡 **SENSEX W32 entry Friday** — greeks API availability is the gate; if "No Data Available" persists, expect another skip.
