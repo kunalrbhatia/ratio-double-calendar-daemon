@@ -256,3 +256,147 @@
 - 🟢 **Realized +₹2,645.50 (0.47% of margin)** — profitable week, first green since W29 NIFTY (+₹3,344).
 - 🟢 **Daemon healthy** — production env, continuous monitoring, no REST 403s during P&L ticks.
 - 🟡 **SENSEX W32 entry Friday** — greeks API availability is the gate; if "No Data Available" persists, expect another skip.
+
+
+# Trading Report — Wednesday, 05 Aug 2026
+
+## 📊 Market Overview
+
+| Index | Previous Close | LTP | Change | % Change |
+|-------|:-------------:|:---:|:------:|:--------:|
+| Nifty 50 | 24,614.90 | 24,624.65 | +9.75 | +0.04% |
+| Bank Nifty | 57,907.20 | 57,739.95 | -167.25 | -0.29% |
+| India VIX | 12.19 | 12.06 | -0.13 | -1.07% |
+| SENSEX | 78,428.95 | 78,581.00 | +152.05 | +0.19% |
+
+> **Previous close (04 Aug):** Nifty 24,614.90 | Bank Nifty 57,907.20 | VIX 12.19 | SENSEX 78,428.95 (from Tuesday's report). Today's values are post-market LTPs fetched 15:44 IST.
+
+---
+
+## 📋 NIFTY Week 2026-W32 — Day 1 of 7 (ENTRY DAY)
+
+### Position Status
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Entry Date:** 05 Aug 2026 (Wednesday) — Day 1
+- **Exit Date:** **11 Aug 2026 (Tuesday) — T0 expiry**
+- **Lot Size (LOTS):** 2 (130 qty)
+- **Sell Expiry (T0):** 11 Aug 2026 — SELL 130 CE + 130 PE at delta 0.10–0.15
+- **Buy Expiry (T1):** 18 Aug 2026 — BUY 130 CE + 130 PE LTP-matched to T0 shorts
+- **Status:** Open
+- **Margin:** ₹188,229.34 (marginBasis: simple)
+- **⛔ Stoploss (2.0%):** ₹-3,764.59
+- **🎯 Profit Target (1.5%):** ₹+2,823.44
+- **Net entry credit:** ₹2.90/unit (₹377.00 total) — SELL ₹36.75 vs BUY ₹33.85
+
+### Position Details
+
+| # | Action | Strike | Type | Expiry | Qty | Entry Price | LTP (post-market) | P&L |
+|:-:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:-----------------:|:---:|
+| 1 | 🔴 SELL | 25,100 | CE | 11 Aug | 130 | 15.30 | 13.10 | +₹286.00 |
+| 2 | 🔴 SELL | 24,200 | PE | 11 Aug | 130 | 21.45 | 25.10 | -₹474.50 |
+| 3 | 🟢 BUY  | 25,400 | CE | 18 Aug | 130 | 15.25 | 13.90 | -₹175.50 |
+| 4 | 🟢 BUY  | 23,800 | PE | 18 Aug | 130 | 18.60 | 20.40 | +₹234.00 |
+
+**Total P&L (daemon 15:30 IST close, live SmartStream):** **₹ -19.50**
+**Total P&L (post-market computed, 15:44 IST):** **₹ -130.00**
+
+> **P&L basis note:** The daemon's live close (-₹19.50, SmartStream feed active until 15:31) is authoritative. The post-market per-leg computation from brokerClient LTPs gives -₹130.00; the ₹110.50 gap is post-market LTP drift (option quotes moved after 15:30). Both ≈ breakeven on Day 1; drift is 0.06% of margin.
+
+### Entry Execution (Order Book)
+
+| # | Leg | Action | Expiry | Qty | Fill | Attempts |
+|:-:|:---:|:------:|:------:|:---:|:----:|:--------:|
+| 1 | BUY 25,400 CE | BUY | 18 Aug | 130 | ₹15.25 | 3 (15.15 → 15.20 → 15.25) |
+| 2 | BUY 23,800 PE | BUY | 18 Aug | 130 | ₹18.60 | 2 (18.50 → 18.60) |
+| 3 | SELL 25,100 CE | SELL | 11 Aug | 130 | ₹15.30 | 2 |
+| 4 | SELL 24,200 PE | SELL | 11 Aug | 130 | ₹21.45 | 1 (filled at ask; better than basket LTP 20.65) |
+
+- **All 4 legs COMPLETE, 0 open orders** — clean entry, no duplicates (8 orders today = 4 fills + 4 cancelled reprice attempts)
+- Basket deltas: SELL CE 0.107, SELL PE 0.112 (target 0.10–0.15) | BUY CE 0.089, BUY PE 0.092
+- Entry context: NIFTY 24,621.65 at 09:30; VIX entry check 11.86 (08:40 init: 12.19) — inside the 10–13.5 band ✅
+
+### P&L Range — Day 1
+
+| Metric | Value |
+|:-------|:-----:|
+| Day Open P&L | -₹136.50 (09:31, first tick post-entry) |
+| Day High P&L | +₹169.00 (10:21) |
+| Day Low P&L | **-₹2,177.50 (13:45)** |
+| Day Close P&L | -₹19.50 (15:30) |
+| Intraday Range | ₹2,346.50 (-2,177.50 → +169.00) |
+| P&L as % of Margin | -0.01% (close) |
+| Max Drawdown | -1.16% of margin (13:45) |
+| Distance to PT (₹2,823.44) | ₹2,842.94 |
+| Distance to SL (-₹3,764.59) | ₹3,745.09 |
+
+---
+
+## 📋 SENSEX — No Active Position
+
+- **Status:** No Position — W32 SENSEX entry window is **Friday, 07 Aug 2026**
+- **W31:** Entry failed (greeks API down + risk-policy rejections); **W30:** skipped
+- **VIX today:** 12.06 — within the 10–13.5 entry band ✅
+
+---
+
+## 📈 Daily Activity
+
+- **08:20 IST — Scheduled PM2 restart:** Daemon up in **production** env (NODE_ENV=production, SENSEX tick enabled). VIX init 12.19.
+- **09:30 IST — NIFTY W32 ENTRY executed:** SmartAPI login OK (fresh TOTP), basket built at NIFTY 24,621.65, 4/4 legs filled 09:30:01–09:30:31 with 1–3 reprice attempts each; net credit ₹2.90/unit. Seven 403 rate-limit warnings on getOrderBook during the entry burst (duplicate-prevention checks) — all retried successfully, no impact.
+- **09:30–10:24 IST — Green open:** P&L swung positive; day high +₹169.00 at 10:21.
+- **10:30–13:45 IST — Midday drift lower:** NIFTY sold off ~200 pts into the 24,4xx zone; P&L slid to **-₹2,177.50 at 13:45** (day low, 1.16% of margin) as the 24,200 PE short premium expanded.
+- **13:45–15:30 IST — Afternoon recovery:** Spot mean-reverted into the close (24,624.65); P&L retraced to **-₹19.50 at 15:30**.
+- **15:31 IST — SmartStream disconnected** (outside market hours).
+- **15:44 IST — Report generation:** Post-market LTPs fetched; per-leg cross-check -₹130.00 (drift vs live close ₹110.50).
+- **No SENSEX activity** — no position, tick enabled for Friday.
+
+### Daemon Health
+
+| Check | Status |
+|:-----|:------:|
+| PM2 Process | Running — process started 08:20 (production), uptime 7h, 0 unscheduled restarts |
+| Environment | Production (SENSEX_EXPIRY_ENABLED=true) |
+| SmartAPI Login | Successful (fresh TOTP at 09:30) |
+| SmartStream | Connected 09:30:40 → 15:31:11, 45s re-subscribe heartbeats working |
+| PositionsStore | NIFTY W32 loaded — 1-min P&L loop continuous (359 samples, 1 gap at 10:44) |
+| Margin API | ₹188,229.34 (marginBasis: simple) |
+| SL/PT Basis | 2% SL / 1.5% PT — ₹-3,764.59 / ₹+2,823.44 |
+| Order Book | 8 orders (4 fills + 4 cancelled reprices), 0 open |
+| REST Rate Limiting | 7× 403 on getOrderBook at 09:30 entry burst only, retries succeeded; no 403s in P&L loop |
+| Invalid Token | 0 occurrences |
+
+---
+
+## 🔍 Market Response Analysis
+
+### Day 1 — Entry Day: Flat Market, Midday Dip
+
+1. **Entry structure:** NIFTY at 24,621.65 at 09:30. Shorts: 25,100 CE (478 pts OTM, Δ0.107) and 24,200 PE (421 pts OTM, Δ0.112). The PE short carries a thinner buffer (421 pts) than the CE short (478 pts) — a mildly PE-biased risk profile if spot dips this week.
+
+2. **The midday dip was the day's story:** spot fell ~200 pts into the 24,4xx zone by 13:45, expanding the 24,200 PE short premium (entry ₹21.45 → ~₹25+ intraday) and dragging P&L to **-₹2,177.50 (-1.16% of margin)** — the widest Day-1 drawdown in recent weeks. The 23,800 PE long (T1) hedged part of the move, but the 25,400 CE long (T1) decayed alongside the short CE.
+
+3. **Afternoon mean-reversion:** spot recovered into the close (24,624.65), the PE short premium retraced, and the position closed essentially flat at -₹19.50. Day-1 net credit (₹377.00) + theta ≈ zero net move — a textbook flat entry day.
+
+4. **VIX -1.07% (12.19 → 12.06):** IV eased slightly; still in the low-IV regime. Entry band (10–13.5) satisfied at 09:30 (11.86).
+
+5. **Cross-market:** NIFTY flat (+0.04%), SENSEX +0.19%, Bank Nifty -0.29% — a mixed, low-volatility session. The NIFTY dip-and-recover was not a broad market selloff.
+
+---
+
+## 🎯 Key Observations
+
+1. **W32 entered cleanly** — 4/4 legs filled within 30 seconds, net credit ₹2.90/unit, zero order-book residue. Coming off W31's +₹2,645.50, W32 starts flat.
+2. **Day-1 drawdown of -1.16% of margin (₹2,177.50) absorbed by the 2% stoploss band** — no SL breach, full recovery to -₹19.50 by close. Under the old 1.1% SL (-₹2,070.52) this would have triggered intraday; PR #76's 2% band is doing exactly its job.
+3. **PE-short buffer is the week's risk axis:** the 24,200 PE short is ~421 pts OTM with spot at 24,624.65. W29's lesson (a 155-pt buffer blew through on a -0.47% day) argues for caution if NIFTY slips below ~24,350.
+4. **Daemon execution quality was excellent:** fresh TOTP login, zero Invalid Token, zero unscheduled restarts, continuous monitoring (359/360 minutes), SmartStream heartbeats stable, entry-burst 403s absorbed by retries.
+5. **SENSEX W32 entry Friday 07 Aug** — third consecutive week without a SENSEX position (W30 skipped, W31 failed). Greeks API availability is the gate; apply the 31 Jul lesson (skip after 2–3 risk-policy rejections).
+
+## ⚠️ Alerts / Risks
+
+- 🟢 **Stoploss safe:** close -₹19.50 vs SL -₹3,764.59; day low -₹2,177.50 = 1.16% of margin.
+- 🟡 **PE short buffer ~421 pts:** the 24,200 PE short is the week's structural risk. A sub-24,350 NIFTY print pushes it toward ITM; monitor spot proximity and VIX daily.
+- 🟢 **Entry integrity verified:** order book 0 open, no duplicates, no Invalid Token.
+- 🟢 **Daemon healthy:** production env, continuous monitoring, no 403s in the P&L loop, 0 unscheduled restarts.
+- 🟡 **SENSEX entry Friday 07 Aug** — greeks API availability is the gate; skip early on repeated rejections.
+- 🟢 **No expiry-day pressure yet:** T0 shorts expire Tue 11 Aug (6 days out); theta decay favors the position if spot stays rangebound.
