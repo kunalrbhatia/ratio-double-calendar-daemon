@@ -488,3 +488,122 @@
 - 🟢 **Data feeds clean:** broker NIFTY LTP 24,395.85 matches chain index_close exactly — no bad tick (cf. 03 Aug anomaly). 15:30 chain option LTPs reproduce the daemon close to the rupee.
 - 🟡 **Post-market P&L drift:** 15:44 computed +₹799.50 vs 15:30 close +₹949.00 (15.7% — T1 legs drifted after close; broker LTP fetched after SmartStream disconnect). Daemon/chain 15:30 values are authoritative.
 - 🟢 **Daemon healthy:** production, 0 unscheduled restarts, 361/361 unique samples (zero gaps), 0 Invalid Token, 0 real 403s, SmartStream stable 09:30→15:31, clean index feed, no duplicate logging.
+
+# Trading Report — Friday, 14 Aug 2026
+
+## 📊 Market Overview
+
+| Index | Previous Close | LTP | Change | % Change |
+|-------|:-------------:|:---:|:------:|:--------:|
+| Nifty 50 | 24,395.85 | 24,366.00 | -29.85 | -0.12% |
+| Bank Nifty | 57,635.25 | 57,491.10 | -144.15 | -0.25% |
+| India VIX | 11.42 | 11.31 | -0.11 | -0.96% |
+
+*LTPs fetched post-market (15:44 IST) via brokerClient; previous close = Thursday 13 Aug close. Second straight range-bound day — NIFTY traded 24,307.80 (09:30 low) to 24,397.50 (14:05 high) and closed -0.12% at 24,366.00. VIX slipped to 11.31 — a fresh week low — keeping the low-IV, short-premium regime intact through the entire week.*
+
+## 📋 Position Status — NIFTY (W33) — Day 3
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Entry Date:** Wed, 12 Aug 2026 (Day 1) | **Today:** Day 3 of 5 (T0 expiry / scheduled exit = Tue, 18 Aug)
+- **Lot Size (Qty/leg):** 130 (2 lots × 65)
+- **Sell Expiry (T0):** Tue, 18 Aug 2026 — SELL 130 CE + PE at delta 0.10–0.15
+- **Buy Expiry (T1):** Tue, 25 Aug 2026 — BUY 130 CE + PE LTP-matched to T0 shorts
+- **Status:** Open
+- **Margin:** ₹183,575.60 (marginBasis: simple — daemon's 09:20 refresh; was ₹184,970.70 Thu, ₹186,461.02 entry-day)
+- **⛔ Stoploss:** ₹-3,671.51 (2% of margin) | **🎯 Profit Target:** ₹+2,753.63 (1.5% of margin)
+
+### Position Details (15:30 close LTPs — chain cross-checked)
+
+| # | Action | Strike | Type | Expiry | Qty | Entry Price | LTP | P&L |
+|:-:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:---:|:---:|
+| 1 | 🔴 SELL | 24,900 | CE | 18AUG (T0) | 130 | 18.00 | 3.00 | +₹1,950.00 |
+| 2 | 🔴 SELL | 24,100 | PE | 18AUG (T0) | 130 | 24.05 | 9.00 | +₹1,956.50 |
+| 3 | 🟢 BUY  | 25,200 | CE | 25AUG (T1) | 130 | 19.45 | 6.05 | -₹1,742.00 |
+| 4 | 🟢 BUY  | 23,700 | PE | 25AUG (T1) | 130 | 20.45 | 10.35 | -₹1,313.00 |
+
+**Total P&L (15:30 chain LTPs): +₹851.50**
+**Daemon 15:30 close P&L: +₹871.00** *(chain cross-check within 2.2% — ₹19.50 tick-level divergence: index rallied 24,354.85 → 24,366 in the final minutes; daemon sampled 15:30:00.6, chain snapshot 15:30:10. Post-market broker fetch also +₹851.50.)*
+
+> **Sell legs:** Delta range 0.10–0.15. **Buy legs:** LTP-matched to T0 shorts.
+> **Cumulative week path:** Wed +₹318.50 → Thu +₹949.00 → **Fri +₹871.00** (Day-3 change -₹78.00, -0.04% of margin).
+> **Day-3 monitored range:** open +₹123.50 → **+₹65.00 (09:31 low)** → **+₹1,111.50 (13:47 high)** → **+₹871.00 (15:30 close)**. **0 red minutes — all 361 samples positive**, the first all-green day of the week.
+
+## 📋 Position Status — SENSEX (W33)
+
+- **Status:** Skipped — no position
+- **Reason:** `SENSEX_EXPIRY_ENABLED=false` in `.env` (set 31 Jul 2026) gates the entire SENSEX tick. 0 SENSEX log lines today — silence is the symptom.
+- Today (Fri) was the W33 SENSEX entry window — skipped. **5th week without a SENSEX position** (W30 exit 30 Jul was the last activity; W31 entry failed risk-policy, W32 skipped).
+
+## 📈 Daily Activity
+
+- **00:00 IST — Daily cleanup:** old logs and stale position files purged.
+- **08:20 IST — PM2 scheduled restart:** `Environment: production`, SmartAPI login successful, scheduler up.
+- **08:30 IST — Instrument master download:** scheduled job ran clean (154,778 records).
+- **08:40 IST — VIX entry filter check:** India VIX 11.42 — initialization complete, no entry due today.
+- **09:20 IST — Margin refresh:** updated to **₹183,575.60 (simple)** — third consecutive per-position recompute (entry ₹186,461.02 → Thu ₹184,970.70 → Fri ₹183,575.60); SL/PT thresholds for today's P&L loop used the refreshed figure (SL -₹3,671.51, PT +₹2,753.63).
+- **09:30:00 IST — Monitoring start:** first sample +₹123.50; SmartStream WebSocket connected 09:30, subscribed to all 4 position tokens.
+- **09:30–15:30 IST — 1-min P&L monitoring:** **361/361 unique samples, zero gaps** (no duplicate logging — 361 raw = 361 unique). Day range: **+₹65.00 (09:31 low)** → **+₹1,111.50 (13:47 high)**, close **+₹871.00**. **0 negative minutes all day.**
+- **15:31 IST — SmartStream disconnected** (outside market hours).
+- **15:44 IST — Report generation:** post-market LTPs fetched; order book verified (below).
+- **No SENSEX activity** — tick gated off; Friday entry window skipped.
+
+### Order Book Verification (15:47 IST, 0 entries)
+
+| Group | Entries | Verdict |
+|:------|:-------:|:-------:|
+| Our W33 legs (tokens 61929/61531/45144/45095) | **0 entries** | ✅ Nothing traded today — correct for a non-entry/non-exit day (same clean state as Thu) |
+| Open orders | 0 | ✅ Clean |
+
+### Daemon Health
+
+| Check | Status |
+|:-----|:------:|
+| PM2 Process | Running — started 08:20 (production), 0 unscheduled restarts today |
+| Environment | Production (⚠️ SENSEX_EXPIRY_ENABLED=false — SENSEX tick disabled) |
+| SmartAPI Login | Successful (08:20 restart, 08:30, 08:40 scheduled logins) |
+| SmartStream | Connected 09:30 → 15:31, 45s re-subscribe heartbeats working |
+| PositionsStore | NIFTY W33 loaded — 1-min P&L loop continuous, 361/361 unique samples, ZERO gaps |
+| Margin API | ₹183,575.60 (marginBasis: simple — 09:20 refresh; entry-day ₹186,461.02) |
+| SL/PT Basis | 2% SL / 1.5% PT — ₹-3,671.51 / ₹+2,753.63 |
+| Order Book | 0 entries — clean (0 open orders; also 0 other-strategy entries today vs 9 on Thu) |
+| REST Rate Limiting | 0 × 403 |
+| Invalid Token | 0 occurrences |
+| Index LTP Feed | Clean — broker NIFTY LTP 24,366.00 == chain index_close 24,366.00, no bad tick |
+| Logging Quirk | ✅ Did not recur — 361 raw lines = 361 unique minutes |
+
+## 🔍 Market Response Analysis
+
+### Day 3 — All-Green Session, P&L High at 13:47, Close Eases to +₹871
+
+1. **NIFTY -29.85 pts (-0.12%) to 24,366.00, inside a ~90-pt range** (24,307.80 low at 09:30 → 24,397.50 high at 14:05). A second consecutive quiet drift day — the index spent the entire session within 0.4% of Thursday's close. The position closed +₹871.00 (+0.47% of margin), its third consecutive green day.
+
+2. **First all-green session of the week:** opened +₹123.50 (valuation gap down from Thursday's +₹949.00 close — overnight theta), dipped only to **+₹65.00 at 09:31**, then climbed steadily to **+₹1,111.50 at 13:47** (day high, +0.61% of margin) before easing into the close. **0 of 361 minutes were red** — a contrast to Day 1 (trough -₹1,846) and Day 2 (10 red minutes).
+
+3. **IV crush continues to compound:** VIX fell -0.96% to **11.31 — a fresh week low** (12.25 → 11.86 → 11.69 → 11.42 → 11.31, down 7.7% across the week). T0 shorts kept bleeding premium: CE 24,900 18.00 → 3.00 (**83% decayed**, +₹1,950.00) and PE 24,100 24.05 → 9.00 (**63% decayed**, +₹1,956.50). **Cumulative T0 credit captured: +₹3,906.50** after three days.
+
+4. **T1 hedge drag at -₹3,055.00:** CE 25,200 19.45 → 6.05 (-₹1,742.00) and PE 23,700 20.45 → 10.35 (-₹1,313.00). The drag continues to shrink as T1 legs decay toward 25 Aug — it remains fully absorbed by the T0 harvest (net +₹851.50 chain / +₹871.00 daemon).
+
+5. **P&L high at 13:47 (index high 14:05):** the position led the index by ~18 minutes again — theta/IV bleed kept paying even as spot rolled over from its high. Harvest mode is fully established with 4 days to T0 expiry (18 Aug).
+
+6. **PE-short buffer at close: 266.00 pts (1.09% of spot)** — down from 295.85 pts Thursday as spot drifted another 30 pts lower toward the 24,100 short. Still well above the ~175-pt stress level of Day 1; the position has now absorbed three days of mild downward drift without the downside leg being seriously tested.
+
+## 🎯 Key Observations
+
+1. **W33 Day 3 closed +₹871.00 (+0.47% of margin)** — third consecutive green day (Wed +₹318.50 → Thu +₹949.00 → Fri +₹871.00). **31.6% of the profit target** (₹2,753.63), distance ₹1,882.63. SL never threatened (day low +₹65 = +0.04% of margin).
+2. **All-green day:** 361/361 samples positive — the first time this week the position never dipped below zero (Day 1: -₹1,846 trough; Day 2: -₹325 morning dip).
+3. **Chain cross-check within 2.2%:** 15:30 chain LTPs sum to +₹851.50 vs daemon close +₹871.00 (₹19.50 tick-level divergence — final-minutes index rally 24,354.85 → 24,366; chain snapshot at 15:30:10 vs daemon sample at 15:30:00.6). Post-market broker fetch also +₹851.50 — two independent sources agree; daemon value is authoritative.
+4. **VIX 11.31 — week's low** (down 7.7% across the week: 12.25 → 11.31). The low-IV regime held through a second straight range-bound day; short-premium harvest continues.
+5. **Order book clean:** 0 entries on our W33 tokens, 0 open orders — and notably 0 other-strategy entries today (vs 9 on Thu). No residue.
+6. **Margin basis drifting down:** ₹186,461.02 (entry) → ₹184,970.70 (Thu) → ₹183,575.60 (Fri) — the daemon's daily 09:20 recompute; SL/PT thresholds follow each refresh. Per-position figures; account-wide total quirk not observed today.
+7. **🔴 SENSEX still dark:** flag off since 31 Jul. Friday W33 entry window passed with no attempt — **5th week without a SENSEX position**. Re-enable `SENSEX_EXPIRY_ENABLED=true` + `pm2 restart` before next Friday (21 Aug, W34) entry.
+8. **Report-file pointer:** W33's final days (Mon 17, Tue 18 exit) will land in `August_Week3_2026_Expiry.md` — calendar month-week rollover, same continuation pattern as W32 → August_Week2.
+
+## ⚠️ Alerts / Risks
+
+- 🟢 **Stoploss safe:** close +₹871.00 vs SL -₹3,671.51; day low +₹65.00 (+0.04% of margin). Distance to SL ₹4,542.51.
+- 🟡 **Profit target 31.6% reached:** +₹871.00 vs PT +₹2,753.63. Two trading days remain (Mon 17, Tue 18 = T0 expiry + scheduled 15:15 exit). At the current harvest pace, expect the exit to realize roughly +₹900–1,400 (W32 precedent: +₹1,605.50).
+- 🟡 **PE-short buffer 266.00 pts (1.09% of spot):** drifted down ~30 pts this week as spot slipped ~70 pts from Wednesday. Still comfortable, but the trend is toward the downside leg — a gap-down Monday would compress it further (Day 1 stress level: ~175 pts).
+- 🔴 **SENSEX tick disabled (SENSEX_EXPIRY_ENABLED=false in .env since 31 Jul):** W33 SENSEX entry (Fri 14 Aug) skipped — 5th week dark. Next window Fri 21 Aug (W34); requires flag re-enable + `pm2 restart`.
+- 🟢 **Data feeds clean:** broker NIFTY LTP 24,366.00 == chain index_close 24,366.00 — no bad tick. 15:30 chain option LTPs reproduce the daemon close within 2.2%.
+- 🟢 **Post-market drift minimal today:** 15:44 broker fetch +₹851.50 vs 15:30 daemon close +₹871.00 (2.2% — vs 15.7% on Thu). T1 legs barely moved after close.
+- 🟢 **Daemon healthy:** production, 0 unscheduled restarts, 361/361 unique samples (zero gaps), 0 Invalid Token, 0 real 403s, SmartStream stable 09:30→15:31, clean index feed, no duplicate logging.
