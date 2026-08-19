@@ -268,3 +268,84 @@
 - 🟢 **Data feeds clean:** broker NIFTY LTP 24,154.90 == chain 15:30 `index_close` 24,154.90 (no bad tick); chain option LTPs reproduce the exit counterfactual consistently; 15:45 post-market drift immaterial (position closed at 15:15 — fills are authoritative, verified to ₹0).
 - 🟢 **Daemon healthy:** production, 0 unscheduled restarts, 345/345 unique samples (zero gaps), 0 Invalid Token, 3× 403s confined to the exit burst (normal), SmartStream stable 09:30→15:15, no duplicate logging, position file written cleanly at exit.
 - 🟢 **NIFTY W34 entry tomorrow (Wed 19 Aug):** VIX 11.39 low regime — conditions favorable. SENSEX W34 window Fri 21 Aug pending flag re-enable.
+
+---
+
+# Trading Report — Wednesday, 19 Aug 2026
+
+## 📊 Market Overview
+
+| Index | Previous Close | LTP | Change | % Change |
+|-------|:-------------:|:---:|:------:|:--------:|
+| Nifty 50 | 24,154.90 | 24,078.30 | -76.60 | -0.32% |
+| Bank Nifty | 57,262.40 | 57,239.75 | -22.65 | -0.04% |
+| India VIX | 11.39 | 11.32 | -0.07 | -0.61% |
+| SENSEX (BSE) | n/a | 76,909.68 | — | — |
+
+*LTPs fetched post-market (15:44 IST) via brokerClient; previous close = Tuesday 18 Aug close; chain 15:30 `index_close` 24,078.30 == broker LTP exactly (clean feed). Fourth consecutive down session (Fri 14 → Wed 19): -1.18% cumulative (24,366.00 → 24,078.30). Today opened gap-down (-22 pts at 09:15, 24,132.65 = day high), slid steadily to the day low 24,030.75 at 14:25, then recovered ~48 pts into the close. BankNifty flat (-0.04%), VIX eased to 11.32 (-0.61%) — low-IV regime intact.*
+
+## 📋 Position Status — NIFTY (W34) — 🟢 OPEN (Entered Today)
+
+- **Strategy:** Double Calendar Spread (4-leg)
+- **Entry Date:** Wed, 19 Aug 2026 (09:30 IST, LIVE)
+- **Lot Size (Qty/leg):** 130 (2 lots × 65)
+- **Sell Expiry (T0):** Tue, 25 Aug 2026 — SELL 130 CE + 130 PE (Δ 0.135 / 0.105, closest to 0.15)
+- **Buy Expiry (T1):** Tue, 01 Sep 2026 — BUY 130 CE + 130 PE (LTP-matched to T0 shorts)
+- **Status:** **Open — Day 1**
+- **Margin:** ₹176,014.17 (marginBasis: simple — per-position value at entry; clean, no account-wide quirk today)
+- **⛔ Stoploss:** ₹-3,520.28 (2%) | **🎯 Profit Target:** ₹+2,640.21 (1.5%)
+
+### Position Details — Entry Fills (order-book confirmed; LTPs = chain 15:30 snapshot)
+
+| # | Action | Strike | Type | Expiry | Qty | Entry Price | LTP | P&L |
+|:-:|:------:|:-----:|:----:|:------:|:---:|:-----------:|:---:|:---:|
+| 1 | 🔴 SELL | 24,500 | CE | 25AUG | 130 | 20.95 | 17.00 | +513.50 |
+| 2 | 🔴 SELL | 23,700 | PE | 25AUG | 130 | 17.50 | 14.45 | +396.50 |
+| 3 | 🟢 BUY  | 24,800 | CE | 01SEP | 130 | 20.00 | 17.50 | -325.00 |
+| 4 | 🟢 BUY  | 23,400 | PE | 01SEP | 130 | 18.10 | 17.00 | -143.00 |
+
+**Total P&L:** ₹ +442.00 (chain 15:30) | **Daemon close:** +₹435.50 (15:30)
+
+> **Entry mechanics:** Underlying NIFTY LTP 24,097.9 at 09:30, VIX 11.6 (filter pass). Basket: SELL 24,500 CE (Δ0.135, 402 pts OTM) + SELL 23,700 PE (Δ0.105, 398 pts OTM); T1 buys 24,800 CE (Δ0.099) + 23,400 PE (Δ0.094). 3 of 4 legs filled on the first limit attempt at LTP; the 23,400 PE needed 3 attempts (18.05 → 18.05 → **18.10**). Net entry credit ₹0.35/share (+₹45.50/leg-lot). All 4 orders COMPLETE, 0 open, order book contains ONLY our 6 entries (4 fills + 2 cancelled reprices) — no other-strategy residue today.
+> **Close verification:** chain 15:30:03 computed +₹442.00 vs daemon sample 15:30:00.6 +₹435.50 — ₹6.50 divergence (0.05 × 130 = exactly one leg tick; 3s snapshot lag amid a rising final minute 24,048.55 → 24,078.30). Broker post-market LTP == chain `index_close` (24,078.30 == 24,078.30) — timing artifact per the 14 Aug discriminator, not a bad tick. Daemon close authoritative.
+
+## 📋 Position Status — SENSEX
+
+- **Status:** No Position — **skipped (7th week dark)**. `SENSEX_EXPIRY_ENABLED=false` in `.env` (set 31 Jul). 0 SENSEX log lines today. Next entry window **Fri 21 Aug (W34)** — requires flag re-enable + `pm2 restart`.
+
+## 📈 Daily Activity
+
+- **08:20 IST — Scheduled restart**: `Environment: production`, login OK, scrip master cached (4,683 options). No position loaded at restart (W34 not yet entered).
+- **08:40 IST — VIX check**: India VIX 11.39 — entry filter pass (VIX < 15).
+- **09:30:00 IST — W34 ENTRY EXECUTED**: VIX 11.6; T0 25AUG / T1 01SEP / T2 08SEP resolved; basket built with live greeks (ATM CE IV 10.57%, PE IV 9.82%); 4 orders placed 09:30:01–09:30:20, all COMPLETE (see Position Details). 7× HTTP 403 on entry-time getOrderBook duplicate-prevention checks — all retried, orders unaffected (normal entry burst, cf. 05 Aug).
+- **09:30:42 — SmartStream connected**; heartbeat re-subscribes every ~45s through 15:30:42; disconnected 15:31:12 (outside hours).
+- **09:31–15:30 — P&L monitoring**: 360 unique samples (720 raw = duplicate-logging day, deduped by minute), zero gaps. Day path: open **-₹6.50** (09:31, only red minute) → high **+₹507.00** (14:49) → close **+₹435.50** (15:30).
+- **15:44 IST — Report generation**: LTPs fetched post-market; chain 15:30 snapshots used for close verification.
+
+## 🔍 Market Response Analysis
+
+**Entry-day P&L: +₹435.50 (+0.25% of margin) — a textbook Day 1 on a fading tape.**
+
+1. **Index path (chain `index_close`, 76 snapshots):** gap-down open 24,132.65 (day high) → steady bleed to 24,030.75 @ 14:25 (day low, -102 pts from open) → late recovery 24,048.55 @ 15:20 → 24,078.30 close. The final 10 minutes printed the sharpest up-move of the day (+30 pts) — into the 15:30 close, hence the daemon-vs-chain ₹6.50 tick.
+2. **Why P&L stayed green all day:** both T0 shorts started 400 pts OTM (CE 24,500 / PE 23,700 vs spot 24,097.9). Even at the 14:25 low, the PE short buffer was still ~331 pts — no gamma stress on Day 1 with this buffer width. The day's drift was pure theta + slight IV crush on all four legs.
+3. **T0 credit vs T1 drag:** T0 shorts +₹910.00 (CE +513.50, PE +396.50) vs T1 longs -₹468.00 (CE -325.00, PE -143.00) — net +₹442.00 at 15:30 chain. The calendar's expected Day-1 shape: T0 decays faster than T1's bleed.
+4. **IV regime:** VIX 11.6 at entry → 11.32 close. Low-IV persists; the entry filter keeps firing green. ATM IVs at 10.6/9.8% — cheap premium environment (consistent with W32/W33 entries).
+5. **Counterfactual note:** none needed — Day 1, no exits. The 14:49 peak +₹507.00 vs close +₹435.50 shows the final-hour index pop cost ~₹71.50 of mark-to-market (immaterial, 0.04% of margin).
+
+## 🎯 Key Observations
+
+1. **W34 entered cleanly — 4/4 fills, 0 open orders, ₹176,014.17 margin (simple, per-position).** No account-wide margin quirk on entry day; thresholds (SL -₹3,520.28 / PT +₹2,640.21) follow the entry margin throughout.
+2. **Day 1 close +₹435.50 (+0.25% of margin), 99.7% green minutes (359/360).** Only red sample was the very first (09:31, -₹6.50). Never within 12× of the stoploss.
+3. **W33 exit → W34 entry continuity:** no gap day; entry executed the morning after the +₹1,950.00 W33 close. August_Week3 file now carries Mon/Tue (W33 tail) + Wed (W34 Day 1).
+4. **Down-tape regime:** 4th consecutive down session (-1.18% since Fri 14 Aug close). W33's exit-day lesson (18 Aug: down day into the near short = net-positive by T0 expiry) suggests this tape is favorable for the short-premium calendar.
+5. **Duplicate P&L logging active today** (720 raw = 360 unique) — same as 12 Aug; dedup-by-minute remains the habit (raw `grep -c` would overstate 2×).
+6. **SENSEX dark for a 7th week:** flag false since 31 Jul; W34 window Fri 21 Aug will skip unless re-enabled.
+
+## ⚠️ Alerts / Risks
+
+- 🟢 **Entry execution clean:** 4/4 COMPLETE fills (3 first-attempt, 1 on attempt 3), 0 open orders; order book shows ONLY our 6 entries (4 fills + 2 cancelled reprices) — no other-strategy residue.
+- 🟢 **Data feeds clean:** broker NIFTY 24,078.30 == chain 15:30 `index_close` 24,078.30; chain leg LTPs reproduce the daemon close within ₹6.50 (1.5%, 3s snapshot-timing artifact — 14 Aug discriminator applied).
+- 🟢 **Risk framework comfortable:** SL ₹-3,520.28 never threatened (day min -₹6.50); PT ₹+2,640.21 — Day 1 closed at 16.5% of target.
+- 🟡 **Down-tape exposure:** PE-short buffer 398 pts at entry, 331 pts at the day low. Comfortable, but a -0.5%+ gap-down day (like 17/18 Aug) erodes ~100 pts of buffer per session — monitor ahead of the Fri session.
+- 🔴 **SENSEX tick disabled (`SENSEX_EXPIRY_ENABLED=false` since 31 Jul):** W34 SENSEX entry **Fri 21 Aug** will be skipped unless the flag is re-enabled + `pm2 restart` — 7th week dark.
+- 🟢 **Daemon healthy:** production, 1 scheduled restart (08:20), 360/360 unique samples (zero gaps), 0 real HTTP 403s beyond the entry burst, SmartStream stable 09:30:42→15:31:12, no exit-window concerns (exit day is Tue 25 Aug).
