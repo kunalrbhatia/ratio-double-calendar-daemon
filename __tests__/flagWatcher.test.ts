@@ -65,4 +65,15 @@ describe('FlagWatcher', () => {
     flagWatcher.clearDoneForThisWeek('NIFTY');
     expect(fs.unlinkSync).not.toHaveBeenCalled();
   });
+
+  test('clearDoneForThisWeek removes only targeted underlying lockout', () => {
+    (fs.existsSync as jest.Mock).mockImplementation((p: string) =>
+      p.includes('done-for-this-week-nifty'),
+    );
+    flagWatcher.clearDoneForThisWeek('NIFTY');
+    expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringContaining('done-for-this-week-nifty'));
+    expect(fs.unlinkSync).not.toHaveBeenCalledWith(
+      expect.stringContaining('done-for-this-week-sensex'),
+    );
+  });
 });

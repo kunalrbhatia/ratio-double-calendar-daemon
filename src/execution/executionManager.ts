@@ -494,12 +494,12 @@ export class ExecutionManager implements IExecutionManager {
 
     pos.status = 'closed';
     pos.realizedPnl = totalPnl;
-    positionsStore.writePosition(underlying, week, isPaper, pos);
+    positionsStore.writePosition(underlying, pos.week, isPaper, pos);
 
     smartStream.disconnect();
 
     await notifier.send(
-      `📉 EXIT COMPLETE [${modeStr}] for ${underlying} week ${week}. Realized P&L: ₹${totalPnl.toLocaleString()}`,
+      `📉 EXIT COMPLETE [${modeStr}] for ${underlying} week ${pos.week}. Realized P&L: ₹${totalPnl.toLocaleString()}`,
     );
     return exitSuccess;
   }
@@ -681,6 +681,8 @@ export class ExecutionManager implements IExecutionManager {
       `[${underlying}] Profit target threshold: ₹${profitTargetThreshold.toLocaleString()} (1.5% of ₹${pos.marginUtilized.toLocaleString()})`,
     );
 
+    const targetWeek = pos.week;
+
     if (currentPnl <= stoplossThreshold) {
       logger.warn(
         `Stoploss breached for ${underlying}! Current P&L (₹${currentPnl.toLocaleString()}) <= threshold (₹${stoplossThreshold.toLocaleString()})`,
@@ -689,11 +691,11 @@ export class ExecutionManager implements IExecutionManager {
         `🚨 STOPLOSS BREACHED [${isPaper ? 'PAPER' : 'LIVE'}] for ${underlying}: P&L is ₹${currentPnl.toLocaleString()}. Unwinding positions...`,
       );
 
-      const success = await this.executeExit(underlying, week, isPaper, true);
+      const success = await this.executeExit(underlying, targetWeek, isPaper, true);
       if (success) {
-        // Set skip state for rest of week
-        positionsStore.setWeeklySkipState(underlying, week, isPaper, true);
-        logger.info(`Set skip state for ${underlying} week ${week}.`);
+        // Set skip state for rest of week using the position's own week
+        positionsStore.setWeeklySkipState(underlying, targetWeek, isPaper, true);
+        logger.info(`Set skip state for ${underlying} week ${targetWeek}.`);
         // Write weekly lockout flag
         flagWatcher.setDoneForThisWeek(underlying);
         logger.info(`Created weekly lockout flag for ${underlying}.`);
@@ -706,11 +708,13 @@ export class ExecutionManager implements IExecutionManager {
         `🎉 PROFIT TARGET REACHED [${isPaper ? 'PAPER' : 'LIVE'}] for ${underlying}: P&L is ₹${currentPnl.toLocaleString()}. Unwinding positions to lock in gains...`,
       );
 
-      const success = await this.executeExit(underlying, week, isPaper);
+      const success = await this.executeExit(underlying, targetWeek, isPaper);
       if (success) {
-        // Set skip state for rest of week
-        positionsStore.setWeeklySkipState(underlying, week, isPaper, true);
-        logger.info(`Set skip state for ${underlying} week ${week} after profit target exit.`);
+        // Set skip state for rest of week using the position's own week
+        positionsStore.setWeeklySkipState(underlying, targetWeek, isPaper, true);
+        logger.info(
+          `Set skip state for ${underlying} week ${targetWeek} after profit target exit.`,
+        );
         // Write weekly lockout flag
         flagWatcher.setDoneForThisWeek(underlying);
         logger.info(`Created weekly lockout flag for ${underlying}.`);
@@ -818,7 +822,7 @@ export class ExecutionManager implements IExecutionManager {
     if (newMargin > 0) {
       position.marginUtilized = newMargin;
       position.marginBasis = basis;
-      positionsStore.writePosition(underlying, week, isPaper, position);
+      positionsStore.writePosition(underlying, position.week, isPaper, position);
       logger.info(
         `Successfully updated margin utilized for ${underlying} to ₹${newMargin.toLocaleString()} (${basis})`,
       );
