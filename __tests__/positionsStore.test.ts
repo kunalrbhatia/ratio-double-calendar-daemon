@@ -163,6 +163,27 @@ describe('PositionsStore', () => {
     expect(fs.writeFileSync).toHaveBeenCalled();
   });
 
+  test('cross-week lockout: skip in week W35 does not report skipped for week W36', () => {
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    const w35SkippedData = {
+      week: '2026-W35',
+      status: 'skipped',
+      marginUtilized: 0,
+      orders: [],
+      realizedPnl: 0,
+      skippedThisWeek: true,
+    };
+    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(w35SkippedData));
+
+    // For week W35, it should report skipped
+    expect(store.getWeeklySkipState('NIFTY', '2026-W35', true)).toBe(true);
+
+    // For week W36, readPosition returns null because week !== requestedWeek and status !== 'open'
+    expect(store.readPosition('NIFTY', '2026-W36', true)).toBeNull();
+    // Therefore W36 is NOT skipped and can proceed with fresh entry
+    expect(store.getWeeklySkipState('NIFTY', '2026-W36', true)).toBe(false);
+  });
+
   test('cleanupOldFiles deletes only files older than retention limit', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     (fs.readdirSync as jest.Mock).mockReturnValue([

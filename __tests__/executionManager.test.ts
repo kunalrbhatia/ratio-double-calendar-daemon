@@ -447,6 +447,92 @@ describe('ExecutionManager', () => {
     executeExitSpy.mockRestore();
   });
 
+  test('monitorPnl keys skip state and exit to position.week across week boundaries (stoploss)', async () => {
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+
+    // Position entered in W35, being evaluated on Monday of W36
+    const openPosition = {
+      week: '2026-W35',
+      status: 'open' as const,
+      marginUtilized: 100000,
+      orders: [
+        {
+          symboltoken: 'T1_CE_BUY',
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          transactiontype: 'BUY' as const,
+          quantity: 50,
+          exchange: 'NFO',
+          orderid: 'O1',
+          status: 'COMPLETE',
+          price: 100,
+        },
+      ],
+      realizedPnl: 0,
+      skippedThisWeek: false,
+    };
+    (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
+    (brokerClient.getLtp as jest.Mock).mockResolvedValue(50); // Stoploss breach
+
+    const executeExitSpy = jest.spyOn(executionManager, 'executeExit').mockResolvedValue(true);
+
+    // Called with W36 from current date
+    await executionManager.monitorPnl('NIFTY', '2026-W36', true);
+
+    expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W35', true, true);
+    expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W35', true, true);
+    expect(positionsStore.setWeeklySkipState).not.toHaveBeenCalledWith(
+      'NIFTY',
+      '2026-W36',
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(flagWatcher.setDoneForThisWeek).toHaveBeenCalledWith('NIFTY');
+    executeExitSpy.mockRestore();
+  });
+
+  test('monitorPnl keys skip state and exit to position.week across week boundaries (profit target)', async () => {
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+
+    // Position entered in W35, being evaluated on Monday of W36
+    const openPosition = {
+      week: '2026-W35',
+      status: 'open' as const,
+      marginUtilized: 100000,
+      orders: [
+        {
+          symboltoken: 'T1_CE_BUY',
+          tradingsymbol: 'NIFTY16JUL26C19100',
+          transactiontype: 'BUY' as const,
+          quantity: 50,
+          exchange: 'NFO',
+          orderid: 'O1',
+          status: 'COMPLETE',
+          price: 100,
+        },
+      ],
+      realizedPnl: 0,
+      skippedThisWeek: false,
+    };
+    (positionsStore.readPosition as jest.Mock).mockReturnValue(openPosition);
+    (brokerClient.getLtp as jest.Mock).mockResolvedValue(150); // Profit target reached
+
+    const executeExitSpy = jest.spyOn(executionManager, 'executeExit').mockResolvedValue(true);
+
+    // Called with W36 from current date
+    await executionManager.monitorPnl('NIFTY', '2026-W36', true);
+
+    expect(executeExitSpy).toHaveBeenCalledWith('NIFTY', '2026-W35', true);
+    expect(positionsStore.setWeeklySkipState).toHaveBeenCalledWith('NIFTY', '2026-W35', true, true);
+    expect(positionsStore.setWeeklySkipState).not.toHaveBeenCalledWith(
+      'NIFTY',
+      '2026-W36',
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(flagWatcher.setDoneForThisWeek).toHaveBeenCalledWith('NIFTY');
+    executeExitSpy.mockRestore();
+  });
+
   test('prevents duplicate order placements', async () => {
     (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(false);
     (brokerClient.getLtp as jest.Mock).mockResolvedValue(100);

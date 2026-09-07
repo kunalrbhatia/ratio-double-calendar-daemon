@@ -374,4 +374,103 @@ describe('CronScheduler', () => {
 
     await expect(refreshCallback()).resolves.not.toThrow();
   });
+
+  test('handleTradingTick on entry day clears stale lockout flag from prior week and executes entry', async () => {
+    // Wednesday 10:00 AM IST (2026-09-02)
+    jest.setSystemTime(new Date('2026-09-02T10:00:00+05:30'));
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+    (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W36');
+    // Prior week position was closed/skipped, so readPosition for W36 returns null
+    (positionsStore.readPosition as jest.Mock).mockReturnValue(null);
+    // Stale lockout flag lingers from Monday
+    let lockoutActive = true;
+    (flagWatcher.isDoneForThisWeek as jest.Mock).mockImplementation(() => lockoutActive);
+    (flagWatcher.clearDoneForThisWeek as jest.Mock).mockImplementation(() => {
+      lockoutActive = false;
+    });
+
+    (strategyManager.checkVix as jest.Mock).mockResolvedValue({ passed: true, vix: 12 });
+    (strategyManager.buildBasket as jest.Mock).mockResolvedValue([]);
+
+    await scheduler.handleTradingTick();
+
+    expect(flagWatcher.clearDoneForThisWeek).toHaveBeenCalledWith('NIFTY');
+    expect(executionManager.executeEntry).toHaveBeenCalledWith('NIFTY', []);
+  });
+
+  test('handleTradingTick on entry day retains lockout if position was already entered and skipped today', async () => {
+    // Wednesday 10:00 AM IST (2026-09-02)
+    jest.setSystemTime(new Date('2026-09-02T10:00:00+05:30'));
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+    (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W36');
+    // Position was already entered today and skipped
+    (positionsStore.readPosition as jest.Mock).mockReturnValue({
+      status: 'skipped',
+      week: '2026-W36',
+    });
+    (flagWatcher.isDoneForThisWeek as jest.Mock).mockReturnValue(true);
+
+    await scheduler.handleTradingTick();
+
+    expect(flagWatcher.clearDoneForThisWeek).not.toHaveBeenCalledWith('NIFTY');
+    expect(strategyManager.checkVix).not.toHaveBeenCalled();
+    expect(executionManager.executeEntry).not.toHaveBeenCalled();
+  });
+
+  test('handleTradingTick on Monday monitors open position using position.week across week boundary', async () => {
+    // Monday 10:00 AM IST (2026-08-31)
+    jest.setSystemTime(new Date('2026-08-31T10:00:00+05:30'));
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+    (flagWatcher.isDoneForThisWeek as jest.Mock).mockReturnValue(false);
+    (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W36');
+    // Open position entered in W35
+    (positionsStore.readPosition as jest.Mock).mockReturnValue({
+      status: 'open',
+      week: '2026-W35',
+    });
+
+    await scheduler.handleTradingTick();
+
+    expect(executionManager.monitorPnl).toHaveBeenCalledWith('NIFTY', '2026-W35', true);
+  });
+
+  test('handleTradingTick on Tuesday exits open position using position.week across week boundary', async () => {
+    // Tuesday 15:20 PM IST (2026-09-01)
+    jest.setSystemTime(new Date('2026-09-01T15:20:00+05:30'));
+
+    (flagWatcher.isPaperMode as jest.Mock).mockReturnValue(true);
+    (flagWatcher.isKillSwitched as jest.Mock).mockReturnValue(false);
+    (flagWatcher.isDoneForThisWeek as jest.Mock).mockReturnValue(false);
+    (positionsStore.getCurrentWeekString as jest.Mock).mockReturnValue('2026-W36');
+    // Open position entered in W35
+    (positionsStore.readPosition as jest.Mock).mockReturnValue({
+      status: 'open',
+      week: '2026-W35',
+    });
+
+    await scheduler.handleTradingTick();
+
+    expect(executionManager.executeExit).toHaveBeenCalledWith('NIFTY', '2026-W35', true);
+  });
+
+  test('runDailyCleanup clears lockout flags on Wednesday and Friday', () => {
+    // Wednesday midnight
+    jest.setSystemTime(new Date('2026-09-02T00:00:00+05:30'));
+    env.SENSEX_EXPIRY_ENABLED = true;
+
+    scheduler.runDailyCleanup();
+    expect(flagWatcher.clearDoneForThisWeek).toHaveBeenCalledWith('NIFTY');
+
+    // Friday midnight
+    jest.clearAllMocks();
+    jest.setSystemTime(new Date('2026-09-04T00:00:00+05:30'));
+    scheduler.runDailyCleanup();
+    expect(flagWatcher.clearDoneForThisWeek).toHaveBeenCalledWith('SENSEX');
+  });
 });

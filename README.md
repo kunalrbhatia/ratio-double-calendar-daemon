@@ -1,6 +1,3 @@
-mux_client_request_session: session request failed: Session open refused by peer
-Warning: Permanently added '146.56.49.142' (ED25519) to the list of known hosts.
-ControlSocket /tmp/hermes-ssh/a02d3780b35840cc.sock already exists, disabling multiplexing
 # Double Calendar Spread Trading Daemon
 
 A production-grade, testable, self-hosted automated options trading pipeline built with **TypeScript (Node.js)** for executing and managing a **Double Calendar Spread** strategy via the **Angel One SmartAPI**. The daemon runs as a persistent process managed by `pm2` on an Oracle Cloud VM.
@@ -147,7 +144,7 @@ To optimize margin utilization and avoid transient order blocks, orders are sequ
 - **Monitoring:** The daemon polls LTP/WebSockets to monitor cumulative mark-to-market P&L.
 - **Stoploss:** If cumulative losses exceed **2% of the weekly utilized margin**, all legs are unwound.
 - **Profit Target:** If cumulative profits reach or exceed **1.5% of the weekly utilized margin**, all legs are unwound immediately to lock in gains.
-- **Weekly Lockout:** Upon stoploss or profit target hits, the daemon generates a per-underlying weekly lockout file (e.g. `done-for-this-week-nifty` or `done-for-this-week-sensex`). When a lockout is active for an underlying, trading ticks and monitoring are paused for that specific index only. Lockouts are automatically cleared via cron jobs independently: NIFTY lockout is cleared Tuesdays at 16:00 IST, and SENSEX lockout is cleared Thursdays at 16:00 IST.
+- **Weekly Lockout & Trade-Week Isolation:** Upon stoploss or profit target hits, the daemon records skip states and exit history keyed strictly to the position's original entry trade-week (`position.week`), rather than the calendar ISO week. This prevents cross-weekend exits (e.g. stoploss on Monday/Tuesday of a Wednesday-to-Tuesday NIFTY cycle) from bleeding into and blocking the next week's entry. Additionally, the daemon generates a per-underlying weekly lockout file (e.g. `done-for-this-week-nifty` or `done-for-this-week-sensex`). Lockouts are cleared via scheduled cron jobs (Tuesdays at 16:00 IST for NIFTY, Thursdays at 16:00 IST for SENSEX), and are also proactively cleaned on entry days (Wednesdays for NIFTY, Fridays for SENSEX) during daily initialization at 08:40 AM IST, daily prep, midnight cleanup, and prior to the 09:30 AM entry window if no position exists yet for the new week.
 
 ### 3. Limit Order Repricing Walk with Market Fallback
 

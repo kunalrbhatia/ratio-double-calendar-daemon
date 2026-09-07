@@ -75,6 +75,18 @@ export class CronScheduler {
         logger.info('Fetching India VIX...');
         const { vix } = await strategyManager.checkVix();
         logger.info(`Initialization complete. India VIX is ready: ${vix}`);
+
+        // On entry day, clear weekly lockout flag before market opens so a fresh trade week starts clean
+        const now = dayjs().tz('Asia/Kolkata');
+        const dayOfWeek = now.day();
+        if (dayOfWeek === 3) {
+          flagWatcher.clearDoneForThisWeek('NIFTY');
+          logger.info('Entry day (Wednesday): Cleared NIFTY weekly lockout flag.');
+        }
+        if (dayOfWeek === 5 && env.SENSEX_EXPIRY_ENABLED) {
+          flagWatcher.clearDoneForThisWeek('SENSEX');
+          logger.info('Entry day (Friday): Cleared SENSEX weekly lockout flag.');
+        }
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
         logger.error(`Failed 08:40 AM IST initialization: ${msg}`);
@@ -188,14 +200,19 @@ export class CronScheduler {
     minutesSinceMidnight: number,
     isPaper: boolean,
   ) {
+    const dayOfWeek = now.day();
+    const currentWeek = positionsStore.getCurrentWeekString();
+    const currentPosition = positionsStore.readPosition(underlying, currentWeek, isPaper);
+
+    // On entry day, if no position exists yet for the current week, any lingering lockout from prior week is stale
+    if (dayOfWeek === entryDay && (!currentPosition || currentPosition.week !== currentWeek)) {
+      flagWatcher.clearDoneForThisWeek(underlying);
+    }
+
     if (flagWatcher.isDoneForThisWeek(underlying)) {
       logger.info(`Trading paused for ${underlying} (weekly lockout active).`);
       return;
     }
-
-    const currentWeek = positionsStore.getCurrentWeekString();
-    const currentPosition = positionsStore.readPosition(underlying, currentWeek, isPaper);
-    const dayOfWeek = now.day();
 
     // 1. Entry Logic
     if (dayOfWeek === entryDay) {
@@ -205,12 +222,12 @@ export class CronScheduler {
         if (!currentPosition || currentPosition.week !== currentWeek) {
           // No position exists at all or it belongs to a different week, run entry
           await this.attemptEntry(underlying, currentWeek);
-        } else if (currentPosition.status === 'skipped') {
+        } else if (currentPosition.status === 'skipped' && currentPosition.week === currentWeek) {
           // Already skipped this week, do nothing
           return;
         } else if (currentPosition.status === 'open') {
           // Position is already open, monitor PnL
-          await executionManager.monitorPnl(underlying, currentWeek, isPaper);
+          await executionManager.monitorPnl(underlying, currentPosition.week, isPaper);
         }
       }
     }
@@ -223,7 +240,7 @@ export class CronScheduler {
       (relDay >= 1 && relDay <= 5);
 
     if (isMonitoringDay && currentPosition && currentPosition.status === 'open') {
-      await executionManager.monitorPnl(underlying, currentWeek, isPaper);
+      await executionManager.monitorPnl(underlying, currentPosition.week, isPaper);
     }
 
     // 3. Exit Logic
@@ -232,7 +249,7 @@ export class CronScheduler {
         logger.info(
           `Scheduled exit time reached for ${underlying} (${now.format('dddd')} 15:15 IST). Closing position...`,
         );
-        await executionManager.executeExit(underlying, currentWeek, isPaper);
+        await executionManager.executeExit(underlying, currentPosition.week, isPaper);
       }
     }
   }
@@ -290,6 +307,18 @@ export class CronScheduler {
 
     // Cleanup week-files in PositionsStore
     positionsStore.cleanupOldFiles(retentionMonths);
+
+    // Clear weekly lockout flags on entry days (Wednesday for NIFTY, Friday for SENSEX)
+    const dayOfWeek = dayjs().tz('Asia/Kolkata').day();
+    if (dayOfWeek === 3) {
+      flagWatcher.clearDoneForThisWeek('NIFTY');
+      logger.info('Daily cleanup (Wednesday): Cleared NIFTY weekly lockout flag.');
+    }
+    if (dayOfWeek === 5 && env.SENSEX_EXPIRY_ENABLED) {
+      flagWatcher.clearDoneForThisWeek('SENSEX');
+      logger.info('Daily cleanup (Friday): Cleared SENSEX weekly lockout flag.');
+    }
+
     logger.info('Daily cleanup complete.');
   }
 }
