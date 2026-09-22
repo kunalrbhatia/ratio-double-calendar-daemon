@@ -6,5 +6,7 @@ data/
 .env
 .paper
 .kill
+done-for-this-week
+done-for-this-week-*
 pr-body.txt
 
